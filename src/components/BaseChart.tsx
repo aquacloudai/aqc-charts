@@ -3,13 +3,7 @@ import type { BaseChartProps, ChartRef } from '@/types';
 import { useECharts } from '@/hooks/useECharts';
 
 export const BaseChart = forwardRef<ChartRef, BaseChartProps>(({
-    series = [],
-    xAxis,
-    yAxis,
     title,
-    subtitle,
-    legend,
-    tooltip,
     width = '100%',
     height = 400,
     theme = 'light',
@@ -25,68 +19,27 @@ export const BaseChart = forwardRef<ChartRef, BaseChartProps>(({
     onBrush,
     className = '',
     style = {},
-    option: customOption,
+    option,
     renderer = 'canvas',
     locale = 'en',
     ...restProps
 }, ref) => {
     const echartsContainerRef = useRef<HTMLDivElement>(null);
 
-    // Generate chart option
+    // Simple title override if provided as string prop
     const chartOption = useMemo(() => {
-        if (customOption) {
-            return customOption;
-        }
-
-        const titleConfig = typeof title === 'string'
-            ? { text: title, subtext: subtitle }
-            : title;
-
-        return {
-            title: titleConfig ? {
-                left: 'center',
-                ...titleConfig,
-            } : undefined,
-
-            tooltip: tooltip ?? {
-                trigger: 'axis',
-                axisPointer: {
-                    type: series.some((s) => s.type === 'line') ? 'cross' : 'shadow',
+        if (title && typeof title === 'string') {
+            return {
+                ...option,
+                title: {
+                    ...option.title,
+                    text: title,
+                    left: 'center',
                 },
-            },
-
-            legend: legend ?? (series.length > 1 ? {
-                data: series.map((s) => s.name),
-                top: titleConfig ? 60 : 20,
-            } : undefined),
-
-            grid: {
-                left: '3%',
-                right: '4%',
-                bottom: '3%',
-                top: titleConfig ? (series.length > 1 ? 100 : 80) : (series.length > 1 ? 60 : 40),
-                containLabel: true,
-            },
-
-            xAxis: xAxis ?? {
-                type: 'category',
-                data: [],
-            },
-
-            yAxis: yAxis ?? {
-                type: 'value',
-            },
-
-            series: series.map((s) => ({
-                ...s,
-                itemStyle: s.color ? { color: s.color, ...(s.itemStyle as object) } : s.itemStyle,
-            })),
-
-            animation: true,
-            animationDuration: 1000,
-            animationEasing: 'cubicOut',
-        };
-    }, [series, xAxis, yAxis, title, subtitle, legend, tooltip, customOption]);
+            };
+        }
+        return option;
+    }, [option, title]);
 
     const { chart, loading: chartLoading, error, refresh } = useECharts(
         echartsContainerRef,

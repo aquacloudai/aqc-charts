@@ -1,17 +1,31 @@
 import React, { forwardRef, useMemo } from 'react';
-import type { BaseChartProps, ChartRef, ChartSeries, LineStyleConfig } from '@/types';
+import type { BaseChartProps, ChartRef, EChartsOption, LineSeriesOption } from '@/types';
 import { BaseChart } from './BaseChart';
+import { createLineChartOption, mergeOptions } from '@/utils/chartHelpers';
 
-export interface LineChartProps extends Omit<BaseChartProps, 'series'> {
-    readonly data: readonly ChartSeries[];
+export interface LineChartProps extends Omit<BaseChartProps, 'option'> {
+    readonly data: {
+        readonly categories: string[];
+        readonly series: Array<{
+            readonly name: string;
+            readonly data: number[];
+            readonly color?: string;
+            readonly smooth?: boolean;
+            readonly area?: boolean;
+            readonly stack?: string;
+            readonly symbol?: string;
+            readonly symbolSize?: number;
+            readonly connectNulls?: boolean;
+        }>;
+    };
     readonly smooth?: boolean;
     readonly area?: boolean;
     readonly stack?: boolean;
     readonly symbol?: boolean;
     readonly symbolSize?: number;
     readonly connectNulls?: boolean;
-    readonly defaultLineStyle?: LineStyleConfig;
-    readonly defaultSymbol?: 'circle' | 'rect' | 'roundRect' | 'triangle' | 'diamond' | 'pin' | 'arrow' | 'none';
+    readonly option?: Partial<EChartsOption>;
+    readonly series?: LineSeriesOption[]; // Allow direct ECharts series override
 }
 
 export const LineChart = forwardRef<ChartRef, LineChartProps>(({
@@ -22,41 +36,80 @@ export const LineChart = forwardRef<ChartRef, LineChartProps>(({
     symbol = true,
     symbolSize = 4,
     connectNulls = false,
-    defaultLineStyle,
-    defaultSymbol = 'circle',
-    xAxis,
+    title,
+    option: customOption,
+    series: customSeries,
     ...props
 }, ref) => {
-    const series = useMemo(() =>
-        data.map((item) => ({
-            ...item,
-            type: 'line' as const,
-            smooth: item.smooth ?? smooth,
-            showSymbol: symbol,
-            symbol: item.symbol ?? defaultSymbol,
-            symbolSize: item.symbolSize ?? symbolSize,
-            connectNulls: item.connectNulls ?? connectNulls,
-            stack: stack ? (item.stack ?? 'total') : undefined,
-            areaStyle: area ? (item.areaStyle ?? {}) : undefined,
-            lineStyle: {
-                ...defaultLineStyle,
-                ...item.lineStyle,
-            },
-        })),
-        [data, smooth, area, stack, symbol, symbolSize, connectNulls, defaultLineStyle, defaultSymbol],
-    );
+    const chartOption = useMemo(() => {
+        // If custom series provided, use those directly
+        if (customSeries) {
+            return {
+                xAxis: { type: 'category' as const, data: data?.categories || [] },
+                yAxis: { type: 'value' as const },
+                series: customSeries,
+                ...(title && { title: { text: title, left: 'center' } }),
+                ...(customOption && customOption),
+            } as EChartsOption;
+        }
+        
+        // Ensure data.series exists and is an array
+        if (!data?.series || !Array.isArray(data.series)) {
+            return { series: [] };
+        }
+        
+        // Create base option using helper
+        const baseOption = createLineChartOption({
+            categories: data.categories,
+            series: data.series.map(s => ({
+                name: s.name,
+                data: s.data,
+                ...(s.color && { color: s.color }),
+                // Preserve any additional properties from the series data
+                ...Object.fromEntries(
+                    Object.entries(s).filter(([key]) => !['name', 'data', 'color'].includes(key))
+                ),
+            })),
+            ...(title && { title }),
+        });
 
-    const defaultXAxis = useMemo(() => ({
-        type: 'category' as const,
-        boundaryGap: false,
-        ...(xAxis as object),
-    }), [xAxis]);
+        // Apply line-specific configurations
+        if (baseOption.series && Array.isArray(baseOption.series)) {
+            baseOption.series = baseOption.series.map((series: any, index) => {
+                const result: any = {
+                    ...series,
+                    smooth: data.series[index]?.smooth ?? smooth,
+                    showSymbol: symbol,
+                    symbolSize: data.series[index]?.symbolSize ?? symbolSize,
+                    connectNulls: data.series[index]?.connectNulls ?? connectNulls,
+                };
+                
+                if (data.series[index]?.symbol) {
+                    result.symbol = data.series[index].symbol;
+                }
+                
+                if (stack && data.series[index]?.stack) {
+                    result.stack = data.series[index].stack;
+                } else if (stack) {
+                    result.stack = 'total';
+                }
+                
+                if (area) {
+                    result.areaStyle = {};
+                }
+                
+                return result;
+            });
+        }
+
+        // Merge with custom option if provided
+        return customOption ? mergeOptions(baseOption, customOption) : baseOption;
+    }, [data, smooth, area, stack, symbol, symbolSize, connectNulls, title, customOption, customSeries]);
 
     return (
         <BaseChart
             ref={ref}
-            series={series}
-            xAxis={defaultXAxis}
+            option={chartOption}
             {...props}
         />
     );

@@ -1,8 +1,8 @@
 import React, { forwardRef, useMemo } from 'react';
-import type { BaseChartProps, ChartRef, StackedBarData, StackedBarDataSeries } from '@/types';
+import type { BaseChartProps, ChartRef, StackedBarData, StackedBarDataSeries, BarSeriesOption } from '@/types';
 import { BaseChart } from './BaseChart';
 
-export interface StackedBarChartProps extends Omit<BaseChartProps, 'series' | 'xAxis' | 'yAxis'> {
+export interface StackedBarChartProps extends Omit<BaseChartProps, 'option'> {
     readonly data: StackedBarData;
     readonly horizontal?: boolean;
     readonly showPercentage?: boolean;
@@ -17,6 +17,7 @@ export interface StackedBarChartProps extends Omit<BaseChartProps, 'series' | 'x
         readonly bottom?: number | string;
     };
     readonly legendSelectable?: boolean;
+    readonly series?: BarSeriesOption[]; // Allow direct series override
 }
 
 export const StackedBarChart = forwardRef<ChartRef, StackedBarChartProps>(({
@@ -61,16 +62,18 @@ export const StackedBarChart = forwardRef<ChartRef, StackedBarChartProps>(({
                 type: 'bar' as const,
                 stack: stackName,
                 barWidth,
-                barMaxWidth,
-                data: processedData,
-                itemStyle: seriesItem.color ? { color: seriesItem.color } : undefined,
-                label: showValues ? {
-                    show: true,
-                    position: horizontal ? 'right' : 'top',
-                    formatter: showPercentage 
-                        ? (params: any) => `${Math.round(params.value * 1000) / 10}%`
-                        : undefined,
-                } : undefined,
+                ...(barMaxWidth && { barMaxWidth }),
+                data: [...processedData] as any,
+                ...(seriesItem.color && { itemStyle: { color: seriesItem.color } }),
+                ...(showValues && {
+                    label: {
+                        show: true,
+                        position: (horizontal ? 'right' : 'top') as any,
+                        ...(showPercentage && {
+                            formatter: (params: any) => `${Math.round(params.value * 1000) / 10}%`
+                        }),
+                    }
+                }),
             };
         });
 
@@ -79,30 +82,34 @@ export const StackedBarChart = forwardRef<ChartRef, StackedBarChartProps>(({
             : title;
 
         return {
-            title: titleConfig ? {
-                left: 'center',
-                ...titleConfig,
-            } : undefined,
+            ...(titleConfig && {
+                title: {
+                    left: 'center',
+                    ...titleConfig,
+                }
+            }),
 
             tooltip: {
-                trigger: 'axis',
+                trigger: 'axis' as const,
                 axisPointer: {
-                    type: 'shadow',
+                    type: 'shadow' as const,
                 },
-                formatter: showPercentage ? (params: any) => {
-                    if (!Array.isArray(params)) return '';
-                    
-                    let result = `${params[0].name}<br/>`;
-                    for (const param of params) {
-                        const percentage = Math.round(param.value * 1000) / 10;
-                        result += `${param.marker}${param.seriesName}: ${percentage}%<br/>`;
+                ...(showPercentage && {
+                    formatter: (params: any) => {
+                        if (!Array.isArray(params)) return '';
+                        
+                        let result = `${params[0].name}<br/>`;
+                        for (const param of params) {
+                            const percentage = Math.round(param.value * 1000) / 10;
+                            result += `${param.marker}${param.seriesName}: ${percentage}%<br/>`;
+                        }
+                        return result;
                     }
-                    return result;
-                } : undefined,
+                }),
             },
 
             legend: {
-                selectedMode: legendSelectable ? 'multiple' : false,
+                selectedMode: (legendSelectable ? 'multiple' : false) as any,
                 top: titleConfig ? 40 : 20,
             },
 
@@ -115,23 +122,27 @@ export const StackedBarChart = forwardRef<ChartRef, StackedBarChartProps>(({
             },
 
             xAxis: horizontal ? {
-                type: 'value',
-                axisLabel: showPercentage ? {
-                    formatter: (value: number) => `${Math.round(value * 100)}%`,
-                } : undefined,
+                type: 'value' as const,
+                ...(showPercentage && {
+                    axisLabel: {
+                        formatter: (value: number) => `${Math.round(value * 100)}%`,
+                    }
+                }),
             } : {
-                type: 'category',
+                type: 'category' as const,
                 data: categories,
             },
 
             yAxis: horizontal ? {
-                type: 'category',
+                type: 'category' as const,
                 data: categories,
             } : {
-                type: 'value',
-                axisLabel: showPercentage ? {
-                    formatter: (value: number) => `${Math.round(value * 100)}%`,
-                } : undefined,
+                type: 'value' as const,
+                ...(showPercentage && {
+                    axisLabel: {
+                        formatter: (value: number) => `${Math.round(value * 100)}%`,
+                    }
+                }),
             },
 
             series,

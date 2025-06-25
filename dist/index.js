@@ -91,60 +91,19 @@ const useECharts = (containerRef, option, theme = "light", opts = {}, notMerge =
 
 //#endregion
 //#region src/components/BaseChart.tsx
-const BaseChart = forwardRef(({ series = [], xAxis, yAxis, title, subtitle, legend, tooltip, width = "100%", height = 400, theme = "light", loading: externalLoading = false, notMerge = false, lazyUpdate = true, onChartReady, onClick, onDoubleClick, onMouseOver, onMouseOut, onDataZoom, onBrush, className = "", style = {}, option: customOption, renderer = "canvas", locale = "en",...restProps }, ref) => {
+const BaseChart = forwardRef(({ title, width = "100%", height = 400, theme = "light", loading: externalLoading = false, notMerge = false, lazyUpdate = true, onChartReady, onClick, onDoubleClick, onMouseOver, onMouseOut, onDataZoom, onBrush, className = "", style = {}, option, renderer = "canvas", locale = "en",...restProps }, ref) => {
 	const echartsContainerRef = useRef(null);
 	const chartOption = useMemo(() => {
-		if (customOption) return customOption;
-		const titleConfig = typeof title === "string" ? {
-			text: title,
-			subtext: subtitle
-		} : title;
-		return {
-			title: titleConfig ? {
-				left: "center",
-				...titleConfig
-			} : void 0,
-			tooltip: tooltip ?? {
-				trigger: "axis",
-				axisPointer: { type: series.some((s) => s.type === "line") ? "cross" : "shadow" }
-			},
-			legend: legend ?? (series.length > 1 ? {
-				data: series.map((s) => s.name),
-				top: titleConfig ? 60 : 20
-			} : void 0),
-			grid: {
-				left: "3%",
-				right: "4%",
-				bottom: "3%",
-				top: titleConfig ? series.length > 1 ? 100 : 80 : series.length > 1 ? 60 : 40,
-				containLabel: true
-			},
-			xAxis: xAxis ?? {
-				type: "category",
-				data: []
-			},
-			yAxis: yAxis ?? { type: "value" },
-			series: series.map((s) => ({
-				...s,
-				itemStyle: s.color ? {
-					color: s.color,
-					...s.itemStyle
-				} : s.itemStyle
-			})),
-			animation: true,
-			animationDuration: 1e3,
-			animationEasing: "cubicOut"
+		if (title && typeof title === "string") return {
+			...option,
+			title: {
+				...option.title,
+				text: title,
+				left: "center"
+			}
 		};
-	}, [
-		series,
-		xAxis,
-		yAxis,
-		title,
-		subtitle,
-		legend,
-		tooltip,
-		customOption
-	]);
+		return option;
+	}, [option, title]);
 	const { chart, loading: chartLoading, error, refresh } = useECharts(echartsContainerRef, chartOption, theme, {
 		renderer,
 		locale
@@ -282,23 +241,200 @@ const BaseChart = forwardRef(({ series = [], xAxis, yAxis, title, subtitle, lege
 BaseChart.displayName = "BaseChart";
 
 //#endregion
+//#region src/utils/chartHelpers.ts
+/**
+* Create a basic line chart option
+*/
+function createLineChartOption(data) {
+	const option = {
+		tooltip: {
+			trigger: "axis",
+			axisPointer: { type: "cross" }
+		},
+		grid: {
+			left: "3%",
+			right: "4%",
+			bottom: "3%",
+			top: data.title ? data.series.length > 1 ? 100 : 80 : data.series.length > 1 ? 60 : 40,
+			containLabel: true
+		},
+		xAxis: {
+			type: "category",
+			data: data.categories,
+			boundaryGap: false
+		},
+		yAxis: { type: "value" },
+		series: data.series.map((s) => {
+			const seriesItem = {
+				name: s.name,
+				type: "line",
+				data: s.data
+			};
+			if (s.color) seriesItem.itemStyle = { color: s.color };
+			return seriesItem;
+		})
+	};
+	if (data.title) option.title = {
+		text: data.title,
+		left: "center"
+	};
+	if (data.series.length > 1) option.legend = {
+		data: data.series.map((s) => s.name),
+		top: data.title ? 60 : 20
+	};
+	return option;
+}
+/**
+* Create a basic bar chart option
+*/
+function createBarChartOption(data) {
+	const option = {
+		tooltip: {
+			trigger: "axis",
+			axisPointer: { type: "shadow" }
+		},
+		grid: {
+			left: "3%",
+			right: "4%",
+			bottom: "3%",
+			top: data.title ? data.series.length > 1 ? 100 : 80 : data.series.length > 1 ? 60 : 40,
+			containLabel: true
+		},
+		xAxis: {
+			type: "category",
+			data: data.categories
+		},
+		yAxis: { type: "value" },
+		series: data.series.map((s) => {
+			const seriesItem = {
+				name: s.name,
+				type: "bar",
+				data: s.data
+			};
+			if (s.color) seriesItem.itemStyle = { color: s.color };
+			return seriesItem;
+		})
+	};
+	if (data.title) option.title = {
+		text: data.title,
+		left: "center"
+	};
+	if (data.series.length > 1) option.legend = {
+		data: data.series.map((s) => s.name),
+		top: data.title ? 60 : 20
+	};
+	return option;
+}
+/**
+* Create a basic sankey chart option
+*/
+function createSankeyChartOption(data) {
+	const option = {
+		tooltip: {
+			trigger: "item",
+			triggerOn: "mousemove"
+		},
+		series: [{
+			type: "sankey",
+			layout: data.layout || "none",
+			orient: data.orient || "horizontal",
+			nodeAlign: data.nodeAlign || "justify",
+			nodeGap: data.nodeGap || 8,
+			nodeWidth: data.nodeWidth || 20,
+			iterations: data.iterations || 32,
+			emphasis: { focus: "adjacency" },
+			data: data.nodes.map((node) => {
+				const result = { name: node.name };
+				if (node.value !== void 0) result.value = node.value;
+				if (node.depth !== void 0) result.depth = node.depth;
+				if (node.itemStyle) result.itemStyle = node.itemStyle;
+				if (node.label) result.label = node.label;
+				if (node.emphasis) result.emphasis = node.emphasis;
+				return result;
+			}),
+			links: data.links.map((link) => {
+				const result = {
+					source: link.source,
+					target: link.target,
+					value: link.value
+				};
+				if (link.lineStyle) result.lineStyle = link.lineStyle;
+				if (link.emphasis) result.emphasis = link.emphasis;
+				return result;
+			})
+		}]
+	};
+	if (data.title) option.title = {
+		text: data.title,
+		left: "center"
+	};
+	return option;
+}
+/**
+* Merge ECharts options (simple deep merge)
+*/
+function mergeOptions(base, override) {
+	const result = { ...base };
+	for (const key in override) {
+		const overrideValue = override[key];
+		const baseValue = result[key];
+		if (overrideValue !== void 0) if (typeof overrideValue === "object" && overrideValue !== null && !Array.isArray(overrideValue) && typeof baseValue === "object" && baseValue !== null && !Array.isArray(baseValue)) result[key] = {
+			...baseValue,
+			...overrideValue
+		};
+		else result[key] = overrideValue;
+	}
+	return result;
+}
+
+//#endregion
 //#region src/components/LineChart.tsx
-const LineChart = forwardRef(({ data, smooth = false, area = false, stack = false, symbol = true, symbolSize = 4, connectNulls = false, defaultLineStyle, defaultSymbol = "circle", xAxis,...props }, ref) => {
-	const series = useMemo(() => data.map((item) => ({
-		...item,
-		type: "line",
-		smooth: item.smooth ?? smooth,
-		showSymbol: symbol,
-		symbol: item.symbol ?? defaultSymbol,
-		symbolSize: item.symbolSize ?? symbolSize,
-		connectNulls: item.connectNulls ?? connectNulls,
-		stack: stack ? item.stack ?? "total" : void 0,
-		areaStyle: area ? item.areaStyle ?? {} : void 0,
-		lineStyle: {
-			...defaultLineStyle,
-			...item.lineStyle
-		}
-	})), [
+const LineChart = forwardRef(({ data, smooth = false, area = false, stack = false, symbol = true, symbolSize = 4, connectNulls = false, title, option: customOption, series: customSeries,...props }, ref) => {
+	const chartOption = useMemo(() => {
+		if (customSeries) return {
+			xAxis: {
+				type: "category",
+				data: data?.categories || []
+			},
+			yAxis: { type: "value" },
+			series: customSeries,
+			...title && { title: {
+				text: title,
+				left: "center"
+			} },
+			...customOption && customOption
+		};
+		if (!data?.series || !Array.isArray(data.series)) return { series: [] };
+		const baseOption = createLineChartOption({
+			categories: data.categories,
+			series: data.series.map((s) => ({
+				name: s.name,
+				data: s.data,
+				...s.color && { color: s.color },
+				...Object.fromEntries(Object.entries(s).filter(([key]) => ![
+					"name",
+					"data",
+					"color"
+				].includes(key)))
+			})),
+			...title && { title }
+		});
+		if (baseOption.series && Array.isArray(baseOption.series)) baseOption.series = baseOption.series.map((series, index) => {
+			const result = {
+				...series,
+				smooth: data.series[index]?.smooth ?? smooth,
+				showSymbol: symbol,
+				symbolSize: data.series[index]?.symbolSize ?? symbolSize,
+				connectNulls: data.series[index]?.connectNulls ?? connectNulls
+			};
+			if (data.series[index]?.symbol) result.symbol = data.series[index].symbol;
+			if (stack && data.series[index]?.stack) result.stack = data.series[index].stack;
+			else if (stack) result.stack = "total";
+			if (area) result.areaStyle = {};
+			return result;
+		});
+		return customOption ? mergeOptions(baseOption, customOption) : baseOption;
+	}, [
 		data,
 		smooth,
 		area,
@@ -306,18 +442,13 @@ const LineChart = forwardRef(({ data, smooth = false, area = false, stack = fals
 		symbol,
 		symbolSize,
 		connectNulls,
-		defaultLineStyle,
-		defaultSymbol
+		title,
+		customOption,
+		customSeries
 	]);
-	const defaultXAxis = useMemo(() => ({
-		type: "category",
-		boundaryGap: false,
-		...xAxis
-	}), [xAxis]);
 	return /* @__PURE__ */ jsx(BaseChart, {
 		ref,
-		series,
-		xAxis: defaultXAxis,
+		option: chartOption,
 		...props
 	});
 });
@@ -325,45 +456,69 @@ LineChart.displayName = "LineChart";
 
 //#endregion
 //#region src/components/BarChart.tsx
-const BarChart = forwardRef(({ data, horizontal = false, stack = false, showValues = false, barWidth, barMaxWidth, xAxis, yAxis,...props }, ref) => {
-	const series = useMemo(() => data.map((item) => ({
-		...item,
-		type: "bar",
-		stack: stack ? item.stack ?? "total" : void 0,
-		barWidth,
-		barMaxWidth,
-		label: showValues ? {
-			show: true,
-			position: horizontal ? "right" : "top",
-			...item.label
-		} : item.label
-	})), [
+const BarChart = forwardRef(({ data, horizontal = false, stack = false, showValues = false, barWidth, barMaxWidth, title, option: customOption, series: customSeries,...props }, ref) => {
+	const chartOption = useMemo(() => {
+		if (customSeries) return {
+			xAxis: horizontal ? { type: "value" } : {
+				type: "category",
+				data: data?.categories || []
+			},
+			yAxis: horizontal ? {
+				type: "category",
+				data: data?.categories || []
+			} : { type: "value" },
+			series: customSeries,
+			...title && { title: {
+				text: title,
+				left: "center"
+			} },
+			...customOption && customOption
+		};
+		if (!data?.series || !Array.isArray(data.series)) return { series: [] };
+		const baseOption = createBarChartOption({
+			categories: data.categories,
+			series: data.series.map((s) => ({
+				name: s.name,
+				data: s.data,
+				...s.color && { color: s.color }
+			})),
+			...title && { title }
+		});
+		if (baseOption.series && Array.isArray(baseOption.series)) baseOption.series = baseOption.series.map((series) => {
+			const result = {
+				...series,
+				stack: stack ? "total" : void 0,
+				...barWidth && { barWidth },
+				...barMaxWidth && { barMaxWidth }
+			};
+			if (showValues) result.label = {
+				show: true,
+				position: horizontal ? "right" : "top"
+			};
+			return result;
+		});
+		if (horizontal) {
+			baseOption.xAxis = { type: "value" };
+			baseOption.yAxis = {
+				type: "category",
+				data: data.categories
+			};
+		}
+		return customOption ? mergeOptions(baseOption, customOption) : baseOption;
+	}, [
 		data,
+		horizontal,
 		stack,
 		showValues,
-		horizontal,
 		barWidth,
-		barMaxWidth
+		barMaxWidth,
+		title,
+		customOption,
+		customSeries
 	]);
-	const defaultXAxis = useMemo(() => horizontal ? {
-		type: "value",
-		...xAxis
-	} : {
-		type: "category",
-		...xAxis
-	}, [horizontal, xAxis]);
-	const defaultYAxis = useMemo(() => horizontal ? {
-		type: "category",
-		...yAxis
-	} : {
-		type: "value",
-		...yAxis
-	}, [horizontal, yAxis]);
 	return /* @__PURE__ */ jsx(BaseChart, {
 		ref,
-		series,
-		xAxis: defaultXAxis,
-		yAxis: defaultYAxis,
+		option: chartOption,
 		...props
 	});
 });
@@ -371,35 +526,39 @@ BarChart.displayName = "BarChart";
 
 //#endregion
 //#region src/components/PieChart.tsx
-const PieChart = forwardRef(({ data, radius = ["40%", "70%"], center = ["50%", "50%"], roseType = false, showLabels = true, showLegend = true,...props }, ref) => {
-	const series = useMemo(() => [{
-		type: "pie",
-		data,
-		radius,
-		center,
-		roseType: roseType === true ? "radius" : roseType,
-		label: { show: showLabels },
-		emphasis: { label: {
-			show: true,
-			fontSize: 14,
-			fontWeight: "bold"
-		} }
-	}], [
+const PieChart = forwardRef(({ data, radius = ["40%", "70%"], center = ["50%", "50%"], roseType = false, showLabels = true, showLegend = true, series: customSeries,...props }, ref) => {
+	const series = useMemo(() => {
+		if (customSeries) return customSeries;
+		return [{
+			type: "pie",
+			data: [...data],
+			radius,
+			center: [...center],
+			...roseType && { roseType: roseType === true ? "radius" : roseType },
+			label: { show: showLabels },
+			emphasis: { label: {
+				show: true,
+				fontSize: 14,
+				fontWeight: "bold"
+			} }
+		}];
+	}, [
 		data,
 		radius,
 		center,
 		roseType,
-		showLabels
+		showLabels,
+		customSeries
 	]);
 	const chartOption = useMemo(() => ({
 		tooltip: {
 			trigger: "item",
 			formatter: "{a} <br/>{b}: {c} ({d}%)"
 		},
-		legend: showLegend ? {
+		...showLegend && { legend: {
 			data: data.map((item) => item.name),
 			top: 20
-		} : void 0,
+		} },
 		series
 	}), [
 		series,
@@ -424,11 +583,11 @@ const CalendarHeatmapChart = forwardRef(({ data, year, calendar = {}, visualMap 
 		const maxValue = Math.max(...values);
 		const titleConfig = typeof title === "string" ? { text: title } : title;
 		return {
-			title: titleConfig ? {
+			...titleConfig && { title: {
 				top: 30,
 				left: "center",
 				...titleConfig
-			} : void 0,
+			} },
 			tooltip: { formatter: tooltipFormatter ? (params) => {
 				return tooltipFormatter(params);
 			} : (params) => {
@@ -520,26 +679,26 @@ const StackedBarChart = forwardRef(({ data, horizontal = false, showPercentage =
 				type: "bar",
 				stack: stackName,
 				barWidth,
-				barMaxWidth,
-				data: processedData,
-				itemStyle: seriesItem.color ? { color: seriesItem.color } : void 0,
-				label: showValues ? {
+				...barMaxWidth && { barMaxWidth },
+				data: [...processedData],
+				...seriesItem.color && { itemStyle: { color: seriesItem.color } },
+				...showValues && { label: {
 					show: true,
 					position: horizontal ? "right" : "top",
-					formatter: showPercentage ? (params) => `${Math.round(params.value * 1e3) / 10}%` : void 0
-				} : void 0
+					...showPercentage && { formatter: (params) => `${Math.round(params.value * 1e3) / 10}%` }
+				} }
 			};
 		});
 		const titleConfig = typeof title === "string" ? { text: title } : title;
 		return {
-			title: titleConfig ? {
+			...titleConfig && { title: {
 				left: "center",
 				...titleConfig
-			} : void 0,
+			} },
 			tooltip: {
 				trigger: "axis",
 				axisPointer: { type: "shadow" },
-				formatter: showPercentage ? (params) => {
+				...showPercentage && { formatter: (params) => {
 					if (!Array.isArray(params)) return "";
 					let result = `${params[0].name}<br/>`;
 					for (const param of params) {
@@ -547,7 +706,7 @@ const StackedBarChart = forwardRef(({ data, horizontal = false, showPercentage =
 						result += `${param.marker}${param.seriesName}: ${percentage}%<br/>`;
 					}
 					return result;
-				} : void 0
+				} }
 			},
 			legend: {
 				selectedMode: legendSelectable ? "multiple" : false,
@@ -562,7 +721,7 @@ const StackedBarChart = forwardRef(({ data, horizontal = false, showPercentage =
 			},
 			xAxis: horizontal ? {
 				type: "value",
-				axisLabel: showPercentage ? { formatter: (value) => `${Math.round(value * 100)}%` } : void 0
+				...showPercentage && { axisLabel: { formatter: (value) => `${Math.round(value * 100)}%` } }
 			} : {
 				type: "category",
 				data: categories
@@ -572,7 +731,7 @@ const StackedBarChart = forwardRef(({ data, horizontal = false, showPercentage =
 				data: categories
 			} : {
 				type: "value",
-				axisLabel: showPercentage ? { formatter: (value) => `${Math.round(value * 100)}%` } : void 0
+				...showPercentage && { axisLabel: { formatter: (value) => `${Math.round(value * 100)}%` } }
 			},
 			series
 		};
@@ -595,6 +754,42 @@ const StackedBarChart = forwardRef(({ data, horizontal = false, showPercentage =
 	});
 });
 StackedBarChart.displayName = "StackedBarChart";
+
+//#endregion
+//#region src/components/SankeyChart.tsx
+const SankeyChart = forwardRef(({ data, layout = "none", orient = "horizontal", nodeAlign = "justify", nodeGap = 8, nodeWidth = 20, iterations = 32, title, option: customOption,...props }, ref) => {
+	const chartOption = useMemo(() => {
+		if (!data?.nodes || !data?.links || !Array.isArray(data.nodes) || !Array.isArray(data.links)) return { series: [] };
+		const baseOption = createSankeyChartOption({
+			nodes: data.nodes,
+			links: data.links,
+			layout,
+			orient,
+			nodeAlign,
+			nodeGap,
+			nodeWidth,
+			iterations,
+			...title && { title }
+		});
+		return customOption ? mergeOptions(baseOption, customOption) : baseOption;
+	}, [
+		data,
+		layout,
+		orient,
+		nodeAlign,
+		nodeGap,
+		nodeWidth,
+		iterations,
+		title,
+		customOption
+	]);
+	return /* @__PURE__ */ jsx(BaseChart, {
+		ref,
+		option: chartOption,
+		...props
+	});
+});
+SankeyChart.displayName = "SankeyChart";
 
 //#endregion
 //#region src/utils/themes.ts
@@ -659,4 +854,4 @@ if (typeof document !== "undefined" && !document.getElementById("aqc-charts-styl
 }
 
 //#endregion
-export { BarChart, BaseChart, CalendarHeatmapChart, LineChart, PieChart, StackedBarChart, darkTheme, lightTheme, useECharts };
+export { BarChart, BaseChart, CalendarHeatmapChart, LineChart, PieChart, SankeyChart, StackedBarChart, darkTheme, lightTheme, useECharts };

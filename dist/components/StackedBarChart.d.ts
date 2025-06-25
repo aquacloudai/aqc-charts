@@ -1,6 +1,6 @@
 import React from 'react';
-import type { BaseChartProps, ChartRef, StackedBarData } from '@/types';
-export interface StackedBarChartProps extends Omit<BaseChartProps, 'series' | 'xAxis' | 'yAxis'> {
+import type { BaseChartProps, ChartRef, StackedBarData, BarSeriesOption } from '@/types';
+export interface StackedBarChartProps extends Omit<BaseChartProps, 'option'> {
     readonly data: StackedBarData;
     readonly horizontal?: boolean;
     readonly showPercentage?: boolean;
@@ -15,6 +15,7 @@ export interface StackedBarChartProps extends Omit<BaseChartProps, 'series' | 'x
         readonly bottom?: number | string;
     };
     readonly legendSelectable?: boolean;
+    readonly series?: BarSeriesOption[];
 }
 export declare const StackedBarChart: React.ForwardRefExoticComponent<StackedBarChartProps & React.RefAttributes<ChartRef>>;
 //# sourceMappingURL=StackedBarChart.d.ts.map

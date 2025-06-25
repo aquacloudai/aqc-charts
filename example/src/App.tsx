@@ -1,32 +1,35 @@
 import React from 'react';
-import { LineChart, BarChart, CalendarHeatmapChart, StackedBarChart } from 'aqc-charts';
+import { LineChart, BarChart, CalendarHeatmapChart, StackedBarChart, SankeyChart } from 'aqc-charts';
 import { TemperatureExample } from './TemperatureExample';
+import { ApiIntegrationExample } from './ApiIntegrationExample';
 
-const sampleData = [
-  {
-    name: 'Series 1',
-    type: 'line' as const,
-    data: [10, 20, 30, 40, 30, 20],
-  },
-  {
-    name: 'Series 2', 
-    type: 'line' as const,
-    data: [20, 30, 40, 50, 40, 30],
-  }
-];
+const sampleData = {
+  categories: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
+  series: [
+    {
+      name: 'Series 1',
+      data: [10, 20, 30, 40, 30, 20],
+    },
+    {
+      name: 'Series 2',
+      data: [20, 30, 40, 50, 40, 30],
+    }
+  ]
+};
 
-const barData = [
-  {
-    name: 'Category A',
-    type: 'bar' as const,
-    data: [100, 200, 300, 400, 500],
-  },
-  {
-    name: 'Category B',
-    type: 'bar' as const, 
-    data: [150, 250, 350, 450, 550],
-  }
-];
+const barData = {
+  categories: ['Q1', 'Q2', 'Q3', 'Q4', 'Q5'],
+  series: [
+    {
+      name: 'Category A',
+      data: [100, 200, 300, 400, 500],
+    },
+    {
+      name: 'Category B',
+      data: [150, 250, 350, 450, 550],
+    }
+  ]
+};
 
 // Generate calendar heatmap data for 2024
 function generateCalendarData(year: number) {
@@ -34,14 +37,14 @@ function generateCalendarData(year: number) {
   const startDate = new Date(year, 0, 1);
   const endDate = new Date(year + 1, 0, 1);
   const dayTime = 24 * 60 * 60 * 1000;
-  
+
   for (let time = startDate.getTime(); time < endDate.getTime(); time += dayTime) {
     const date = new Date(time);
     const dateStr = date.toISOString().split('T')[0]; // YYYY-MM-DD format
     const value = Math.floor(Math.random() * 100);
     data.push({ date: dateStr, value });
   }
-  
+
   return data;
 }
 
@@ -79,11 +82,31 @@ const stackedBarData = {
   ],
 };
 
+// Sankey chart data based on the provided example
+const sankeyData = {
+  nodes: [
+    { name: 'a' },
+    { name: 'b' },
+    { name: 'a1' },
+    { name: 'a2' },
+    { name: 'b1' },
+    { name: 'c' }
+  ],
+  links: [
+    { source: 'a', target: 'a1', value: 5 },
+    { source: 'a', target: 'a2', value: 3 },
+    { source: 'b', target: 'b1', value: 8 },
+    { source: 'a', target: 'b1', value: 3 },
+    { source: 'b1', target: 'a1', value: 1 },
+    { source: 'b1', target: 'c', value: 2 }
+  ]
+};
+
 function App() {
   return (
     <div style={{ padding: '20px' }}>
       <h1>AQC Charts Example</h1>
-      
+
       <h2>Line Chart</h2>
       <div style={{ height: '400px', marginBottom: '40px' }}>
         <LineChart
@@ -91,6 +114,17 @@ function App() {
           title="Sample Line Chart"
           width="100%"
           height={400}
+        />
+      </div>
+
+      <h2>Line Chart (Legend Hidden)</h2>
+      <div style={{ height: '400px', marginBottom: '40px' }}>
+        <LineChart
+          data={sampleData}
+          title="Sample Line Chart - No Legend"
+          width="100%"
+          height={400}
+          legend={{ show: false }}
         />
       </div>
 
@@ -161,12 +195,40 @@ function App() {
           height={400}
           horizontal={true}
           showValues={true}
+
+        />
+      </div>
+
+      <h2>Sankey Chart</h2>
+      <div style={{ height: '400px', marginBottom: '40px' }}>
+        <SankeyChart
+          data={sankeyData}
+          title="Flow Diagram"
+          width="100%"
+          height={400}
+        />
+      </div>
+
+      <h2>Vertical Sankey Chart</h2>
+      <div style={{ height: '400px', marginBottom: '40px' }}>
+        <SankeyChart
+          data={sankeyData}
+          title="Vertical Flow Diagram"
+          width="100%"
+          height={400}
+          orient="vertical"
+          nodeAlign="left"
         />
       </div>
 
       <h2>Temperature Visualization (Advanced Line Styling)</h2>
       <div style={{ height: '600px', marginBottom: '40px' }}>
         <TemperatureExample />
+      </div>
+
+      <h2>API Integration Patterns</h2>
+      <div style={{ marginBottom: '40px' }}>
+        <ApiIntegrationExample />
       </div>
     </div>
   );

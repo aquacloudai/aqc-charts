@@ -2,7 +2,7 @@ import React, { forwardRef, useMemo } from 'react';
 import type { BaseChartProps, ChartRef, CalendarHeatmapDataPoint, CalendarConfig, VisualMapConfig } from '@/types';
 import { BaseChart } from './BaseChart';
 
-export interface CalendarHeatmapChartProps extends Omit<BaseChartProps, 'series' | 'xAxis' | 'yAxis'> {
+export interface CalendarHeatmapChartProps extends Omit<BaseChartProps, 'option'> {
     readonly data: readonly CalendarHeatmapDataPoint[];
     readonly year: string | number;
     readonly calendar?: CalendarConfig;
@@ -33,11 +33,13 @@ export const CalendarHeatmapChart = forwardRef<ChartRef, CalendarHeatmapChartPro
             : title;
 
         return {
-            title: titleConfig ? {
-                top: 30,
-                left: 'center',
-                ...titleConfig,
-            } : undefined,
+            ...(titleConfig && {
+                title: {
+                    top: 30,
+                    left: 'center',
+                    ...titleConfig,
+                }
+            }),
 
             tooltip: {
                 formatter: tooltipFormatter ? (params: { name: string; value: readonly [string, number] }) => {
@@ -65,7 +67,7 @@ export const CalendarHeatmapChart = forwardRef<ChartRef, CalendarHeatmapChartPro
                 top: titleConfig ? 120 : 90,
                 left: 30,
                 right: 30,
-                cellSize: ['auto', 13],
+                cellSize: ['auto', 13] as any,
                 range: year.toString(),
                 itemStyle: {
                     borderWidth: 0.5,
@@ -93,7 +95,7 @@ export const CalendarHeatmapChart = forwardRef<ChartRef, CalendarHeatmapChartPro
     return (
         <BaseChart
             ref={ref}
-            option={chartOption}
+            option={chartOption as any}
             {...props}
         />
     );

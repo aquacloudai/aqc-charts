@@ -5,6 +5,7 @@ export { BarChart } from './components/BarChart';
 export { PieChart } from './components/PieChart';
 export { CalendarHeatmapChart } from './components/CalendarHeatmapChart';
 export { StackedBarChart } from './components/StackedBarChart';
+export { SankeyChart } from './components/SankeyChart';
 
 // Hooks
 export { useECharts } from './hooks/useECharts';
@@ -26,9 +27,26 @@ export type {
     VisualMapConfig,
     StackedBarData,
     StackedBarDataSeries,
+    SankeyNode,
+    SankeyLink,
+    SankeyData,
     LineStyleConfig,
     LegendConfig,
     TooltipConfig,
+    // ECharts series types
+    EChartsOption,
+    SeriesOption,
+    BarSeriesOption,
+    LineSeriesOption,
+    PieSeriesOption,
+    HeatmapSeriesOption,
+    TitleOption,
+    LegendComponentOption,
+    TooltipOption,
+    XAXisOption,
+    YAXisOption,
+    VisualMapComponentOption,
+    CalendarOption,
 } from './types';
 
 export type { LineChartProps } from './components/LineChart';
@@ -36,6 +54,7 @@ export type { BarChartProps } from './components/BarChart';
 export type { PieChartProps } from './components/PieChart';
 export type { CalendarHeatmapChartProps } from './components/CalendarHeatmapChart';
 export type { StackedBarChartProps } from './components/StackedBarChart';
+export type { SankeyChartProps } from './components/SankeyChart';
 
 // CSS injection for styling (optimized for modern bundlers)
 if (typeof document !== 'undefined' && !document.getElementById('aqc-charts-styles')) {
