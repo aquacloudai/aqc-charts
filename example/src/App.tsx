@@ -1,5 +1,6 @@
 import React from 'react';
 import { LineChart, BarChart, CalendarHeatmapChart, StackedBarChart } from 'aqc-charts';
+import { TemperatureExample } from './TemperatureExample';
 
 const sampleData = [
   {
@@ -161,6 +162,11 @@ function App() {
           horizontal={true}
           showValues={true}
         />
+      </div>
+
+      <h2>Temperature Visualization (Advanced Line Styling)</h2>
+      <div style={{ height: '600px', marginBottom: '40px' }}>
+        <TemperatureExample />
       </div>
     </div>
   );

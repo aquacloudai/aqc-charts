@@ -21,6 +21,13 @@ export interface ChartDataPoint {
     readonly [key: string]: unknown;
 }
 
+export interface LineStyleConfig {
+    readonly type?: 'solid' | 'dashed' | 'dotted';
+    readonly width?: number;
+    readonly color?: string;
+    readonly opacity?: number;
+}
+
 export interface ChartSeries {
     readonly name: string;
     readonly type: 'line' | 'bar' | 'pie' | 'scatter' | 'radar' | 'funnel' | 'gauge' | 'heatmap';
@@ -30,6 +37,11 @@ export interface ChartSeries {
     readonly stack?: string | undefined;
     readonly yAxisIndex?: number;
     readonly coordinateSystem?: 'cartesian2d' | 'calendar' | 'geo' | 'parallel' | 'polar' | 'radar' | 'single';
+    readonly lineStyle?: LineStyleConfig;
+    readonly symbol?: 'circle' | 'rect' | 'roundRect' | 'triangle' | 'diamond' | 'pin' | 'arrow' | 'none';
+    readonly symbolSize?: number;
+    readonly connectNulls?: boolean;
+    readonly areaStyle?: unknown;
     readonly [key: string]: unknown;
 }
 
@@ -43,6 +55,62 @@ export interface ChartAxis {
     readonly axisTick?: unknown;
     readonly splitLine?: unknown;
     readonly [key: string]: unknown;
+}
+
+export interface LegendConfig {
+    readonly show?: boolean;
+    readonly type?: 'plain' | 'scroll';
+    readonly orient?: 'horizontal' | 'vertical';
+    readonly left?: number | string;
+    readonly top?: number | string;
+    readonly right?: number | string;
+    readonly bottom?: number | string;
+    readonly width?: number | string;
+    readonly height?: number | string;
+    readonly align?: 'auto' | 'left' | 'right';
+    readonly padding?: number | readonly number[];
+    readonly itemGap?: number;
+    readonly itemWidth?: number;
+    readonly itemHeight?: number;
+    readonly formatter?: string | ((name: string) => string);
+    readonly selectedMode?: boolean | 'single' | 'multiple';
+    readonly inactiveColor?: string;
+    readonly selected?: Record<string, boolean>;
+    readonly textStyle?: {
+        readonly color?: string;
+        readonly fontStyle?: 'normal' | 'italic' | 'oblique';
+        readonly fontWeight?: 'normal' | 'bold' | 'bolder' | 'lighter' | number;
+        readonly fontSize?: number;
+        readonly fontFamily?: string;
+    };
+    readonly pageTextStyle?: {
+        readonly color?: string;
+        readonly fontSize?: number;
+    };
+    readonly animation?: boolean;
+    readonly animationDurationUpdate?: number;
+}
+
+export interface TooltipConfig {
+    readonly show?: boolean;
+    readonly trigger?: 'item' | 'axis' | 'none';
+    readonly axisPointer?: {
+        readonly type?: 'line' | 'shadow' | 'none' | 'cross';
+        readonly axis?: 'auto' | 'x' | 'y' | 'angle' | 'radius';
+    };
+    readonly formatter?: string | ((params: unknown) => string);
+    readonly backgroundColor?: string;
+    readonly borderColor?: string;
+    readonly borderWidth?: number;
+    readonly padding?: number | readonly number[];
+    readonly textStyle?: {
+        readonly color?: string;
+        readonly fontSize?: number;
+        readonly fontWeight?: 'normal' | 'bold' | 'bolder' | 'lighter' | number;
+    };
+    readonly position?: unknown;
+    readonly confine?: boolean;
+    readonly transitionDuration?: number;
 }
 
 export interface ChartTheme {
@@ -67,6 +135,10 @@ export interface BaseChartProps {
     readonly subtitle?: string;
     readonly width?: number | string;
     readonly height?: number | string;
+
+    // Configuration props
+    readonly legend?: LegendConfig;
+    readonly tooltip?: TooltipConfig;
 
     // Behavior props
     readonly theme?: 'light' | 'dark' | ChartTheme;

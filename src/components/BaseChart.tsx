@@ -8,6 +8,8 @@ export const BaseChart = forwardRef<ChartRef, BaseChartProps>(({
     yAxis,
     title,
     subtitle,
+    legend,
+    tooltip,
     width = '100%',
     height = 400,
     theme = 'light',
@@ -46,17 +48,17 @@ export const BaseChart = forwardRef<ChartRef, BaseChartProps>(({
                 ...titleConfig,
             } : undefined,
 
-            tooltip: {
+            tooltip: tooltip ?? {
                 trigger: 'axis',
                 axisPointer: {
                     type: series.some((s) => s.type === 'line') ? 'cross' : 'shadow',
                 },
             },
 
-            legend: series.length > 1 ? {
+            legend: legend ?? (series.length > 1 ? {
                 data: series.map((s) => s.name),
                 top: titleConfig ? 60 : 20,
-            } : undefined,
+            } : undefined),
 
             grid: {
                 left: '3%',
@@ -84,7 +86,7 @@ export const BaseChart = forwardRef<ChartRef, BaseChartProps>(({
             animationDuration: 1000,
             animationEasing: 'cubicOut',
         };
-    }, [series, xAxis, yAxis, title, subtitle, customOption]);
+    }, [series, xAxis, yAxis, title, subtitle, legend, tooltip, customOption]);
 
     const { chart, loading: chartLoading, error, refresh } = useECharts(
         echartsContainerRef,

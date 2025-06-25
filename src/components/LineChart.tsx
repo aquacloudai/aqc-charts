@@ -1,5 +1,5 @@
 import React, { forwardRef, useMemo } from 'react';
-import type { BaseChartProps, ChartRef, ChartSeries } from '@/types';
+import type { BaseChartProps, ChartRef, ChartSeries, LineStyleConfig } from '@/types';
 import { BaseChart } from './BaseChart';
 
 export interface LineChartProps extends Omit<BaseChartProps, 'series'> {
@@ -10,6 +10,8 @@ export interface LineChartProps extends Omit<BaseChartProps, 'series'> {
     readonly symbol?: boolean;
     readonly symbolSize?: number;
     readonly connectNulls?: boolean;
+    readonly defaultLineStyle?: LineStyleConfig;
+    readonly defaultSymbol?: 'circle' | 'rect' | 'roundRect' | 'triangle' | 'diamond' | 'pin' | 'arrow' | 'none';
 }
 
 export const LineChart = forwardRef<ChartRef, LineChartProps>(({
@@ -20,6 +22,8 @@ export const LineChart = forwardRef<ChartRef, LineChartProps>(({
     symbol = true,
     symbolSize = 4,
     connectNulls = false,
+    defaultLineStyle,
+    defaultSymbol = 'circle',
     xAxis,
     ...props
 }, ref) => {
@@ -27,14 +31,19 @@ export const LineChart = forwardRef<ChartRef, LineChartProps>(({
         data.map((item) => ({
             ...item,
             type: 'line' as const,
-            smooth,
+            smooth: item.smooth ?? smooth,
             showSymbol: symbol,
-            symbolSize,
-            connectNulls,
+            symbol: item.symbol ?? defaultSymbol,
+            symbolSize: item.symbolSize ?? symbolSize,
+            connectNulls: item.connectNulls ?? connectNulls,
             stack: stack ? (item.stack ?? 'total') : undefined,
             areaStyle: area ? (item.areaStyle ?? {}) : undefined,
+            lineStyle: {
+                ...defaultLineStyle,
+                ...item.lineStyle,
+            },
         })),
-        [data, smooth, area, stack, symbol, symbolSize, connectNulls],
+        [data, smooth, area, stack, symbol, symbolSize, connectNulls, defaultLineStyle, defaultSymbol],
     );
 
     const defaultXAxis = useMemo(() => ({

@@ -26,6 +26,9 @@ export type {
     VisualMapConfig,
     StackedBarData,
     StackedBarDataSeries,
+    LineStyleConfig,
+    LegendConfig,
+    TooltipConfig,
 } from './types';
 
 export type { LineChartProps } from './components/LineChart';
