@@ -40,7 +40,7 @@ export const LineChart = forwardRef<ChartRef, LineChartProps>(({
     const defaultXAxis = useMemo(() => ({
         type: 'category' as const,
         boundaryGap: false,
-        ...xAxis,
+        ...(xAxis as object),
     }), [xAxis]);
 
     return (

@@ -1,6 +1,6 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { render } from '@testing-library/react';
+import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { BaseChart } from '../BaseChart';
 
 // Mock ECharts
@@ -25,18 +25,27 @@ vi.mock('@/utils/EChartsLoader', () => ({
 }));
 
 describe('BaseChart', () => {
+    beforeEach(() => {
+        document.body.innerHTML = '';
+    });
+
     it('renders without crashing', () => {
-        render(<BaseChart />);
-        expect(screen.getByRole('generic')).toBeInTheDocument();
+        const { container } = render(<BaseChart />);
+        const chartContainer = container.querySelector('.aqc-charts-container');
+        expect(chartContainer).toBeInTheDocument();
     });
 
     it('applies custom className', () => {
-        render(<BaseChart className="custom-chart" />);
-        expect(screen.getByRole('generic')).toHaveClass('aqc-charts-container custom-chart');
+        const { container } = render(<BaseChart className="custom-chart" />);
+        const chartContainer = container.querySelector('.aqc-charts-container');
+        expect(chartContainer).toHaveClass('aqc-charts-container', 'custom-chart');
     });
 
-    it('shows loading state when loading prop is true', () => {
-        render(<BaseChart loading={true} />);
-        expect(screen.getByText(/loading/i)).toBeInTheDocument();
+    it('shows loading spinner when loading prop is true', () => {
+        const { container } = render(<BaseChart loading={true} />);
+        const loadingElement = container.querySelector('.aqc-charts-loading');
+        const spinner = container.querySelector('.aqc-charts-spinner');
+        expect(loadingElement).toBeInTheDocument();
+        expect(spinner).toBeInTheDocument();
     });
 });

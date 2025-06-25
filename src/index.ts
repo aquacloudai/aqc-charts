@@ -3,12 +3,13 @@ export { BaseChart } from './components/BaseChart';
 export { LineChart } from './components/LineChart';
 export { BarChart } from './components/BarChart';
 export { PieChart } from './components/PieChart';
+export { CalendarHeatmapChart } from './components/CalendarHeatmapChart';
+export { StackedBarChart } from './components/StackedBarChart';
 
 // Hooks
 export { useECharts } from './hooks/useECharts';
 
 // Utils
-export { EChartsLoader } from './utils/EChartsLoader';
 export { lightTheme, darkTheme } from './utils/themes';
 
 // Types
@@ -20,11 +21,18 @@ export type {
     ChartTheme,
     BaseChartProps,
     ChartRef,
+    CalendarHeatmapDataPoint,
+    CalendarConfig,
+    VisualMapConfig,
+    StackedBarData,
+    StackedBarDataSeries,
 } from './types';
 
 export type { LineChartProps } from './components/LineChart';
 export type { BarChartProps } from './components/BarChart';
 export type { PieChartProps } from './components/PieChart';
+export type { CalendarHeatmapChartProps } from './components/CalendarHeatmapChart';
+export type { StackedBarChartProps } from './components/StackedBarChart';
 
 // CSS injection for styling (optimized for modern bundlers)
 if (typeof document !== 'undefined' && !document.getElementById('aqc-charts-styles')) {

@@ -1,4 +1,4 @@
-import { defineConfig } from '@rolldown/rolldown';
+import { defineConfig } from 'rolldown';
 
 export default defineConfig({
     input: 'src/index.ts',
@@ -16,44 +16,13 @@ export default defineConfig({
             chunkFileNames: '[name]-[hash].cjs'
         }
     ],
-    external: ['react', 'react-dom', 'echarts'],
+    external: ['react', 'react-dom', 'react/jsx-runtime', 'echarts'],
     platform: 'browser',
     treeshake: true,
     minify: true,
     resolve: {
         alias: {
-            '@': './src'
+            '@': new URL('./src', import.meta.url).pathname
         }
-    },
-    plugins: [
-        // SWC for fast TypeScript compilation
-        {
-            name: 'swc',
-            transform: {
-                jsc: {
-                    parser: {
-                        syntax: 'typescript',
-                        tsx: true,
-                        decorators: false,
-                        dynamicImport: true
-                    },
-                    target: 'es2020',
-                    loose: false,
-                    externalHelpers: false,
-                    keepClassNames: false,
-                    transform: {
-                        react: {
-                            runtime: 'automatic',
-                            development: false
-                        }
-                    }
-                },
-                module: {
-                    type: 'es6'
-                },
-                minify: false,
-                sourceMaps: true
-            }
-        }
-    ]
+    }
 });

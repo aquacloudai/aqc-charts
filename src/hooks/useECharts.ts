@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import * as echarts from 'echarts';
 import type { EChartsInstance, ChartTheme } from '@/types';
-import { EChartsLoader } from '@/utils/EChartsLoader';
 
 interface UseEChartsOptions {
     readonly renderer?: 'canvas' | 'svg';
@@ -17,79 +17,106 @@ interface UseEChartsReturn {
 }
 
 export const useECharts = (
-    containerRef: React.RefObject<HTMLDivElement>,
+    containerRef: React.RefObject<HTMLDivElement | null>,
     option: unknown,
     theme: string | ChartTheme = 'light',
     opts: UseEChartsOptions = {},
     notMerge = false,
     lazyUpdate = true,
 ): UseEChartsReturn => {
-    const [chart, setChart] = useState<EChartsInstance | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    const echartsLoader = useMemo(() => EChartsLoader.getInstance(), []);
     const chartRef = useRef<EChartsInstance | null>(null);
 
     // Initialize chart
-    const initChart = useCallback(async () => {
+    useEffect(() => {
         if (!containerRef.current) return;
 
         try {
             setLoading(true);
             setError(null);
 
-            const echarts = await echartsLoader.load();
-
-            // Dispose existing chart
+            // Dispose existing chart if any (for React StrictMode)
+            if (containerRef.current) {
+                // Use echarts.dispose() to properly clean up any existing chart on this DOM element
+                echarts.dispose(containerRef.current);
+            }
             if (chartRef.current) {
-                chartRef.current.dispose();
+                chartRef.current = null;
             }
 
             // Create new chart instance
-            const newChart = echarts.init(
+            const chartInstance = echarts.init(
                 containerRef.current,
                 typeof theme === 'string' ? theme : undefined,
                 {
                     renderer: opts.renderer ?? 'canvas',
                     locale: opts.locale ?? 'en',
                     ...opts,
-                },
+                }
             ) as EChartsInstance;
 
-            // Apply custom theme if provided
-            if (typeof theme === 'object') {
-                newChart.setOption({
-                    backgroundColor: theme.backgroundColor,
-                    textStyle: theme.textStyle,
-                    color: theme.color,
-                    ...option,
-                }, true);
-            }
-
-            chartRef.current = newChart;
-            setChart(newChart);
+            chartRef.current = chartInstance;
             setLoading(false);
+
         } catch (err) {
             const errorMessage = err instanceof Error ? err.message : 'Failed to initialize chart';
             setError(errorMessage);
             setLoading(false);
         }
-    }, [containerRef, theme, opts, echartsLoader, option]);
 
-    // Update chart option
-    const updateChart = useCallback(() => {
-        if (chartRef.current && option) {
-            try {
-                chartRef.current.setOption(option, notMerge, lazyUpdate);
-            } catch (err) {
-                const errorMessage = err instanceof Error ? err.message : 'Failed to update chart';
-                setError(errorMessage);
+        // Cleanup function
+        return () => {
+            if (containerRef.current) {
+                // Use echarts.dispose() for proper cleanup
+                echarts.dispose(containerRef.current);
             }
-        }
-    }, [option, notMerge, lazyUpdate]);
+            chartRef.current = null;
+        };
+    }, []); // Only run once per mount
 
-    // Resize chart
-    const resizeChart = useCallback(() => {
+    // Update chart option when option changes
+    useEffect(() => {
+        if (!chartRef.current || !option || loading) return;
+
+        try {
+            
+            // Apply custom theme if provided
+            if (typeof theme === 'object') {
+                const themedOption = {
+                    backgroundColor: theme.backgroundColor,
+                    textStyle: theme.textStyle,
+                    color: theme.color,
+                    ...(option as object),
+                };
+                chartRef.current.setOption(themedOption, notMerge, lazyUpdate);
+            } else {
+                chartRef.current.setOption(option, notMerge, lazyUpdate);
+            }
+            
+        } catch (err) {
+            const errorMessage = err instanceof Error ? err.message : 'Failed to update chart';
+            setError(errorMessage);
+        }
+    }, [option, theme, notMerge, lazyUpdate, loading]);
+
+    // Resize handler
+    useEffect(() => {
+        const handleResize = () => {
+            if (chartRef.current) {
+                try {
+                    chartRef.current.resize();
+                } catch (err) {
+                    console.warn('Chart resize failed:', err);
+                }
+            }
+        };
+
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
+
+    const resize = () => {
         if (chartRef.current) {
             try {
                 chartRef.current.resize();
@@ -97,43 +124,24 @@ export const useECharts = (
                 console.warn('Chart resize failed:', err);
             }
         }
-    }, []);
+    };
 
-    // Initialize chart on mount
-    useEffect(() => {
-        initChart();
-
-        return () => {
-            if (chartRef.current) {
-                chartRef.current.dispose();
-                chartRef.current = null;
+    const refresh = () => {
+        if (chartRef.current && option) {
+            try {
+                chartRef.current.setOption(option, true, false);
+            } catch (err) {
+                const errorMessage = err instanceof Error ? err.message : 'Failed to refresh chart';
+                setError(errorMessage);
             }
-        };
-    }, [initChart]);
-
-    // Update chart when option changes
-    useEffect(() => {
-        updateChart();
-    }, [updateChart]);
-
-    // Handle window resize
-    useEffect(() => {
-        const handleResize = () => {
-            resizeChart();
-        };
-
-        window.addEventListener('resize', handleResize);
-
-        return () => {
-            window.removeEventListener('resize', handleResize);
-        };
-    }, [resizeChart]);
+        }
+    };
 
     return {
-        chart,
+        chart: chartRef.current,
         loading,
         error,
-        resize: resizeChart,
-        refresh: initChart,
+        resize,
+        refresh,
     };
 };

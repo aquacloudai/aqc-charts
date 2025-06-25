@@ -32,19 +32,19 @@ export const BarChart = forwardRef<ChartRef, BarChartProps>(({
             label: showValues ? {
                 show: true,
                 position: horizontal ? 'right' : 'top',
-                ...item.label,
+                ...(item.label as object),
             } : item.label,
         })),
         [data, stack, showValues, horizontal, barWidth, barMaxWidth],
     );
 
     const defaultXAxis = useMemo(() =>
-        horizontal ? { type: 'value' as const, ...xAxis } : { type: 'category' as const, ...xAxis },
+        horizontal ? { type: 'value' as const, ...(xAxis as object) } : { type: 'category' as const, ...(xAxis as object) },
         [horizontal, xAxis],
     );
 
     const defaultYAxis = useMemo(() =>
-        horizontal ? { type: 'category' as const, ...yAxis } : { type: 'value' as const, ...yAxis },
+        horizontal ? { type: 'category' as const, ...(yAxis as object) } : { type: 'value' as const, ...(yAxis as object) },
         [horizontal, yAxis],
     );
 

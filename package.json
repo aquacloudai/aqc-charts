@@ -25,9 +25,9 @@
     "types": "./dist/index.d.ts",
     "exports": {
         ".": {
+            "types": "./dist/index.d.ts",
             "import": "./dist/index.js",
-            "require": "./dist/index.cjs",
-            "types": "./dist/index.d.ts"
+            "require": "./dist/index.cjs"
         }
     },
     "files": [
@@ -56,32 +56,32 @@
         "release": "np --no-yarn"
     },
     "peerDependencies": {
-        "react": ">=18.0.0",
-        "react-dom": ">=18.0.0"
+        "react": ">=19.0.0",
+        "react-dom": ">=19.0.0"
     },
     "devDependencies": {
-        "@rolldown/rolldown": "^0.6.2",
-        "dprint": "^0.45.0",
-        "oxlint": "^0.3.0",
-        "@swc/core": "^1.3.102",
-        "@testing-library/jest-dom": "^6.2.0",
-        "@testing-library/react": "^14.1.2",
-        "@testing-library/user-event": "^14.5.2",
-        "@types/react": "^18.2.47",
-        "@types/react-dom": "^18.2.18",
-        "@vitest/coverage-v8": "^1.2.0",
-        "@vitest/ui": "^1.2.0",
-        "happy-dom": "^12.10.3",
-        "np": "^9.2.0",
-        "react": "^18.2.0",
-        "react-dom": "^18.2.0",
-        "typedoc": "^0.25.7",
-        "typescript": "^5.3.3",
-        "vite": "^5.0.11",
-        "vitest": "^1.2.0"
+        "rolldown": "^1.0.0-beta.18",
+        "dprint": "^0.50.0",
+        "oxlint": "^1.3.0",
+        "@swc/core": "^1.12.6",
+        "@testing-library/jest-dom": "^6.6.3",
+        "@testing-library/react": "^16.3.0",
+        "@testing-library/user-event": "^14.6.1",
+        "@types/react": "^19.1.8",
+        "@types/react-dom": "^19.1.6",
+        "@vitest/coverage-v8": "^3.2.4",
+        "@vitest/ui": "^3.2.4",
+        "happy-dom": "^18.0.1",
+        "np": "^10.2.0",
+        "react": "^19.1.0",
+        "react-dom": "^19.1.0",
+        "typedoc": "^0.28.5",
+        "typescript": "^5.8.3",
+        "vite": "^7.0.0",
+        "vitest": "^3.2.4"
     },
     "dependencies": {
-        "echarts": "^5.6.0"
+        "echarts": "5.6.0"
     },
     "engines": {
         "node": ">=18.0.0",

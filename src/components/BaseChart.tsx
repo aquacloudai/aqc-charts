@@ -28,7 +28,7 @@ export const BaseChart = forwardRef<ChartRef, BaseChartProps>(({
     locale = 'en',
     ...restProps
 }, ref) => {
-    const containerRef = useRef<HTMLDivElement>(null);
+    const echartsContainerRef = useRef<HTMLDivElement>(null);
 
     // Generate chart option
     const chartOption = useMemo(() => {
@@ -77,7 +77,7 @@ export const BaseChart = forwardRef<ChartRef, BaseChartProps>(({
 
             series: series.map((s) => ({
                 ...s,
-                itemStyle: s.color ? { color: s.color, ...s.itemStyle } : s.itemStyle,
+                itemStyle: s.color ? { color: s.color, ...(s.itemStyle as object) } : s.itemStyle,
             })),
 
             animation: true,
@@ -87,7 +87,7 @@ export const BaseChart = forwardRef<ChartRef, BaseChartProps>(({
     }, [series, xAxis, yAxis, title, subtitle, customOption]);
 
     const { chart, loading: chartLoading, error, refresh } = useECharts(
-        containerRef,
+        echartsContainerRef,
         chartOption,
         theme,
         { renderer, locale },
@@ -205,11 +205,20 @@ export const BaseChart = forwardRef<ChartRef, BaseChartProps>(({
 
     return (
         <div
-            ref={containerRef}
             className={`aqc-charts-container ${className}`}
             style={containerStyle}
             {...restProps}
         >
+            {/* Separate div exclusively for ECharts - React never renders children here */}
+            <div
+                ref={echartsContainerRef}
+                style={{
+                    width: '100%',
+                    height: '100%',
+                }}
+            />
+            
+            {/* React-managed overlay content */}
             {(chartLoading || externalLoading) && (
                 <div className="aqc-charts-loading" style={{
                     position: 'absolute',

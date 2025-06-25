@@ -23,12 +23,13 @@ export interface ChartDataPoint {
 
 export interface ChartSeries {
     readonly name: string;
-    readonly type: 'line' | 'bar' | 'pie' | 'scatter' | 'radar' | 'funnel' | 'gauge';
+    readonly type: 'line' | 'bar' | 'pie' | 'scatter' | 'radar' | 'funnel' | 'gauge' | 'heatmap';
     readonly data: readonly (number | ChartDataPoint)[];
     readonly color?: string;
     readonly smooth?: boolean;
-    readonly stack?: string;
+    readonly stack?: string | undefined;
     readonly yAxisIndex?: number;
+    readonly coordinateSystem?: 'cartesian2d' | 'calendar' | 'geo' | 'parallel' | 'polar' | 'radar' | 'single';
     readonly [key: string]: unknown;
 }
 
@@ -95,4 +96,136 @@ export interface BaseChartProps {
 export interface ChartRef {
     getEChartsInstance: () => EChartsInstance | null;
     refresh: () => void;
+}
+
+export interface CalendarHeatmapDataPoint {
+    readonly date: string; // YYYY-MM-DD format
+    readonly value: number;
+}
+
+export interface CalendarConfig {
+    readonly range?: string | readonly string[] | number;
+    readonly cellSize?: readonly [number | 'auto', number | 'auto'] | number | 'auto';
+    readonly splitLine?: {
+        readonly show?: boolean;
+        readonly lineStyle?: unknown;
+    };
+    readonly itemStyle?: {
+        readonly color?: string;
+        readonly borderColor?: string;
+        readonly borderWidth?: number;
+        readonly borderRadius?: number;
+    };
+    readonly dayLabel?: {
+        readonly show?: boolean;
+        readonly firstDay?: number;
+        readonly position?: 'start' | 'end';
+        readonly margin?: number;
+        readonly nameMap?: readonly string[] | 'en' | 'cn';
+        readonly color?: string;
+        readonly fontSize?: number;
+    };
+    readonly monthLabel?: {
+        readonly show?: boolean;
+        readonly position?: 'start' | 'end';
+        readonly margin?: number;
+        readonly nameMap?: readonly string[] | 'en' | 'cn';
+        readonly formatter?: string | ((params: { nameMap: string; yyyy: string; yy: string; MM: string; M: string }) => string);
+        readonly color?: string;
+        readonly fontSize?: number;
+    };
+    readonly yearLabel?: {
+        readonly show?: boolean;
+        readonly position?: 'top' | 'bottom' | 'left' | 'right';
+        readonly margin?: number;
+        readonly formatter?: string | ((params: { start: string; end: string; }) => string);
+        readonly color?: string;
+        readonly fontSize?: number;
+    };
+    readonly orient?: 'horizontal' | 'vertical';
+    readonly left?: number | string;
+    readonly top?: number | string;
+    readonly right?: number | string;
+    readonly bottom?: number | string;
+    readonly width?: number | string;
+    readonly height?: number | string;
+}
+
+export interface VisualMapConfig {
+    readonly type?: 'continuous' | 'piecewise';
+    readonly min?: number;
+    readonly max?: number;
+    readonly range?: readonly [number, number];
+    readonly calculable?: boolean;
+    readonly realtime?: boolean;
+    readonly inverse?: boolean;
+    readonly precision?: number;
+    readonly itemWidth?: number;
+    readonly itemHeight?: number;
+    readonly align?: 'auto' | 'left' | 'right';
+    readonly text?: readonly [string, string];
+    readonly textGap?: number;
+    readonly show?: boolean;
+    readonly dimension?: number | string;
+    readonly seriesIndex?: number | readonly number[];
+    readonly hoverLink?: boolean;
+    readonly inRange?: {
+        readonly color?: readonly string[];
+        readonly colorAlpha?: readonly number[];
+        readonly opacity?: readonly number[];
+        readonly colorLightness?: readonly number[];
+        readonly colorSaturation?: readonly number[];
+        readonly colorHue?: readonly number[];
+    };
+    readonly outOfRange?: {
+        readonly color?: readonly string[];
+        readonly colorAlpha?: readonly number[];
+        readonly opacity?: readonly number[];
+        readonly colorLightness?: readonly number[];
+        readonly colorSaturation?: readonly number[];
+        readonly colorHue?: readonly number[];
+    };
+    readonly controller?: {
+        readonly inRange?: {
+            readonly color?: readonly string[];
+            readonly colorAlpha?: readonly number[];
+            readonly opacity?: readonly number[];
+            readonly colorLightness?: readonly number[];
+            readonly colorSaturation?: readonly number[];
+            readonly colorHue?: readonly number[];
+        };
+        readonly outOfRange?: {
+            readonly color?: readonly string[];
+            readonly colorAlpha?: readonly number[];
+            readonly opacity?: readonly number[];
+            readonly colorLightness?: readonly number[];
+            readonly colorSaturation?: readonly number[];
+            readonly colorHue?: readonly number[];
+        };
+    };
+    readonly zlevel?: number;
+    readonly z?: number;
+    readonly left?: number | string;
+    readonly top?: number | string;
+    readonly right?: number | string;
+    readonly bottom?: number | string;
+    readonly orient?: 'horizontal' | 'vertical';
+    readonly padding?: number | readonly number[];
+    readonly backgroundColor?: string;
+    readonly borderColor?: string;
+    readonly borderWidth?: number;
+    readonly color?: readonly string[];
+    readonly textStyle?: unknown;
+    readonly formatter?: string | ((value: number) => string);
+}
+
+export interface StackedBarDataSeries {
+    readonly name: string;
+    readonly data: readonly number[];
+    readonly color?: string;
+}
+
+export interface StackedBarData {
+    readonly categories: readonly string[];
+    readonly series: readonly StackedBarDataSeries[];
 }
