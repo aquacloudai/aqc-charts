@@ -1,0 +1,19 @@
+[install]
+# Use exact versions for reproducible builds
+exact = true
+
+# Prefer offline packages when available
+prefer-offline = true
+
+# Cache directory
+cache-dir = ".bun/cache"
+
+# Lockfile location
+lockfile = "./bun.lockb"
+
+[install.scopes]
+# Scoped registries if needed
+
+[test]
+# Test configuration
+preload = ["./src/setupTests.ts"]

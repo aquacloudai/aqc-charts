@@ -1,0 +1,20 @@
+# Source files
+src/
+example/
+docs/
+scripts/
+
+# Config files
+.eslintrc.js
+jest.config.js
+rollup.config.js
+tsconfig*.json
+
+# Development files
+.github/
+coverage/
+*.log
+
+# Git files
+.git/
+.gitignore

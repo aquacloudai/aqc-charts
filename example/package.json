@@ -1,0 +1,24 @@
+{
+    "name": "aqc-charts-example",
+    "private": true,
+    "version": "0.0.0",
+    "type": "module",
+    "scripts": {
+        "dev": "vite",
+        "build": "bun run typecheck && vite build",
+        "preview": "vite preview",
+        "typecheck": "tsc --noEmit"
+    },
+    "dependencies": {
+        "react": "^18.2.0",
+        "react-dom": "^18.2.0",
+        "aqc-charts": "workspace:*"
+    },
+    "devDependencies": {
+        "@types/react": "^18.2.47",
+        "@types/react-dom": "^18.2.18",
+        "@vitejs/plugin-react-swc": "^3.5.0",
+        "typescript": "^5.3.3",
+        "vite": "^5.0.11"
+    }
+}
