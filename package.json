@@ -52,7 +52,6 @@
         "example": "cd example && bun run dev",
         "docs": "typedoc src/index.ts",
         "clean": "rm -rf dist",
-        "postinstall": "bun run build",
         "prepublishOnly": "bun run clean && bun run build",
         "release": "np --no-yarn"
     },
