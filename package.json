@@ -38,8 +38,8 @@
     "sideEffects": false,
     "scripts": {
         "dev": "rolldown --config rolldown.config.js --watch",
-        "build": "rolldown --config rolldown.config.js",
-        "build:types": "tsc --emitDeclarationOnly",
+        "build": "rolldown --config rolldown.config.js && bun run build:types",
+        "build:types": "tsc --project tsconfig.build.json",
         "test": "vitest run",
         "test:watch": "vitest",
         "test:ui": "vitest --ui",
