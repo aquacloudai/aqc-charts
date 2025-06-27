@@ -2,6 +2,9 @@ import React from 'react';
 import { LineChart, BarChart, CalendarHeatmapChart, StackedBarChart, SankeyChart } from 'aqc-charts';
 import { TemperatureExample } from './TemperatureExample';
 import { ApiIntegrationExample } from './ApiIntegrationExample';
+import { ScatterExample } from './ScatterExample';
+import { RegressionExample } from './RegressionExample';
+import { AdvancedScatterExample } from './AdvancedScatterExample';
 
 const sampleData = {
   categories: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
@@ -229,6 +232,21 @@ function App() {
       <h2>API Integration Patterns</h2>
       <div style={{ marginBottom: '40px' }}>
         <ApiIntegrationExample />
+      </div>
+
+      <h2>Scatter Charts & Data Analysis</h2>
+      <div style={{ marginBottom: '40px' }}>
+        <ScatterExample />
+      </div>
+
+      <h2>Advanced Regression Analysis</h2>
+      <div style={{ marginBottom: '40px' }}>
+        <RegressionExample />
+      </div>
+
+      <h2>Advanced Scatter Chart Features</h2>
+      <div style={{ marginBottom: '40px' }}>
+        <AdvancedScatterExample />
       </div>
     </div>
   );

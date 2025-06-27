@@ -142,7 +142,8 @@ Component.displayName = 'Component';
 {
   "react": "^18.2.0",           # React framework
   "react-dom": "^18.2.0",      # React DOM
-  "echarts": "^5.6.0"          # Apache ECharts
+  "echarts": "^5.6.0",         # Apache ECharts
+  "echarts-stat": "^1.2.0"     # ECharts statistical extensions
 }
 ```
 
@@ -241,6 +242,19 @@ const customTheme: ChartTheme = {
 3. Implement using `BaseChart` with specific options
 4. Add tests
 5. Export from `src/index.ts`
+
+### Statistical Charts (ecStat Integration)
+The library includes advanced statistical charts powered by echarts-stat:
+
+#### ClusterChart
+- Uses `ecStat:clustering` transform for K-means clustering
+- Automatic color mapping via visual map
+- Configurable cluster count and visualization
+
+#### RegressionChart  
+- Uses `ecStat:regression` transform for regression analysis
+- Supports linear, exponential, logarithmic, and polynomial regression
+- Automatic equation display and R² calculation
 
 ### Updating Dependencies
 ```bash

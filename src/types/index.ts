@@ -12,7 +12,8 @@ export type {
     BarSeriesOption,
     LineSeriesOption,
     PieSeriesOption,
-    HeatmapSeriesOption
+    HeatmapSeriesOption,
+    ScatterSeriesOption
 } from 'echarts/types/dist/shared';
 
 // ECharts instance interface
@@ -139,4 +140,195 @@ export interface SankeyLink {
 export interface SankeyData {
     readonly nodes: readonly SankeyNode[];
     readonly links: readonly SankeyLink[];
+}
+
+// Scatter chart specific types
+export interface ScatterDataPoint {
+    readonly value: readonly [number, number] | readonly [number, number, number]; // [x, y] or [x, y, size]
+    readonly name?: string;
+    readonly itemStyle?: unknown;
+    readonly label?: unknown;
+    readonly emphasis?: unknown;
+    readonly symbolSize?: number | readonly number[];
+    readonly symbol?: string;
+    readonly [key: string]: unknown;
+}
+
+export interface ScatterSeries {
+    readonly name: string;
+    readonly type: 'scatter';
+    readonly data: readonly ScatterDataPoint[];
+    readonly color?: string;
+    readonly symbolSize?: number | readonly number[] | ((value: readonly number[], params: unknown) => number);
+    readonly symbol?: string;
+    readonly itemStyle?: unknown;
+    readonly label?: unknown;
+    readonly emphasis?: unknown;
+    readonly large?: boolean;
+    readonly largeThreshold?: number;
+    readonly progressive?: number;
+    readonly progressiveThreshold?: number;
+    readonly [key: string]: unknown;
+}
+
+
+export interface ClusterPoint {
+    readonly x: number;
+    readonly y: number;
+    readonly cluster?: number;
+    readonly name?: string;
+    readonly [key: string]: unknown;
+}
+
+export interface ClusterResult {
+    readonly points: readonly ClusterPoint[];
+    readonly centroids: readonly [number, number][];
+    readonly clusters: number;
+}
+
+// Scatter chart data structure
+export interface ScatterChartData {
+    readonly series: readonly ScatterSeries[];
+    readonly xAxis?: {
+        readonly name?: string;
+        readonly type?: 'value' | 'category' | 'time' | 'log';
+        readonly min?: number | string;
+        readonly max?: number | string;
+        readonly scale?: boolean;
+        readonly [key: string]: unknown;
+    };
+    readonly yAxis?: {
+        readonly name?: string;
+        readonly type?: 'value' | 'category' | 'time' | 'log';
+        readonly min?: number | string;
+        readonly max?: number | string;
+        readonly scale?: boolean;
+        readonly [key: string]: unknown;
+    };
+}
+
+// Cluster chart specific types
+export interface ClusterChartDataPoint {
+    readonly value: readonly [number, number]; // [x, y] coordinates
+    readonly name?: string;
+    readonly [key: string]: unknown;
+}
+
+export interface ClusterChartData {
+    readonly data: readonly ClusterChartDataPoint[];
+    readonly xAxis?: {
+        readonly name?: string;
+        readonly type?: 'value' | 'category' | 'time' | 'log';
+        readonly min?: number | string;
+        readonly max?: number | string;
+        readonly scale?: boolean;
+        readonly [key: string]: unknown;
+    };
+    readonly yAxis?: {
+        readonly name?: string;
+        readonly type?: 'value' | 'category' | 'time' | 'log';
+        readonly min?: number | string;
+        readonly max?: number | string;
+        readonly scale?: boolean;
+        readonly [key: string]: unknown;
+    };
+}
+
+export interface ClusterVisualMapPiece {
+    readonly value: number;
+    readonly label: string;
+    readonly color: string;
+}
+
+// Regression chart specific types
+export interface RegressionChartDataPoint {
+    readonly value: readonly [number, number]; // [x, y] coordinates
+    readonly name?: string;
+    readonly [key: string]: unknown;
+}
+
+export interface RegressionChartData {
+    readonly data: readonly RegressionChartDataPoint[];
+    readonly xAxis?: {
+        readonly name?: string;
+        readonly type?: 'value' | 'category' | 'time' | 'log';
+        readonly min?: number | string;
+        readonly max?: number | string;
+        readonly scale?: boolean;
+        readonly splitLine?: {
+            readonly lineStyle?: {
+                readonly type?: 'solid' | 'dashed' | 'dotted';
+                readonly [key: string]: unknown;
+            };
+            readonly [key: string]: unknown;
+        };
+        readonly [key: string]: unknown;
+    };
+    readonly yAxis?: {
+        readonly name?: string;
+        readonly type?: 'value' | 'category' | 'time' | 'log';
+        readonly min?: number | string;
+        readonly max?: number | string;
+        readonly scale?: boolean;
+        readonly splitLine?: {
+            readonly lineStyle?: {
+                readonly type?: 'solid' | 'dashed' | 'dotted';
+                readonly [key: string]: unknown;
+            };
+            readonly [key: string]: unknown;
+        };
+        readonly [key: string]: unknown;
+    };
+}
+
+export type RegressionMethod = 'linear' | 'exponential' | 'logarithmic' | 'polynomial';
+
+// ECharts ecStat Transform Types
+export interface DataTransformOption {
+    readonly type: string;
+    readonly config?: unknown;
+    readonly print?: boolean;
+}
+
+// ecStat Clustering Transform
+export interface EcStatClusteringTransformOption extends DataTransformOption {
+    readonly type: 'ecStat:clustering';
+    readonly config: {
+        readonly clusterCount: number;
+        readonly outputType?: 'single' | 'multiple';
+        readonly outputClusterIndexDimension?: number;
+        readonly stepCount?: number;
+        readonly d?: number;
+        readonly [key: string]: unknown;
+    };
+}
+
+// ecStat Regression Transform  
+export interface EcStatRegressionTransformOption extends DataTransformOption {
+    readonly type: 'ecStat:regression';
+    readonly config: {
+        readonly method: RegressionMethod;
+        readonly order?: number; // For polynomial regression
+        readonly formulaOn?: 'start' | 'end' | boolean;
+        readonly [key: string]: unknown;
+    };
+}
+
+// Generic ecStat Transform (for flexibility)
+export interface EcStatTransformOption extends DataTransformOption {
+    readonly type: `ecStat:${string}`;
+    readonly config: {
+        readonly [key: string]: unknown;
+    };
+}
+
+// Dataset option with transforms
+export interface DatasetOptionWithTransforms {
+    readonly source?: readonly unknown[][];
+    readonly transform?: 
+        | EcStatClusteringTransformOption 
+        | EcStatRegressionTransformOption 
+        | EcStatTransformOption
+        | DataTransformOption;
+    readonly [key: string]: unknown;
 }

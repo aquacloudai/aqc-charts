@@ -5,6 +5,7 @@
       "name": "aqc-charts",
       "dependencies": {
         "echarts": "5.6.0",
+        "echarts-stat": "1.2.0",
       },
       "devDependencies": {
         "@swc/core": "^1.12.6",
@@ -481,6 +482,8 @@
     "eastasianwidth": ["eastasianwidth@0.2.0", "", {}, "sha512-I88TYZWc9XiYHRQ4/3c5rjjfgkjhLyW2luGIheGERbNQ6OY7yTybanSpDXZa8y7VUP9YmDcYa+eyq4ca7iLqWA=="],
 
     "echarts": ["echarts@5.6.0", "", { "dependencies": { "tslib": "2.3.0", "zrender": "5.6.1" } }, "sha512-oTbVTsXfKuEhxftHqL5xprgLoc0k7uScAwtryCgWF6hPYFLRwOUHiFmHGCBKP5NPFNkDVopOieyUqYGH8Fa3kA=="],
+
+    "echarts-stat": ["echarts-stat@1.2.0", "", {}, "sha512-zLd7Kgs+tuTSeaK0VQEMNmnMivEkhvHIk1gpBtLzpRerfcIQ+Bd5XudOMmtwpaTc1WDZbA7d1V//iiBccR46Qg=="],
 
     "elegant-spinner": ["elegant-spinner@1.0.1", "", {}, "sha512-B+ZM+RXvRqQaAmkMlO/oSe5nMUOaUnyfGYCEHoR8wrXsZR2mA0XVibsxV1bvTwxdRWah1PkQqso2EzhILGHtEQ=="],
 

@@ -1,6 +1,34 @@
 import { useEffect, useRef, useState } from 'react';
 import * as echarts from 'echarts';
+import ecStat from 'echarts-stat';
 import type { EChartsInstance, ChartTheme } from '@/types';
+
+// Register ecStat transforms globally
+if (typeof window !== 'undefined') {
+    try {
+        // Cast to any to bypass incomplete TypeScript definitions
+        const ecStatTransforms = (ecStat as any).transform;
+        
+        if (ecStatTransforms) {
+            if (ecStatTransforms.regression) {
+                echarts.registerTransform(ecStatTransforms.regression);
+                console.log('✓ Registered ecStat regression transform');
+            }
+            if (ecStatTransforms.clustering) {
+                echarts.registerTransform(ecStatTransforms.clustering);
+                console.log('✓ Registered ecStat clustering transform');
+            }
+            if (ecStatTransforms.histogram) {
+                echarts.registerTransform(ecStatTransforms.histogram);
+                console.log('✓ Registered ecStat histogram transform');
+            }
+        } else {
+            console.warn('ecStat.transform not found');
+        }
+    } catch (err) {
+        console.warn('Failed to register ecStat transforms:', err);
+    }
+}
 
 interface UseEChartsOptions {
     readonly renderer?: 'canvas' | 'svg';
@@ -79,25 +107,31 @@ export const useECharts = (
     useEffect(() => {
         if (!chartRef.current || !option || loading) return;
 
-        try {
+        // Defer setOption to avoid calling during main process
+        const timeoutId = setTimeout(() => {
+            if (!chartRef.current) return;
             
-            // Apply custom theme if provided
-            if (typeof theme === 'object') {
-                const themedOption = {
-                    backgroundColor: theme.backgroundColor,
-                    textStyle: theme.textStyle,
-                    color: theme.color,
-                    ...(option as object),
-                };
-                chartRef.current.setOption(themedOption, notMerge, lazyUpdate);
-            } else {
-                chartRef.current.setOption(option, notMerge, lazyUpdate);
+            try {
+                // Apply custom theme if provided
+                if (typeof theme === 'object') {
+                    const themedOption = {
+                        backgroundColor: theme.backgroundColor,
+                        textStyle: theme.textStyle,
+                        color: theme.color,
+                        ...(option as object),
+                    };
+                    chartRef.current.setOption(themedOption, notMerge, lazyUpdate);
+                } else {
+                    chartRef.current.setOption(option, notMerge, lazyUpdate);
+                }
+                
+            } catch (err) {
+                const errorMessage = err instanceof Error ? err.message : 'Failed to update chart';
+                setError(errorMessage);
             }
-            
-        } catch (err) {
-            const errorMessage = err instanceof Error ? err.message : 'Failed to update chart';
-            setError(errorMessage);
-        }
+        }, 0);
+
+        return () => clearTimeout(timeoutId);
     }, [option, theme, notMerge, lazyUpdate, loading]);
 
     // Resize handler

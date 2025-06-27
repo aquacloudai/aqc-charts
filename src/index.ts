@@ -6,12 +6,20 @@ export { PieChart } from './components/PieChart';
 export { CalendarHeatmapChart } from './components/CalendarHeatmapChart';
 export { StackedBarChart } from './components/StackedBarChart';
 export { SankeyChart } from './components/SankeyChart';
+export { ScatterChart } from './components/ScatterChart';
+export { ClusterChart } from './components/ClusterChart';
+export { RegressionChart } from './components/RegressionChart';
 
 // Hooks
 export { useECharts } from './hooks/useECharts';
 
 // Utils
 export { lightTheme, darkTheme } from './utils/themes';
+export {
+    extractPoints,
+    performKMeansClustering,
+    clusterPointsToScatterData
+} from './utils/regression';
 
 // Types
 export type {
@@ -33,6 +41,26 @@ export type {
     LineStyleConfig,
     LegendConfig,
     TooltipConfig,
+    // Scatter chart types
+    ScatterDataPoint,
+    ScatterSeries,
+    ScatterChartData,
+    ClusterPoint,
+    ClusterResult,
+    // Cluster chart types
+    ClusterChartData,
+    ClusterChartDataPoint,
+    ClusterVisualMapPiece,
+    // Regression chart types
+    RegressionChartData,
+    RegressionChartDataPoint,
+    RegressionMethod,
+    // ecStat Transform types
+    DataTransformOption,
+    EcStatClusteringTransformOption,
+    EcStatRegressionTransformOption,
+    EcStatTransformOption,
+    DatasetOptionWithTransforms,
     // ECharts series types
     EChartsOption,
     SeriesOption,
@@ -40,6 +68,7 @@ export type {
     LineSeriesOption,
     PieSeriesOption,
     HeatmapSeriesOption,
+    ScatterSeriesOption,
     TitleOption,
     LegendComponentOption,
     TooltipOption,
@@ -55,6 +84,9 @@ export type { PieChartProps } from './components/PieChart';
 export type { CalendarHeatmapChartProps } from './components/CalendarHeatmapChart';
 export type { StackedBarChartProps } from './components/StackedBarChart';
 export type { SankeyChartProps } from './components/SankeyChart';
+export type { ScatterChartProps } from './components/ScatterChart';
+export type { ClusterChartProps } from './components/ClusterChart';
+export type { RegressionChartProps } from './components/RegressionChart';
 
 // CSS injection for styling (optimized for modern bundlers)
 if (typeof document !== 'undefined' && !document.getElementById('aqc-charts-styles')) {
