@@ -2014,16 +2014,17 @@ CalendarHeatmapChart.displayName = "CalendarHeatmapChart";
 
 //#endregion
 //#region src/components/StackedBarChart.tsx
-const StackedBarChart = (0, react.forwardRef)(({ data, horizontal = false, showPercentage = false, showValues = false, barWidth = "60%", barMaxWidth, stackName = "total", grid, legendSelectable = true, title,...props }, ref) => {
-	const chartOption = (0, react.useMemo)(() => {
-		const { categories, series: rawSeries } = data;
+const StackedBarChart = (0, react.forwardRef)(({ data, horizontal = false, showPercentage = false, showValues = false, barWidth = "60%", barMaxWidth, stackName = "total", showLegend = true, legend, tooltip, xAxis, yAxis, grid, series: customSeries,...props }, ref) => {
+	const series = (0, react.useMemo)(() => {
+		if (customSeries) return customSeries;
+		const { series: rawSeries } = data;
 		const totalData = [];
-		if (showPercentage) for (let i = 0; i < categories.length; i++) {
+		if (showPercentage) for (let i = 0; i < data.categories.length; i++) {
 			let sum = 0;
 			for (const seriesItem of rawSeries) sum += seriesItem.data[i] || 0;
 			totalData.push(sum);
 		}
-		const series = rawSeries.map((seriesItem) => {
+		return rawSeries.map((seriesItem) => {
 			const processedData = showPercentage ? seriesItem.data.map((value, index) => {
 				const total = totalData[index];
 				return total === void 0 || total <= 0 ? 0 : value / total;
@@ -2043,63 +2044,75 @@ const StackedBarChart = (0, react.forwardRef)(({ data, horizontal = false, showP
 				} }
 			};
 		});
-		const titleConfig = typeof title === "string" ? { text: title } : title;
-		return {
-			...titleConfig && { title: {
-				left: "center",
-				...titleConfig
-			} },
-			tooltip: {
-				trigger: "axis",
-				axisPointer: { type: "shadow" },
-				...showPercentage && { formatter: (params) => {
-					if (!Array.isArray(params)) return "";
-					let result = `${params[0].name}<br/>`;
-					for (const param of params) {
-						const percentage = Math.round(param.value * 1e3) / 10;
-						result += `${param.marker}${param.seriesName}: ${percentage}%<br/>`;
-					}
-					return result;
-				} }
-			},
-			legend: {
-				selectedMode: legendSelectable ? "multiple" : false,
-				top: titleConfig ? 40 : 20
-			},
-			grid: {
-				left: 100,
-				right: 100,
-				top: titleConfig ? 80 : 60,
-				bottom: 50,
-				...grid
-			},
-			xAxis: horizontal ? {
-				type: "value",
-				...showPercentage && { axisLabel: { formatter: (value) => `${Math.round(value * 100)}%` } }
-			} : {
-				type: "category",
-				data: categories
-			},
-			yAxis: horizontal ? {
-				type: "category",
-				data: categories
-			} : {
-				type: "value",
-				...showPercentage && { axisLabel: { formatter: (value) => `${Math.round(value * 100)}%` } }
-			},
-			series
-		};
 	}, [
+		data,
+		showPercentage,
+		stackName,
+		barWidth,
+		barMaxWidth,
+		showValues,
+		horizontal,
+		customSeries
+	]);
+	const chartOption = (0, react.useMemo)(() => ({
+		tooltip: {
+			trigger: "axis",
+			axisPointer: { type: "shadow" },
+			...showPercentage && { formatter: (params) => {
+				if (!Array.isArray(params)) return "";
+				let result = `${params[0].name}<br/>`;
+				for (const param of params) {
+					const percentage = Math.round(param.value * 1e3) / 10;
+					result += `${param.marker}${param.seriesName}: ${percentage}%<br/>`;
+				}
+				return result;
+			} },
+			...tooltip
+		},
+		legend: showLegend && data?.series && data.series.length > 1 ? {
+			data: data.series.map((s) => s.name),
+			top: 20,
+			selectedMode: "multiple",
+			...legend
+		} : void 0,
+		grid: {
+			left: 100,
+			right: 100,
+			top: showLegend && data?.series && data.series.length > 1 ? 60 : 40,
+			bottom: 50,
+			containLabel: true,
+			...grid
+		},
+		xAxis: horizontal ? {
+			type: "value",
+			...showPercentage && { axisLabel: { formatter: (value) => `${Math.round(value * 100)}%` } },
+			...xAxis
+		} : {
+			type: "category",
+			data: data.categories,
+			...xAxis
+		},
+		yAxis: horizontal ? {
+			type: "category",
+			data: data.categories,
+			...yAxis
+		} : {
+			type: "value",
+			...showPercentage && { axisLabel: { formatter: (value) => `${Math.round(value * 100)}%` } },
+			...yAxis
+		},
+		series
+	}), [
 		data,
 		horizontal,
 		showPercentage,
-		showValues,
-		barWidth,
-		barMaxWidth,
-		stackName,
+		showLegend,
+		tooltip,
+		legend,
 		grid,
-		legendSelectable,
-		title
+		xAxis,
+		yAxis,
+		series
 	]);
 	return /* @__PURE__ */ (0, react_jsx_runtime.jsx)(BaseChart, {
 		ref,

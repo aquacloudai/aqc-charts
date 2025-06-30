@@ -231,6 +231,15 @@ function App() {
           width="100%"
           height={400}
           showValues={true}
+          showLegend
+          legend={{
+            orient: 'horizontal',
+            bottom: 10,
+          }}
+          tooltip={{
+            trigger: 'axis',
+            formatter: '{b}<br/>{a0}: {c0}<br/>{a1}: {c1}<br/>{a2}: {c2}',
+          }}
         />
       </div>
 
@@ -243,6 +252,24 @@ function App() {
           height={400}
           showPercentage={true}
           showValues={true}
+          showLegend
+          legend={{
+            orient: 'vertical',
+            right: 10,
+            top: 'middle',
+          }}
+        />
+      </div>
+
+      <h2>Stacked Bar Chart (No Legend)</h2>
+      <div style={{ height: '400px', marginBottom: '40px' }}>
+        <StackedBarChart
+          data={stackedBarData}
+          title="Marketing Channel Performance - No Legend"
+          width="100%"
+          height={400}
+          showValues={true}
+          showLegend={false}
         />
       </div>
 
