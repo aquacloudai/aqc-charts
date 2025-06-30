@@ -1900,7 +1900,7 @@ BarChart.displayName = "BarChart";
 
 //#endregion
 //#region src/components/PieChart.tsx
-const PieChart = forwardRef(({ data, radius = ["40%", "70%"], center = ["50%", "50%"], roseType = false, showLabels = true, showLegend = true, series: customSeries,...props }, ref) => {
+const PieChart = forwardRef(({ data, radius = ["40%", "70%"], center = ["50%", "50%"], roseType = false, showLabels = true, showLegend = true, legend, series: customSeries,...props }, ref) => {
 	const series = useMemo(() => {
 		if (customSeries) return customSeries;
 		return [{
@@ -1929,14 +1929,20 @@ const PieChart = forwardRef(({ data, radius = ["40%", "70%"], center = ["50%", "
 			trigger: "item",
 			formatter: "{a} <br/>{b}: {c} ({d}%)"
 		},
-		...showLegend && { legend: {
+		legend: showLegend ? {
+			type: "scroll",
+			orient: "vertical",
+			right: 10,
+			top: 20,
+			bottom: 20,
 			data: data.map((item) => item.name),
-			top: 20
-		} },
+			...legend
+		} : void 0,
 		series
 	}), [
 		series,
 		showLegend,
+		legend,
 		data
 	]);
 	return /* @__PURE__ */ jsx(BaseChart, {

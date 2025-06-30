@@ -1,10 +1,11 @@
 import React from 'react';
-import { LineChart, BarChart, CalendarHeatmapChart, StackedBarChart, SankeyChart } from 'aqc-charts';
+import { LineChart, BarChart, CalendarHeatmapChart, StackedBarChart, SankeyChart, PieChart } from 'aqc-charts';
 import { TemperatureExample } from './TemperatureExample';
 import { ApiIntegrationExample } from './ApiIntegrationExample';
 import { ScatterExample } from './ScatterExample';
 import { RegressionExample } from './RegressionExample';
 import { AdvancedScatterExample } from './AdvancedScatterExample';
+import { shouldShowAllLabels } from 'echarts/types/src/coord/axisHelper.js';
 
 const sampleData = {
   categories: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
@@ -19,6 +20,25 @@ const sampleData = {
     }
   ]
 };
+
+const pieChartData = [
+  {
+    name: 'Category A',
+    value: 40,
+  },
+  {
+    name: 'Category B',
+    value: 30,
+  },
+  {
+    name: 'Category C',
+    value: 20,
+  },
+  {
+    name: 'Category D',
+    value: 10,
+  }
+];
 
 const barData = {
   categories: ['Q1', 'Q2', 'Q3', 'Q4', 'Q5'],
@@ -109,6 +129,24 @@ function App() {
   return (
     <div style={{ padding: '20px' }}>
       <h1>AQC Charts Example</h1>
+
+      <h2>Pie Chart</h2>
+      <div style={{ height: '400px', marginBottom: '40px' }}>
+        <PieChart
+          data={pieChartData}
+          title="Sample Pie Chart"
+          width="100%"
+          height={400}
+          showLegend={false}
+          legend={{
+            type: 'scroll',
+            orient: 'vertical',
+            right: 20,
+            top: 40,
+            bottom: 20,
+          }}
+        />
+      </div>
 
       <h2>Line Chart</h2>
       <div style={{ height: '400px', marginBottom: '40px' }}>

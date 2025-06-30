@@ -1,5 +1,5 @@
 import React, { forwardRef, useMemo } from 'react';
-import type { BaseChartProps, ChartRef, ChartDataPoint, PieSeriesOption } from '@/types';
+import type { BaseChartProps, ChartRef, ChartDataPoint, PieSeriesOption, LegendComponentOption } from '@/types';
 import { BaseChart } from './BaseChart';
 
 export interface PieChartProps extends Omit<BaseChartProps, 'option'> {
@@ -9,7 +9,7 @@ export interface PieChartProps extends Omit<BaseChartProps, 'option'> {
     readonly roseType?: boolean | 'radius' | 'area';
     readonly showLabels?: boolean;
     readonly showLegend?: boolean;
-    readonly legendOptions?: import('echarts').EChartsOption['legend']; 
+    readonly legend?: LegendComponentOption;
     readonly series?: PieSeriesOption[];
 }
 
@@ -21,7 +21,7 @@ export const PieChart = forwardRef<ChartRef, PieChartProps>(({
     roseType = false,
     showLabels = true,
     showLegend = true,
-    legendOptions, // 👈 here
+    legend,
     series: customSeries,
     ...props
 }, ref) => {
@@ -51,23 +51,22 @@ export const PieChart = forwardRef<ChartRef, PieChartProps>(({
     }, [data, radius, center, roseType, showLabels, customSeries]);
 
     const chartOption = useMemo(() => ({
-    tooltip: {
-        trigger: 'item' as const,
-        formatter: '{a} <br/>{b}: {c} ({d}%)',
-    },
-    legend: showLegend
-        ? {
+        tooltip: {
+            trigger: 'item' as const,
+            formatter: '{a} <br/>{b}: {c} ({d}%)',
+        },
+        legend: {
             type: 'scroll',
             orient: 'vertical',
             right: 10,
             top: 20,
             bottom: 20,
+            show: showLegend,
             data: data.map((item) => item.name),
-            ...legendOptions,
-        }
-        : undefined,
-    series,
-    }), [series, showLegend, legendOptions, data]);
+            ...legend,
+        } as LegendComponentOption,
+        series,
+    }), [series, showLegend, legend, data]);
 
     return (
         <BaseChart
