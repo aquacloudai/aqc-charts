@@ -1,7 +1,14 @@
 import React, { forwardRef, useMemo } from 'react';
-import type { BaseChartProps, ChartRef, EChartsOption, BarSeriesOption } from '@/types';
+import type { 
+    BaseChartProps, 
+    ChartRef, 
+    BarSeriesOption, 
+    LegendComponentOption,
+    TooltipOption,
+    XAXisOption,
+    YAXisOption
+} from '@/types';
 import { BaseChart } from './BaseChart';
-import { createBarChartOption, mergeOptions } from '@/utils/chartHelpers';
 
 export interface BarChartProps extends Omit<BaseChartProps, 'option'> {
     readonly data: {
@@ -17,8 +24,20 @@ export interface BarChartProps extends Omit<BaseChartProps, 'option'> {
     readonly showValues?: boolean;
     readonly barWidth?: string | number;
     readonly barMaxWidth?: string | number;
-    readonly option?: Partial<EChartsOption>;
-    readonly series?: BarSeriesOption[]; // Allow direct ECharts series override
+    readonly showLegend?: boolean;
+    readonly legend?: LegendComponentOption;
+    readonly tooltip?: TooltipOption;
+    readonly xAxis?: XAXisOption;
+    readonly yAxis?: YAXisOption;
+    readonly grid?: {
+        readonly left?: string | number;
+        readonly right?: string | number;
+        readonly top?: string | number;
+        readonly bottom?: string | number;
+        readonly containLabel?: boolean;
+        readonly [key: string]: unknown;
+    };
+    readonly series?: BarSeriesOption[];
 }
 
 export const BarChart = forwardRef<ChartRef, BarChartProps>(({
@@ -28,74 +47,77 @@ export const BarChart = forwardRef<ChartRef, BarChartProps>(({
     showValues = false,
     barWidth,
     barMaxWidth,
-    title,
-    option: customOption,
+    showLegend = true,
+    legend,
+    tooltip,
+    xAxis,
+    yAxis,
+    grid,
     series: customSeries,
     ...props
 }, ref) => {
-    const chartOption = useMemo(() => {
-        // If custom series provided, use those directly
+    const series = useMemo(() => {
         if (customSeries) {
-            return {
-                xAxis: horizontal ? { type: 'value' as const } : { type: 'category' as const, data: data?.categories || [] },
-                yAxis: horizontal ? { type: 'category' as const, data: data?.categories || [] } : { type: 'value' as const },
-                series: customSeries,
-                ...(title && { title: { text: title, left: 'center' } }),
-                ...(customOption && customOption),
-            } as EChartsOption;
+            return customSeries;
         }
-        
-        // Ensure data.series exists and is an array
+
         if (!data?.series || !Array.isArray(data.series)) {
-            return { series: [] };
-        }
-        
-        // Create base option using helper
-        const baseOption = createBarChartOption({
-            categories: data.categories,
-            series: data.series.map(s => ({
-                name: s.name,
-                data: s.data,
-                ...(s.color && { color: s.color }),
-            })),
-            ...(title && { title }),
-        });
-
-        // Apply bar-specific configurations
-        if (baseOption.series && Array.isArray(baseOption.series)) {
-            baseOption.series = baseOption.series.map((series: any) => {
-                const result: any = {
-                    ...series,
-                    stack: stack ? 'total' : undefined,
-                    ...(barWidth && { barWidth }),
-                    ...(barMaxWidth && { barMaxWidth }),
-                };
-                
-                if (showValues) {
-                    result.label = {
-                        show: true,
-                        position: horizontal ? 'right' : 'top',
-                    };
-                }
-                
-                return result;
-            });
+            return [];
         }
 
-        // Handle horizontal bars
-        if (horizontal) {
-            baseOption.xAxis = { type: 'value' };
-            baseOption.yAxis = { type: 'category', data: data.categories };
-        }
+        return data.series.map(s => ({
+            name: s.name,
+            type: 'bar' as const,
+            data: s.data,
+            stack: stack ? 'total' : undefined,
+            ...(barWidth && { barWidth }),
+            ...(barMaxWidth && { barMaxWidth }),
+            ...(s.color && { itemStyle: { color: s.color } }),
+            ...(showValues && {
+                label: {
+                    show: true,
+                    position: horizontal ? 'right' : 'top',
+                },
+            }),
+        })) as BarSeriesOption[];
+    }, [data?.series, stack, barWidth, barMaxWidth, showValues, horizontal, customSeries]);
 
-        // Merge with custom option if provided
-        return customOption ? mergeOptions(baseOption, customOption) : baseOption;
-    }, [data, horizontal, stack, showValues, barWidth, barMaxWidth, title, customOption, customSeries]);
+    const chartOption = useMemo(() => ({
+        tooltip: {
+            trigger: 'axis' as const,
+            axisPointer: {
+                type: 'shadow',
+            },
+            ...tooltip,
+        },
+        grid: {
+            left: '3%',
+            right: '4%',
+            bottom: '3%',
+            top: showLegend && data?.series && data.series.length > 1 ? 60 : 40,
+            containLabel: true,
+            ...grid,
+        },
+        xAxis: horizontal 
+            ? { type: 'value' as const, ...xAxis }
+            : { type: 'category' as const, data: data?.categories || [], ...xAxis },
+        yAxis: horizontal 
+            ? { type: 'category' as const, data: data?.categories || [], ...yAxis }
+            : { type: 'value' as const, ...yAxis },
+        legend: showLegend && data?.series && data.series.length > 1
+            ? {
+                data: data.series.map(s => s.name),
+                top: 20,
+                ...legend,
+            } as LegendComponentOption
+            : undefined,
+        series,
+    }), [data?.categories, data?.series, horizontal, showLegend, tooltip, grid, xAxis, yAxis, legend, series]);
 
     return (
         <BaseChart
             ref={ref}
-            option={chartOption}
+            option={chartOption as any}
             {...props}
         />
     );

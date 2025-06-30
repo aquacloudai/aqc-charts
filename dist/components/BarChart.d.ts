@@ -1,5 +1,5 @@
 import React from 'react';
-import type { BaseChartProps, ChartRef, EChartsOption, BarSeriesOption } from '@/types';
+import type { BaseChartProps, ChartRef, BarSeriesOption, LegendComponentOption, TooltipOption, XAXisOption, YAXisOption } from '@/types';
 export interface BarChartProps extends Omit<BaseChartProps, 'option'> {
     readonly data: {
         readonly categories: string[];
@@ -14,7 +14,19 @@ export interface BarChartProps extends Omit<BaseChartProps, 'option'> {
     readonly showValues?: boolean;
     readonly barWidth?: string | number;
     readonly barMaxWidth?: string | number;
-    readonly option?: Partial<EChartsOption>;
+    readonly showLegend?: boolean;
+    readonly legend?: LegendComponentOption;
+    readonly tooltip?: TooltipOption;
+    readonly xAxis?: XAXisOption;
+    readonly yAxis?: YAXisOption;
+    readonly grid?: {
+        readonly left?: string | number;
+        readonly right?: string | number;
+        readonly top?: string | number;
+        readonly bottom?: string | number;
+        readonly containLabel?: boolean;
+        readonly [key: string]: unknown;
+    };
     readonly series?: BarSeriesOption[];
 }
 export declare const BarChart: React.ForwardRefExoticComponent<BarChartProps & React.RefAttributes<ChartRef>>;

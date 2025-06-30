@@ -176,6 +176,25 @@ function App() {
           title="Sample Bar Chart"
           width="100%"
           height={400}
+          showLegend
+          legend={{
+            orient: 'horizontal',
+            bottom: 10,
+          }}
+          tooltip={{
+            formatter: '{b}<br/>{a}: {c}',
+          }}
+        />
+      </div>
+
+      <h2>Bar Chart (No Legend)</h2>
+      <div style={{ height: '400px', marginBottom: '40px' }}>
+        <BarChart
+          data={barData}
+          title="Sample Bar Chart - No Legend"
+          width="100%"
+          height={400}
+          showLegend={false}
         />
       </div>
 

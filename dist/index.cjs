@@ -1659,47 +1659,6 @@ function createLineChartOption(data) {
 	return option;
 }
 /**
-* Create a basic bar chart option
-*/
-function createBarChartOption(data) {
-	const option = {
-		tooltip: {
-			trigger: "axis",
-			axisPointer: { type: "shadow" }
-		},
-		grid: {
-			left: "3%",
-			right: "4%",
-			bottom: "3%",
-			top: data.title ? data.series.length > 1 ? 100 : 80 : data.series.length > 1 ? 60 : 40,
-			containLabel: true
-		},
-		xAxis: {
-			type: "category",
-			data: data.categories
-		},
-		yAxis: { type: "value" },
-		series: data.series.map((s) => {
-			const seriesItem = {
-				name: s.name,
-				type: "bar",
-				data: s.data
-			};
-			if (s.color) seriesItem.itemStyle = { color: s.color };
-			return seriesItem;
-		})
-	};
-	if (data.title) option.title = {
-		text: data.title,
-		left: "center"
-	};
-	if (data.series.length > 1) option.legend = {
-		data: data.series.map((s) => s.name),
-		top: data.title ? 60 : 20
-	};
-	return option;
-}
-/**
 * Create a basic sankey chart option
 */
 function createSankeyChartOption(data) {
@@ -1830,65 +1789,79 @@ LineChart.displayName = "LineChart";
 
 //#endregion
 //#region src/components/BarChart.tsx
-const BarChart = (0, react.forwardRef)(({ data, horizontal = false, stack = false, showValues = false, barWidth, barMaxWidth, title, option: customOption, series: customSeries,...props }, ref) => {
-	const chartOption = (0, react.useMemo)(() => {
-		if (customSeries) return {
-			xAxis: horizontal ? { type: "value" } : {
-				type: "category",
-				data: data?.categories || []
-			},
-			yAxis: horizontal ? {
-				type: "category",
-				data: data?.categories || []
-			} : { type: "value" },
-			series: customSeries,
-			...title && { title: {
-				text: title,
-				left: "center"
-			} },
-			...customOption && customOption
-		};
-		if (!data?.series || !Array.isArray(data.series)) return { series: [] };
-		const baseOption = createBarChartOption({
-			categories: data.categories,
-			series: data.series.map((s) => ({
-				name: s.name,
-				data: s.data,
-				...s.color && { color: s.color }
-			})),
-			...title && { title }
-		});
-		if (baseOption.series && Array.isArray(baseOption.series)) baseOption.series = baseOption.series.map((series) => {
-			const result = {
-				...series,
-				stack: stack ? "total" : void 0,
-				...barWidth && { barWidth },
-				...barMaxWidth && { barMaxWidth }
-			};
-			if (showValues) result.label = {
+const BarChart = (0, react.forwardRef)(({ data, horizontal = false, stack = false, showValues = false, barWidth, barMaxWidth, showLegend = true, legend, tooltip, xAxis, yAxis, grid, series: customSeries,...props }, ref) => {
+	const series = (0, react.useMemo)(() => {
+		if (customSeries) return customSeries;
+		if (!data?.series || !Array.isArray(data.series)) return [];
+		return data.series.map((s) => ({
+			name: s.name,
+			type: "bar",
+			data: s.data,
+			stack: stack ? "total" : void 0,
+			...barWidth && { barWidth },
+			...barMaxWidth && { barMaxWidth },
+			...s.color && { itemStyle: { color: s.color } },
+			...showValues && { label: {
 				show: true,
 				position: horizontal ? "right" : "top"
-			};
-			return result;
-		});
-		if (horizontal) {
-			baseOption.xAxis = { type: "value" };
-			baseOption.yAxis = {
-				type: "category",
-				data: data.categories
-			};
-		}
-		return customOption ? mergeOptions(baseOption, customOption) : baseOption;
+			} }
+		}));
 	}, [
-		data,
-		horizontal,
+		data?.series,
 		stack,
-		showValues,
 		barWidth,
 		barMaxWidth,
-		title,
-		customOption,
+		showValues,
+		horizontal,
 		customSeries
+	]);
+	const chartOption = (0, react.useMemo)(() => ({
+		tooltip: {
+			trigger: "axis",
+			axisPointer: { type: "shadow" },
+			...tooltip
+		},
+		grid: {
+			left: "3%",
+			right: "4%",
+			bottom: "3%",
+			top: showLegend && data?.series && data.series.length > 1 ? 60 : 40,
+			containLabel: true,
+			...grid
+		},
+		xAxis: horizontal ? {
+			type: "value",
+			...xAxis
+		} : {
+			type: "category",
+			data: data?.categories || [],
+			...xAxis
+		},
+		yAxis: horizontal ? {
+			type: "category",
+			data: data?.categories || [],
+			...yAxis
+		} : {
+			type: "value",
+			...yAxis
+		},
+		legend: showLegend && data?.series && data.series.length > 1 ? {
+			data: data.series.map((s) => s.name),
+			top: 20,
+			...legend
+		} : void 0,
+		series
+	}), [
+		data?.categories,
+		data?.series,
+		horizontal,
+		showLegend,
+		tooltip,
+		grid,
+		xAxis,
+		yAxis,
+		legend,
+		series
 	]);
 	return /* @__PURE__ */ (0, react_jsx_runtime.jsx)(BaseChart, {
 		ref,
@@ -1929,15 +1902,16 @@ const PieChart = (0, react.forwardRef)(({ data, radius = ["40%", "70%"], center 
 			trigger: "item",
 			formatter: "{a} <br/>{b}: {c} ({d}%)"
 		},
-		legend: showLegend ? {
+		legend: {
 			type: "scroll",
 			orient: "vertical",
 			right: 10,
 			top: 20,
 			bottom: 20,
+			show: showLegend,
 			data: data.map((item) => item.name),
 			...legend
-		} : void 0,
+		},
 		series
 	}), [
 		series,
