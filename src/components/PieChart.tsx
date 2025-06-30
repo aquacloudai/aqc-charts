@@ -9,8 +9,10 @@ export interface PieChartProps extends Omit<BaseChartProps, 'option'> {
     readonly roseType?: boolean | 'radius' | 'area';
     readonly showLabels?: boolean;
     readonly showLegend?: boolean;
-    readonly series?: PieSeriesOption[]; // Allow direct series override
+    readonly legendOptions?: import('echarts').EChartsOption['legend']; 
+    readonly series?: PieSeriesOption[];
 }
+
 
 export const PieChart = forwardRef<ChartRef, PieChartProps>(({
     data,
@@ -19,14 +21,16 @@ export const PieChart = forwardRef<ChartRef, PieChartProps>(({
     roseType = false,
     showLabels = true,
     showLegend = true,
+    legendOptions, // 👈 here
     series: customSeries,
     ...props
 }, ref) => {
+
     const series = useMemo(() => {
         if (customSeries) {
             return customSeries;
         }
-        
+
         return [{
             type: 'pie' as const,
             data: [...data] as any,
@@ -47,18 +51,23 @@ export const PieChart = forwardRef<ChartRef, PieChartProps>(({
     }, [data, radius, center, roseType, showLabels, customSeries]);
 
     const chartOption = useMemo(() => ({
-        tooltip: {
-            trigger: 'item' as const,
-            formatter: '{a} <br/>{b}: {c} ({d}%)',
-        },
-        ...(showLegend && {
-            legend: {
-                data: data.map((item) => item.name),
-                top: 20,
-            }
-        }),
-        series,
-    }), [series, showLegend, data]);
+    tooltip: {
+        trigger: 'item' as const,
+        formatter: '{a} <br/>{b}: {c} ({d}%)',
+    },
+    legend: showLegend
+        ? {
+            type: 'scroll',
+            orient: 'vertical',
+            right: 10,
+            top: 20,
+            bottom: 20,
+            data: data.map((item) => item.name),
+            ...legendOptions,
+        }
+        : undefined,
+    series,
+    }), [series, showLegend, legendOptions, data]);
 
     return (
         <BaseChart
