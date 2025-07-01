@@ -9,6 +9,7 @@ export { SankeyChart } from './components/SankeyChart';
 export { ScatterChart } from './components/ScatterChart';
 export { ClusterChart } from './components/ClusterChart';
 export { RegressionChart } from './components/RegressionChart';
+export { GanttChart } from './components/GanttChart';
 
 // Hooks
 export { useECharts } from './hooks/useECharts';
@@ -87,6 +88,7 @@ export type { SankeyChartProps } from './components/SankeyChart';
 export type { ScatterChartProps } from './components/ScatterChart';
 export type { ClusterChartProps } from './components/ClusterChart';
 export type { RegressionChartProps } from './components/RegressionChart';
+export type { GanttChartProps } from './components/GanttChart';
 
 // CSS injection for styling (optimized for modern bundlers)
 if (typeof document !== 'undefined' && !document.getElementById('aqc-charts-styles')) {

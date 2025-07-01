@@ -1,5 +1,5 @@
 import React from 'react';
-import { LineChart, BarChart, CalendarHeatmapChart, StackedBarChart, SankeyChart, PieChart } from 'aqc-charts';
+import { LineChart, BarChart, CalendarHeatmapChart, StackedBarChart, SankeyChart, PieChart, GanttChart } from 'aqc-charts';
 import { TemperatureExample } from './TemperatureExample';
 import { ApiIntegrationExample } from './ApiIntegrationExample';
 import { ScatterExample } from './ScatterExample';
@@ -122,6 +122,104 @@ const sankeyData = {
     { source: 'a', target: 'b1', value: 3 },
     { source: 'b1', target: 'a1', value: 1 },
     { source: 'b1', target: 'c', value: 2 }
+  ]
+};
+
+// Gantt chart data - Project timeline example
+const ganttData = {
+  tasks: [
+    {
+      id: 'task1',
+      name: 'Project Planning',
+      category: 'Development',
+      startTime: new Date('2024-01-01T09:00:00'),
+      endTime: new Date('2024-01-05T17:00:00'),
+      color: '#5470c6'
+    },
+    {
+      id: 'task2',
+      name: 'Requirements Analysis',
+      category: 'Analysis', 
+      startTime: new Date('2024-01-03T09:00:00'),
+      endTime: new Date('2024-01-10T17:00:00'),
+      color: '#91cc75',
+      vip: true
+    },
+    {
+      id: 'task3',
+      name: 'UI Design',
+      category: 'Design',
+      startTime: new Date('2024-01-08T09:00:00'),
+      endTime: new Date('2024-01-15T17:00:00'),
+      color: '#fac858'
+    },
+    {
+      id: 'task4',
+      name: 'Frontend Development',
+      category: 'Development',
+      startTime: new Date('2024-01-12T09:00:00'),
+      endTime: new Date('2024-01-25T17:00:00'),
+      color: '#5470c6'
+    },
+    {
+      id: 'task5',
+      name: 'Backend Development',
+      category: 'Development',
+      startTime: new Date('2024-01-15T09:00:00'),
+      endTime: new Date('2024-01-30T17:00:00'),
+      color: '#5470c6'
+    },
+    {
+      id: 'task6',
+      name: 'Integration Testing',
+      category: 'Testing',
+      startTime: new Date('2024-01-25T09:00:00'),
+      endTime: new Date('2024-02-05T17:00:00'),
+      color: '#ee6666',
+      vip: true
+    },
+    {
+      id: 'task7',
+      name: 'User Acceptance Testing',
+      category: 'Testing',
+      startTime: new Date('2024-02-01T09:00:00'),
+      endTime: new Date('2024-02-08T17:00:00'),
+      color: '#ee6666'
+    },
+    {
+      id: 'task8',
+      name: 'Code Review',
+      category: 'Review',
+      startTime: new Date('2024-02-05T09:00:00'),
+      endTime: new Date('2024-02-10T17:00:00'),
+      color: '#73c0de'
+    },
+    {
+      id: 'task9',
+      name: 'Deployment',
+      category: 'Deployment',
+      startTime: new Date('2024-02-08T09:00:00'),
+      endTime: new Date('2024-02-12T17:00:00'),
+      color: '#9a60b4',
+      vip: true
+    },
+    {
+      id: 'task10',
+      name: 'Documentation',
+      category: 'Documentation',
+      startTime: new Date('2024-02-10T09:00:00'),
+      endTime: new Date('2024-02-15T17:00:00'),
+      color: '#ea7ccc'
+    }
+  ],
+  categories: [
+    { name: 'Development', label: 'Development Team' },
+    { name: 'Analysis', label: 'Business Analysis' },
+    { name: 'Design', label: 'UI/UX Design' },
+    { name: 'Testing', label: 'QA Testing' },
+    { name: 'Review', label: 'Code Review' },
+    { name: 'Deployment', label: 'DevOps' },
+    { name: 'Documentation', label: 'Technical Writing' }
   ]
 };
 
@@ -331,6 +429,61 @@ function App() {
       <h2>Advanced Scatter Chart Features</h2>
       <div style={{ marginBottom: '40px' }}>
         <AdvancedScatterExample />
+      </div>
+
+      <h2>Gantt Chart - Project Timeline</h2>
+      <div style={{ height: '500px', marginBottom: '40px' }}>
+        <GanttChart
+          data={ganttData}
+          title="Software Development Project Timeline"
+          width="100%"
+          height={500}
+          showDataZoom={true}
+          heightRatio={0.7}
+          tooltip={{
+            formatter: (params: any) => {
+              if (Array.isArray(params)) {
+                const param = params[0];
+                if (param?.seriesIndex === 0) {
+                  const startTime = new Date(param.value[1]).toLocaleDateString();
+                  const endTime = new Date(param.value[2]).toLocaleDateString();
+                  const taskName = param.value[3];
+                  const category = ganttData.categories[param.value[0]]?.label || 'Unknown';
+                  const isVip = param.value[4] ? ' (Priority)' : '';
+                  return `
+                    <strong>${taskName}${isVip}</strong><br/>
+                    Team: ${category}<br/>
+                    Start: ${startTime}<br/>
+                    End: ${endTime}
+                  `;
+                }
+              }
+              return '';
+            }
+          }}
+        />
+      </div>
+
+      <h2>Gantt Chart - Simplified View</h2>
+      <div style={{ height: '400px', marginBottom: '40px' }}>
+        <GanttChart
+          data={{
+            tasks: ganttData.tasks.slice(0, 6), // Show only first 6 tasks
+            categories: ganttData.categories.slice(0, 4) // Show only first 4 categories
+          }}
+          title="Project Timeline - Phase 1"
+          width="100%"
+          height={400}
+          showDataZoom={false}
+          heightRatio={0.8}
+          grid={{
+            left: 120,
+            right: 20,
+            top: 80,
+            bottom: 20,
+            backgroundColor: '#fafafa'
+          }}
+        />
       </div>
     </div>
   );

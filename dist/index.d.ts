@@ -8,6 +8,7 @@ export { SankeyChart } from './components/SankeyChart';
 export { ScatterChart } from './components/ScatterChart';
 export { ClusterChart } from './components/ClusterChart';
 export { RegressionChart } from './components/RegressionChart';
+export { GanttChart } from './components/GanttChart';
 export { useECharts } from './hooks/useECharts';
 export { lightTheme, darkTheme } from './utils/themes';
 export { extractPoints, performKMeansClustering, clusterPointsToScatterData } from './utils/regression';
@@ -21,4 +22,5 @@ export type { SankeyChartProps } from './components/SankeyChart';
 export type { ScatterChartProps } from './components/ScatterChart';
 export type { ClusterChartProps } from './components/ClusterChart';
 export type { RegressionChartProps } from './components/RegressionChart';
+export type { GanttChartProps } from './components/GanttChart';
 //# sourceMappingURL=index.d.ts.map
