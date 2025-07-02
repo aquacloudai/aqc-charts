@@ -1,118 +1,359 @@
-import React, { forwardRef, useMemo } from 'react';
-import type { BaseChartProps, ChartRef, EChartsOption, LineSeriesOption } from '@/types';
-import { BaseChart } from './BaseChart';
-import { createLineChartOption, mergeOptions } from '@/utils/chartHelpers';
+import { forwardRef, useMemo, useImperativeHandle } from 'react';
+import type { EChartsType } from 'echarts/core';
+import type { LineChartProps, ErgonomicChartRef } from '@/types/ergonomic';
+import { useECharts } from '@/hooks/useECharts';
+import { buildLineChartOption } from '@/utils/ergonomic';
 
-export interface LineChartProps extends Omit<BaseChartProps, 'option'> {
-    readonly data: {
-        readonly categories: string[];
-        readonly series: Array<{
-            readonly name: string;
-            readonly data: number[];
-            readonly color?: string;
-            readonly smooth?: boolean;
-            readonly area?: boolean;
-            readonly stack?: string;
-            readonly symbol?: string;
-            readonly symbolSize?: number;
-            readonly connectNulls?: boolean;
-        }>;
-    };
-    readonly smooth?: boolean;
-    readonly area?: boolean;
-    readonly stack?: boolean;
-    readonly symbol?: boolean;
-    readonly symbolSize?: number;
-    readonly connectNulls?: boolean;
-    readonly option?: Partial<EChartsOption>;
-    readonly series?: LineSeriesOption[]; // Allow direct ECharts series override
-}
-
-export const LineChart = forwardRef<ChartRef, LineChartProps>(({
-    data,
-    smooth = false,
-    area = false,
-    stack = false,
-    symbol = true,
-    symbolSize = 4,
-    connectNulls = false,
-    title,
-    option: customOption,
-    series: customSeries,
-    ...props
+/**
+ * Ergonomic LineChart component with intuitive props
+ * 
+ * @example
+ * // Simple line chart with object data
+ * <ErgonomicLineChart
+ *   data={[
+ *     { month: 'Jan', sales: 100, profit: 20 },
+ *     { month: 'Feb', sales: 120, profit: 25 },
+ *     { month: 'Mar', sales: 110, profit: 22 }
+ *   ]}
+ *   xField="month"
+ *   yField={['sales', 'profit']}
+ *   smooth
+ *   showArea
+ * />
+ * 
+ * @example
+ * // Multiple series with explicit configuration
+ * <ErgonomicLineChart
+ *   series={[
+ *     {
+ *       name: 'Sales',
+ *       data: [{ date: '2023-01', value: 100 }, { date: '2023-02', value: 120 }],
+ *       color: '#ff6b6b',
+ *       smooth: true
+ *     },
+ *     {
+ *       name: 'Profit',
+ *       data: [{ date: '2023-01', value: 20 }, { date: '2023-02', value: 25 }],
+ *       color: '#4ecdc4'
+ *     }
+ *   ]}
+ *   xField="date"
+ *   yField="value"
+ * />
+ */
+const LineChart = forwardRef<ErgonomicChartRef, LineChartProps>(({
+  // Chart dimensions
+  width = '100%',
+  height = 400,
+  className,
+  style,
+  
+  // Data and field mappings
+  data,
+  xField = 'x',
+  yField = 'y',
+  seriesField,
+  series,
+  
+  // Styling
+  theme = 'light',
+  colorPalette,
+  backgroundColor,
+  
+  // Title
+  title,
+  subtitle,
+  titlePosition = 'center',
+  
+  // Line styling
+  smooth = false,
+  strokeWidth = 2,
+  strokeStyle = 'solid',
+  showPoints = true,
+  pointSize = 4,
+  pointShape = 'circle',
+  
+  // Area
+  showArea = false,
+  areaOpacity = 0.3,
+  areaGradient = false,
+  
+  // Configuration
+  xAxis,
+  yAxis,
+  legend,
+  tooltip,
+  
+  // Interaction
+  zoom = false,
+  pan = false,
+  brush = false,
+  
+  // States
+  loading = false,
+  disabled = false,
+  animate = true,
+  animationDuration,
+  
+  // Events
+  onChartReady,
+  onDataPointClick,
+  onDataPointHover,
+  
+  // Advanced
+  customOption,
+  responsive = true,
+  
+  ...restProps
 }, ref) => {
-    const chartOption = useMemo(() => {
-        // If custom series provided, use those directly
-        if (customSeries) {
-            return {
-                xAxis: { type: 'category' as const, data: data?.categories || [] },
-                yAxis: { type: 'value' as const },
-                series: customSeries,
-                ...(title && { title: { text: title, left: 'center' } }),
-                ...(customOption && customOption),
-            } as EChartsOption;
-        }
-        
-        // Ensure data.series exists and is an array
-        if (!data?.series || !Array.isArray(data.series)) {
-            return { series: [] };
-        }
-        
-        // Create base option using helper
-        const baseOption = createLineChartOption({
-            categories: data.categories,
-            series: data.series.map(s => ({
-                name: s.name,
-                data: s.data,
-                ...(s.color && { color: s.color }),
-                // Preserve any additional properties from the series data
-                ...Object.fromEntries(
-                    Object.entries(s).filter(([key]) => !['name', 'data', 'color'].includes(key))
-                ),
-            })),
-            ...(title && { title }),
-        });
+  
+  // Build ECharts option from ergonomic props
+  const chartOption = useMemo(() => {
+    return buildLineChartOption({
+      data: data || undefined,
+      xField,
+      yField,
+      seriesField,
+      series,
+      theme,
+      colorPalette,
+      backgroundColor,
+      title,
+      subtitle,
+      titlePosition,
+      smooth,
+      strokeWidth,
+      strokeStyle,
+      showPoints,
+      pointSize,
+      pointShape,
+      showArea,
+      areaOpacity,
+      areaGradient,
+      xAxis: xAxis || undefined,
+      yAxis: yAxis || undefined,
+      legend,
+      tooltip,
+      zoom,
+      pan,
+      brush,
+      animate,
+      animationDuration,
+      customOption,
+    });
+  }, [
+    data, xField, yField, seriesField, series,
+    theme, colorPalette, backgroundColor,
+    title, subtitle, titlePosition,
+    smooth, strokeWidth, strokeStyle, showPoints, pointSize, pointShape,
+    showArea, areaOpacity, areaGradient,
+    xAxis, yAxis, legend, tooltip,
+    zoom, pan, brush, animate, animationDuration,
+    customOption
+  ]);
+  
+  // Handle data point interactions
+  const chartEvents = useMemo(() => {
+    const events: Record<string, any> = {};
+    
+    if (onDataPointClick) {
+      events.click = (params: any, chart: EChartsType) => {
+        onDataPointClick(params, { chart, event: params });
+      };
+    }
+    
+    if (onDataPointHover) {
+      events.mouseover = (params: any, chart: EChartsType) => {
+        onDataPointHover(params, { chart, event: params });
+      };
+    }
+    
+    return Object.keys(events).length > 0 ? events : undefined;
+  }, [onDataPointClick, onDataPointHover]);
 
-        // Apply line-specific configurations
-        if (baseOption.series && Array.isArray(baseOption.series)) {
-            baseOption.series = baseOption.series.map((series: any, index) => {
-                const result: any = {
-                    ...series,
-                    smooth: data.series[index]?.smooth ?? smooth,
-                    showSymbol: symbol,
-                    symbolSize: data.series[index]?.symbolSize ?? symbolSize,
-                    connectNulls: data.series[index]?.connectNulls ?? connectNulls,
-                };
-                
-                if (data.series[index]?.symbol) {
-                    result.symbol = data.series[index].symbol;
-                }
-                
-                if (stack && data.series[index]?.stack) {
-                    result.stack = data.series[index].stack;
-                } else if (stack) {
-                    result.stack = 'total';
-                }
-                
-                if (area) {
-                    result.areaStyle = {};
-                }
-                
-                return result;
-            });
-        }
-
-        // Merge with custom option if provided
-        return customOption ? mergeOptions(baseOption, customOption) : baseOption;
-    }, [data, smooth, area, stack, symbol, symbolSize, connectNulls, title, customOption, customSeries]);
-
+  // Use our refactored hook with events included
+  const {
+    containerRef,
+    loading: chartLoading,
+    error,
+    getEChartsInstance,
+    resize,
+    showLoading,
+    hideLoading,
+  } = useECharts({
+    option: chartOption,
+    theme,
+    loading,
+    events: chartEvents,
+    onChartReady,
+  });
+  
+  // Export image functionality
+  const exportImage = (format: 'png' | 'jpeg' | 'svg' = 'png'): string => {
+    const chart = getEChartsInstance();
+    if (!chart) return '';
+    
+    return chart.getDataURL({
+      type: format,
+      pixelRatio: 2,
+      backgroundColor: backgroundColor || '#fff',
+    });
+  };
+  
+  // Highlight functionality
+  const highlight = (dataIndex: number, seriesIndex: number = 0) => {
+    const chart = getEChartsInstance();
+    if (!chart) return;
+    
+    chart.dispatchAction({
+      type: 'highlight',
+      seriesIndex,
+      dataIndex,
+    });
+  };
+  
+  const clearHighlight = () => {
+    const chart = getEChartsInstance();
+    if (!chart) return;
+    
+    chart.dispatchAction({
+      type: 'downplay',
+    });
+  };
+  
+  // Update data functionality
+  const updateData = (newData: readonly any[]) => {
+    const chart = getEChartsInstance();
+    if (!chart) return;
+    
+    const newOption = buildLineChartOption({
+      data: newData,
+      xField,
+      yField,
+      seriesField: seriesField || undefined,
+      series,
+      theme,
+      colorPalette,
+      backgroundColor,
+      title,
+      subtitle,
+      titlePosition,
+      smooth,
+      strokeWidth,
+      strokeStyle,
+      showPoints,
+      pointSize,
+      pointShape,
+      showArea,
+      areaOpacity,
+      areaGradient,
+      xAxis: xAxis || undefined,
+      yAxis: yAxis || undefined,
+      legend,
+      tooltip,
+      zoom,
+      pan,
+      brush,
+      animate,
+      animationDuration,
+      customOption,
+    });
+    
+    chart.setOption(newOption as any);
+  };
+  
+  // Expose ergonomic API through ref
+  useImperativeHandle(ref, () => ({
+    getChart: getEChartsInstance,
+    exportImage,
+    resize,
+    showLoading: () => showLoading(),
+    hideLoading,
+    highlight,
+    clearHighlight,
+    updateData,
+  }), [getEChartsInstance, exportImage, resize, showLoading, hideLoading, highlight, clearHighlight, updateData]);
+  
+  // Error state
+  if (error) {
     return (
-        <BaseChart
-            ref={ref}
-            option={chartOption}
-            {...props}
-        />
+      <div
+        className={`aqc-charts-error ${className || ''}`}
+        style={{
+          width,
+          height,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          color: '#ff4d4f',
+          fontSize: '14px',
+          border: '1px dashed #ff4d4f',
+          borderRadius: '4px',
+          ...style,
+        }}
+      >
+        Error: {error.message || 'Failed to render chart'}
+      </div>
     );
+  }
+  
+  // Container style
+  const containerStyle = useMemo(() => ({
+    width,
+    height,
+    position: 'relative' as const,
+    ...style,
+  }), [width, height, style]);
+  
+  return (
+    <div
+      className={`aqc-charts-container ${className || ''}`}
+      style={containerStyle}
+      {...restProps}
+    >
+      {/* Chart container */}
+      <div
+        ref={containerRef}
+        style={{
+          width: '100%',
+          height: '100%',
+        }}
+      />
+      
+      {/* Loading overlay */}
+      {(chartLoading || loading) && (
+        <div 
+          className="aqc-charts-loading"
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            backgroundColor: 'rgba(255, 255, 255, 0.8)',
+            fontSize: '14px',
+            color: '#666',
+          }}
+        >
+          <div className="aqc-charts-spinner" style={{
+            width: '20px',
+            height: '20px',
+            border: '2px solid #f3f3f3',
+            borderTop: '2px solid #1890ff',
+            borderRadius: '50%',
+            animation: 'spin 1s linear infinite',
+            marginRight: '8px',
+          }} />
+          Loading...
+        </div>
+      )}
+    </div>
+  );
 });
 
 LineChart.displayName = 'LineChart';
+
+export { LineChart };

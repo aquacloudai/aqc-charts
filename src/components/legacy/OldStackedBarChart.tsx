@@ -10,9 +10,9 @@ import type {
     XAXisOption,
     YAXisOption
 } from '@/types';
-import { BaseChart } from './BaseChart';
+import { BaseChart } from '../BaseChart';
 
-export interface StackedBarChartProps extends Omit<BaseChartProps, 'option'> {
+export interface OldStackedBarChartProps extends Omit<BaseChartProps, 'option'> {
     readonly data: StackedBarData;
     readonly horizontal?: boolean;
     readonly showPercentage?: boolean;
@@ -36,7 +36,7 @@ export interface StackedBarChartProps extends Omit<BaseChartProps, 'option'> {
     readonly series?: BarSeriesOption[];
 }
 
-export const StackedBarChart = forwardRef<ChartRef, StackedBarChartProps>(({
+export const OldStackedBarChart = forwardRef<ChartRef, OldStackedBarChartProps>(({
     data,
     horizontal = false,
     showPercentage = false,
@@ -180,4 +180,4 @@ export const StackedBarChart = forwardRef<ChartRef, StackedBarChartProps>(({
     );
 });
 
-StackedBarChart.displayName = 'StackedBarChart';
+OldStackedBarChart.displayName = 'OldStackedBarChart';

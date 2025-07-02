@@ -1,80 +1,367 @@
-import React, { forwardRef, useMemo } from 'react';
-import type { BaseChartProps, ChartRef, ChartDataPoint, PieSeriesOption, LegendComponentOption } from '@/types';
-import { BaseChart } from './BaseChart';
+import { forwardRef, useMemo, useImperativeHandle } from 'react';
+import type { EChartsType } from 'echarts/core';
+import type { PieChartProps, ErgonomicChartRef } from '@/types/ergonomic';
+import { useECharts } from '@/hooks/useECharts';
+import { buildPieChartOption } from '@/utils/ergonomic';
 
-export interface PieChartProps extends Omit<BaseChartProps, 'option'> {
-    readonly data: readonly ChartDataPoint[];
-    readonly radius?: string | number | readonly [string | number, string | number];
-    readonly center?: readonly [string | number, string | number];
-    readonly roseType?: boolean | 'radius' | 'area';
-    readonly showLabels?: boolean;
-    readonly showLegend?: boolean;
-    readonly legend?: LegendComponentOption;
-    readonly series?: PieSeriesOption[];
-}
-
-
-export const PieChart = forwardRef<ChartRef, PieChartProps>(({
-    data,
-    radius = ['40%', '70%'],
-    center = ['50%', '50%'],
-    roseType = false,
-    showLabels = true,
-    showLegend = true,
-    legend,
-    series: customSeries,
-    ...props
+/**
+ * Ergonomic PieChart component with intuitive props
+ * 
+ * @example
+ * // Simple pie chart with object data
+ * <ErgonomicPieChart
+ *   data={[
+ *     { category: 'Desktop', sales: 4200 },
+ *     { category: 'Mobile', sales: 3800 },
+ *     { category: 'Tablet', sales: 1200 }
+ *   ]}
+ *   nameField="category"
+ *   valueField="sales"
+ *   title="Sales by Platform"
+ * />
+ * 
+ * @example
+ * // Donut chart with custom styling
+ * <ErgonomicPieChart
+ *   data={marketData}
+ *   nameField="segment"
+ *   valueField="share"
+ *   radius={[40, 70]}
+ *   title="Market Share"
+ *   showPercentages
+ *   labelPosition="outside"
+ * />
+ * 
+ * @example
+ * // Rose/nightingale chart
+ * <ErgonomicPieChart
+ *   data={performanceData}
+ *   nameField="department"
+ *   valueField="score"
+ *   roseType
+ *   title="Performance by Department"
+ *   showLabels
+ * />
+ */
+const PieChart = forwardRef<ErgonomicChartRef, PieChartProps>(({
+  // Chart dimensions
+  width = '100%',
+  height = 400,
+  className,
+  style,
+  
+  // Data and field mappings
+  data,
+  nameField = 'name',
+  valueField = 'value',
+  
+  // Styling
+  theme = 'light',
+  colorPalette,
+  backgroundColor,
+  
+  // Title
+  title,
+  subtitle,
+  titlePosition = 'center',
+  
+  // Pie styling
+  radius = 75,
+  startAngle = 90,
+  roseType = false,
+  
+  // Labels
+  showLabels = true,
+  labelPosition = 'outside',
+  showValues = false,
+  showPercentages = true,
+  labelFormat,
+  
+  // Configuration
+  legend,
+  tooltip,
+  
+  // Interaction
+  selectedMode = false,
+  emphasis = true,
+  
+  // States
+  loading = false,
+  disabled = false,
+  animate = true,
+  animationDuration,
+  
+  // Events
+  onChartReady,
+  onDataPointClick,
+  onDataPointHover,
+  
+  // Advanced
+  customOption,
+  responsive = true,
+  
+  ...restProps
 }, ref) => {
+  
+  // Build ECharts option from ergonomic props
+  const chartOption = useMemo(() => {
+    return buildPieChartOption({
+      data,
+      nameField,
+      valueField,
+      theme,
+      colorPalette,
+      backgroundColor,
+      title,
+      subtitle,
+      titlePosition,
+      radius,
+      startAngle,
+      roseType,
+      showLabels,
+      labelPosition,
+      showValues,
+      showPercentages,
+      labelFormat,
+      legend,
+      tooltip,
+      selectedMode,
+      emphasis,
+      animate,
+      animationDuration,
+      customOption,
+    });
+  }, [
+    data, nameField, valueField,
+    theme, colorPalette, backgroundColor,
+    title, subtitle, titlePosition,
+    radius, startAngle, roseType,
+    showLabels, labelPosition, showValues, showPercentages, labelFormat,
+    legend, tooltip, selectedMode, emphasis,
+    animate, animationDuration, customOption
+  ]);
+  
+  // Handle data point interactions
+  const chartEvents = useMemo(() => {
+    const events: Record<string, any> = {};
+    
+    if (onDataPointClick) {
+      events.click = (params: any, chart: EChartsType) => {
+        onDataPointClick(params, { chart, event: params });
+      };
+    }
+    
+    if (onDataPointHover) {
+      events.mouseover = (params: any, chart: EChartsType) => {
+        onDataPointHover(params, { chart, event: params });
+      };
+    }
+    
+    return Object.keys(events).length > 0 ? events : undefined;
+  }, [onDataPointClick, onDataPointHover]);
 
-    const series = useMemo(() => {
-        if (customSeries) {
-            return customSeries;
-        }
-
-        return [{
-            type: 'pie' as const,
-            data: [...data] as any,
-            radius,
-            center: [...center] as any,
-            ...(roseType && { roseType: roseType === true ? 'radius' : roseType }),
-            label: {
-                show: showLabels,
-            },
-            emphasis: {
-                label: {
-                    show: true,
-                    fontSize: 14,
-                    fontWeight: 'bold',
-                },
-            },
-        }] as PieSeriesOption[];
-    }, [data, radius, center, roseType, showLabels, customSeries]);
-
-    const chartOption = useMemo(() => ({
-        tooltip: {
-            trigger: 'item' as const,
-            formatter: '{a} <br/>{b}: {c} ({d}%)',
-        },
-        legend: {
-            type: 'scroll',
-            orient: 'vertical',
-            right: 10,
-            top: 20,
-            bottom: 20,
-            show: showLegend,
-            data: data.map((item) => item.name),
-            ...legend,
-        } as LegendComponentOption,
-        series,
-    }), [series, showLegend, legend, data]);
-
+  // Use our refactored hook with events included
+  const {
+    containerRef,
+    loading: chartLoading,
+    error,
+    getEChartsInstance,
+    resize,
+    showLoading,
+    hideLoading,
+  } = useECharts({
+    option: chartOption,
+    theme,
+    loading,
+    events: chartEvents,
+    onChartReady,
+  });
+  
+  // Export image functionality
+  const exportImage = (format: 'png' | 'jpeg' | 'svg' = 'png'): string => {
+    const chart = getEChartsInstance();
+    if (!chart) return '';
+    
+    return chart.getDataURL({
+      type: format,
+      pixelRatio: 2,
+      backgroundColor: backgroundColor || '#fff',
+    });
+  };
+  
+  // Highlight functionality
+  const highlight = (dataIndex: number) => {
+    const chart = getEChartsInstance();
+    if (!chart) return;
+    
+    chart.dispatchAction({
+      type: 'highlight',
+      seriesIndex: 0,
+      dataIndex,
+    });
+  };
+  
+  const clearHighlight = () => {
+    const chart = getEChartsInstance();
+    if (!chart) return;
+    
+    chart.dispatchAction({
+      type: 'downplay',
+    });
+  };
+  
+  // Select/unselect slice functionality
+  const selectSlice = (dataIndex: number) => {
+    const chart = getEChartsInstance();
+    if (!chart) return;
+    
+    chart.dispatchAction({
+      type: 'pieSelect',
+      seriesIndex: 0,
+      dataIndex,
+    });
+  };
+  
+  const unselectSlice = (dataIndex: number) => {
+    const chart = getEChartsInstance();
+    if (!chart) return;
+    
+    chart.dispatchAction({
+      type: 'pieUnSelect',
+      seriesIndex: 0,
+      dataIndex,
+    });
+  };
+  
+  // Update data functionality
+  const updateData = (newData: readonly any[]) => {
+    const chart = getEChartsInstance();
+    if (!chart) return;
+    
+    const newOption = buildPieChartOption({
+      data: newData,
+      nameField,
+      valueField,
+      theme,
+      colorPalette,
+      backgroundColor,
+      title,
+      subtitle,
+      titlePosition,
+      radius,
+      startAngle,
+      roseType,
+      showLabels,
+      labelPosition,
+      showValues,
+      showPercentages,
+      labelFormat,
+      legend,
+      tooltip,
+      selectedMode,
+      emphasis,
+      animate,
+      animationDuration,
+      customOption,
+    });
+    
+    chart.setOption(newOption as any);
+  };
+  
+  // Expose ergonomic API through ref
+  useImperativeHandle(ref, () => ({
+    getChart: getEChartsInstance,
+    exportImage,
+    resize,
+    showLoading: () => showLoading(),
+    hideLoading,
+    highlight,
+    clearHighlight,
+    updateData,
+    selectSlice,
+    unselectSlice,
+  }), [getEChartsInstance, exportImage, resize, showLoading, hideLoading, highlight, clearHighlight, updateData, selectSlice, unselectSlice]);
+  
+  // Error state
+  if (error) {
     return (
-        <BaseChart
-            ref={ref}
-            option={chartOption as any}
-            {...props}
-        />
+      <div
+        className={`aqc-charts-error ${className || ''}`}
+        style={{
+          width,
+          height,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          color: '#ff4d4f',
+          fontSize: '14px',
+          border: '1px dashed #ff4d4f',
+          borderRadius: '4px',
+          ...style,
+        }}
+      >
+        Error: {error.message || 'Failed to render chart'}
+      </div>
     );
+  }
+  
+  // Container style
+  const containerStyle = useMemo(() => ({
+    width,
+    height,
+    position: 'relative' as const,
+    ...style,
+  }), [width, height, style]);
+  
+  return (
+    <div
+      className={`aqc-charts-container ${className || ''}`}
+      style={containerStyle}
+      {...restProps}
+    >
+      {/* Chart container */}
+      <div
+        ref={containerRef}
+        style={{
+          width: '100%',
+          height: '100%',
+        }}
+      />
+      
+      {/* Loading overlay */}
+      {(chartLoading || loading) && (
+        <div 
+          className="aqc-charts-loading"
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            backgroundColor: 'rgba(255, 255, 255, 0.8)',
+            fontSize: '14px',
+            color: '#666',
+          }}
+        >
+          <div className="aqc-charts-spinner" style={{
+            width: '20px',
+            height: '20px',
+            border: '2px solid #f3f3f3',
+            borderTop: '2px solid #1890ff',
+            borderRadius: '50%',
+            animation: 'spin 1s linear infinite',
+            marginRight: '8px',
+          }} />
+          Loading...
+        </div>
+      )}
+    </div>
+  );
 });
 
 PieChart.displayName = 'PieChart';
+
+export { PieChart };

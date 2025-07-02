@@ -1,8 +1,8 @@
 import React, { forwardRef, useMemo } from 'react';
 import type { BaseChartProps, ChartRef, EChartsOption, ClusterChartData, ClusterVisualMapPiece, EcStatClusteringTransformOption } from '@/types';
-import { BaseChart } from './BaseChart';
+import { BaseChart } from '../BaseChart';
 
-export interface ClusterChartProps extends Omit<BaseChartProps, 'option'> {
+export interface OldClusterChartProps extends Omit<BaseChartProps, 'option'> {
     readonly data: ClusterChartData;
     readonly clusterCount?: number;
     readonly outputClusterIndexDimension?: number;
@@ -28,7 +28,7 @@ const DEFAULT_COLORS = [
     '#96BFFF'
 ];
 
-export const ClusterChart = forwardRef<ChartRef, ClusterChartProps>(({
+export const OldClusterChart = forwardRef<ChartRef, OldClusterChartProps>(({
     data,
     clusterCount = 6,
     outputClusterIndexDimension = 2,
@@ -158,4 +158,4 @@ export const ClusterChart = forwardRef<ChartRef, ClusterChartProps>(({
     );
 });
 
-ClusterChart.displayName = 'ClusterChart';
+OldClusterChart.displayName = 'OldClusterChart';

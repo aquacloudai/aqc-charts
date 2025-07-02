@@ -1,28 +1,41 @@
-import React from 'react';
-import type { BaseChartProps, ChartRef, EChartsOption, LineSeriesOption } from '@/types';
-export interface LineChartProps extends Omit<BaseChartProps, 'option'> {
-    readonly data: {
-        readonly categories: string[];
-        readonly series: Array<{
-            readonly name: string;
-            readonly data: number[];
-            readonly color?: string;
-            readonly smooth?: boolean;
-            readonly area?: boolean;
-            readonly stack?: string;
-            readonly symbol?: string;
-            readonly symbolSize?: number;
-            readonly connectNulls?: boolean;
-        }>;
-    };
-    readonly smooth?: boolean;
-    readonly area?: boolean;
-    readonly stack?: boolean;
-    readonly symbol?: boolean;
-    readonly symbolSize?: number;
-    readonly connectNulls?: boolean;
-    readonly option?: Partial<EChartsOption>;
-    readonly series?: LineSeriesOption[];
-}
-export declare const LineChart: React.ForwardRefExoticComponent<LineChartProps & React.RefAttributes<ChartRef>>;
+import type { LineChartProps, ErgonomicChartRef } from '@/types/ergonomic';
+/**
+ * Ergonomic LineChart component with intuitive props
+ *
+ * @example
+ * // Simple line chart with object data
+ * <ErgonomicLineChart
+ *   data={[
+ *     { month: 'Jan', sales: 100, profit: 20 },
+ *     { month: 'Feb', sales: 120, profit: 25 },
+ *     { month: 'Mar', sales: 110, profit: 22 }
+ *   ]}
+ *   xField="month"
+ *   yField={['sales', 'profit']}
+ *   smooth
+ *   showArea
+ * />
+ *
+ * @example
+ * // Multiple series with explicit configuration
+ * <ErgonomicLineChart
+ *   series={[
+ *     {
+ *       name: 'Sales',
+ *       data: [{ date: '2023-01', value: 100 }, { date: '2023-02', value: 120 }],
+ *       color: '#ff6b6b',
+ *       smooth: true
+ *     },
+ *     {
+ *       name: 'Profit',
+ *       data: [{ date: '2023-01', value: 20 }, { date: '2023-02', value: 25 }],
+ *       color: '#4ecdc4'
+ *     }
+ *   ]}
+ *   xField="date"
+ *   yField="value"
+ * />
+ */
+declare const LineChart: import("react").ForwardRefExoticComponent<LineChartProps & import("react").RefAttributes<ErgonomicChartRef>>;
+export { LineChart };
 //# sourceMappingURL=LineChart.d.ts.map

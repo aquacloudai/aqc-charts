@@ -1,6 +1,6 @@
 import React, { forwardRef, useMemo } from 'react';
 import type { BaseChartProps, ChartRef, EChartsOption } from '@/types';
-import { BaseChart } from './BaseChart';
+import { BaseChart } from '../BaseChart';
 import { createSankeyChartOption, mergeOptions } from '@/utils/chartHelpers';
 
 export interface SankeyNode {
@@ -20,7 +20,7 @@ export interface SankeyLink {
     readonly emphasis?: unknown;
 }
 
-export interface SankeyChartProps extends Omit<BaseChartProps, 'option'> {
+export interface OldSankeyChartProps extends Omit<BaseChartProps, 'option'> {
     readonly data: {
         readonly nodes: readonly SankeyNode[];
         readonly links: readonly SankeyLink[];
@@ -34,7 +34,7 @@ export interface SankeyChartProps extends Omit<BaseChartProps, 'option'> {
     readonly option?: Partial<EChartsOption>;
 }
 
-export const SankeyChart = forwardRef<ChartRef, SankeyChartProps>(({
+export const OldSankeyChart = forwardRef<ChartRef, OldSankeyChartProps>(({
     data,
     layout = 'none',
     orient = 'horizontal',
@@ -78,4 +78,4 @@ export const SankeyChart = forwardRef<ChartRef, SankeyChartProps>(({
     );
 });
 
-SankeyChart.displayName = 'SankeyChart';
+OldSankeyChart.displayName = 'OldSankeyChart';

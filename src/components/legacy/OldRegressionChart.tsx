@@ -1,8 +1,8 @@
 import React, { forwardRef, useMemo } from 'react';
 import type { BaseChartProps, ChartRef, EChartsOption, RegressionChartData, RegressionMethod, EcStatRegressionTransformOption } from '@/types';
-import { BaseChart } from './BaseChart';
+import { BaseChart } from '../BaseChart';
 
-export interface RegressionChartProps extends Omit<BaseChartProps, 'option'> {
+export interface OldRegressionChartProps extends Omit<BaseChartProps, 'option'> {
     readonly data: RegressionChartData;
     readonly method?: RegressionMethod;
     readonly formulaOn?: 'start' | 'end' | boolean;
@@ -19,7 +19,7 @@ export interface RegressionChartProps extends Omit<BaseChartProps, 'option'> {
     readonly option?: Partial<EChartsOption>;
 }
 
-export const RegressionChart = forwardRef<ChartRef, RegressionChartProps>(({
+export const OldRegressionChart = forwardRef<ChartRef, OldRegressionChartProps>(({
     data,
     method = 'linear',
     formulaOn = 'end',
@@ -170,4 +170,4 @@ export const RegressionChart = forwardRef<ChartRef, RegressionChartProps>(({
     );
 });
 
-RegressionChart.displayName = 'RegressionChart';
+OldRegressionChart.displayName = 'OldRegressionChart';

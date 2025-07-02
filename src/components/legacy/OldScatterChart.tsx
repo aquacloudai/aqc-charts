@@ -1,8 +1,8 @@
 import React, { forwardRef, useMemo } from 'react';
 import type { BaseChartProps, ChartRef, EChartsOption, ScatterSeriesOption, ScatterChartData } from '@/types';
-import { BaseChart } from './BaseChart';
+import { BaseChart } from '../BaseChart';
 
-export interface ScatterChartProps extends Omit<BaseChartProps, 'option'> {
+export interface OldScatterChartProps extends Omit<BaseChartProps, 'option'> {
     readonly data: ScatterChartData;
     readonly symbolSize?: number | readonly number[] | ((value: readonly number[], params: unknown) => number);
     readonly symbol?: string;
@@ -16,7 +16,7 @@ export interface ScatterChartProps extends Omit<BaseChartProps, 'option'> {
     readonly series?: ScatterSeriesOption[];
 }
 
-export const ScatterChart = forwardRef<ChartRef, ScatterChartProps>(({
+export const OldScatterChart = forwardRef<ChartRef, OldScatterChartProps>(({
     data,
     symbolSize = 10,
     symbol = 'circle',
@@ -125,4 +125,4 @@ export const ScatterChart = forwardRef<ChartRef, ScatterChartProps>(({
     );
 });
 
-ScatterChart.displayName = 'ScatterChart';
+OldScatterChart.displayName = 'OldScatterChart';

@@ -7,7 +7,7 @@ import type {
     XAXisOption,
     YAXisOption
 } from '@/types';
-import { BaseChart } from './BaseChart';
+import { BaseChart } from '../BaseChart';
 
 export interface GanttTask {
     readonly id: string;
@@ -24,7 +24,7 @@ export interface GanttCategory {
     readonly label?: string;
 }
 
-export interface GanttChartProps extends Omit<BaseChartProps, 'option'> {
+export interface OldGanttChartProps extends Omit<BaseChartProps, 'option'> {
     readonly data: {
         readonly tasks: readonly GanttTask[];
         readonly categories: readonly GanttCategory[];
@@ -50,7 +50,7 @@ export interface GanttChartProps extends Omit<BaseChartProps, 'option'> {
     readonly onTaskDrag?: (task: GanttTask, newStartTime: Date, newEndTime: Date) => void;
 }
 
-export const GanttChart = forwardRef<ChartRef, GanttChartProps>(({
+export const OldGanttChart = forwardRef<ChartRef, OldGanttChartProps>(({
     data,
     heightRatio = 0.6,
     showDataZoom = true,
@@ -403,4 +403,4 @@ export const GanttChart = forwardRef<ChartRef, GanttChartProps>(({
     );
 });
 
-GanttChart.displayName = 'GanttChart';
+OldGanttChart.displayName = 'OldGanttChart';

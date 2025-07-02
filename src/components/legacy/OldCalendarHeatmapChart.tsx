@@ -1,8 +1,8 @@
 import React, { forwardRef, useMemo } from 'react';
 import type { BaseChartProps, ChartRef, CalendarHeatmapDataPoint, CalendarConfig, VisualMapConfig } from '@/types';
-import { BaseChart } from './BaseChart';
+import { BaseChart } from '../BaseChart';
 
-export interface CalendarHeatmapChartProps extends Omit<BaseChartProps, 'option'> {
+export interface OldCalendarHeatmapChartProps extends Omit<BaseChartProps, 'option'> {
     readonly data: readonly CalendarHeatmapDataPoint[];
     readonly year: string | number;
     readonly calendar?: CalendarConfig;
@@ -10,7 +10,7 @@ export interface CalendarHeatmapChartProps extends Omit<BaseChartProps, 'option'
     readonly tooltipFormatter?: (params: { name: string; value: readonly [string, number] }) => string;
 }
 
-export const CalendarHeatmapChart = forwardRef<ChartRef, CalendarHeatmapChartProps>(({
+export const OldCalendarHeatmapChart = forwardRef<ChartRef, OldCalendarHeatmapChartProps>(({
     data,
     year,
     calendar = {},
@@ -101,4 +101,4 @@ export const CalendarHeatmapChart = forwardRef<ChartRef, CalendarHeatmapChartPro
     );
 });
 
-CalendarHeatmapChart.displayName = 'CalendarHeatmapChart';
+OldCalendarHeatmapChart.displayName = 'OldCalendarHeatmapChart';
