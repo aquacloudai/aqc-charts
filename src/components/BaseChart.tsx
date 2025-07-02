@@ -1,4 +1,4 @@
-import React, { forwardRef, useEffect, useImperativeHandle, useMemo, useRef } from 'react';
+import { forwardRef, useEffect, useImperativeHandle, useMemo } from 'react';
 import type { BaseChartProps, ChartRef } from '@/types';
 import { useECharts } from '@/hooks/useECharts';
 
@@ -24,7 +24,6 @@ export const BaseChart = forwardRef<ChartRef, BaseChartProps>(({
     locale = 'en',
     ...restProps
 }, ref) => {
-    const echartsContainerRef = useRef<HTMLDivElement>(null);
 
     // Simple title override if provided as string prop
     const chartOption = useMemo(() => {
@@ -41,14 +40,27 @@ export const BaseChart = forwardRef<ChartRef, BaseChartProps>(({
         return option;
     }, [option, title]);
 
-    const { chart, loading: chartLoading, error, refresh } = useECharts(
-        echartsContainerRef,
-        chartOption,
+    const { 
+        containerRef: echartsContainerRefFromHook,
+        loading: chartLoading, 
+        error, 
+        refresh,
+        getEChartsInstance,
+        clear,
+        resize: resizeChart,
+        showLoading: showChartLoading,
+        hideLoading: hideChartLoading,
+        dispose
+    } = useECharts({
+        option: chartOption,
         theme,
-        { renderer, locale },
         notMerge,
         lazyUpdate,
-    );
+        onChartReady,
+    });
+
+    // Get chart instance
+    const chart = getEChartsInstance();
 
     // Setup event listeners
     useEffect(() => {
@@ -127,9 +139,14 @@ export const BaseChart = forwardRef<ChartRef, BaseChartProps>(({
 
     // Expose chart instance through ref
     useImperativeHandle(ref, () => ({
-        getEChartsInstance: () => chart,
+        getEChartsInstance,
         refresh,
-    }), [chart, refresh]);
+        clear,
+        resize: resizeChart,
+        showLoading: showChartLoading,
+        hideLoading: hideChartLoading,
+        dispose,
+    }), [getEChartsInstance, refresh, clear, resizeChart, showChartLoading, hideChartLoading, dispose]);
 
     const containerStyle = useMemo(() => ({
         width,
@@ -152,7 +169,7 @@ export const BaseChart = forwardRef<ChartRef, BaseChartProps>(({
                     color: '#ff4d4f',
                     fontSize: '14px',
                 }}>
-                    Error: {error}
+                    Error: {error?.message || 'Unknown error'}
                 </div>
             </div>
         );
@@ -166,7 +183,7 @@ export const BaseChart = forwardRef<ChartRef, BaseChartProps>(({
         >
             {/* Separate div exclusively for ECharts - React never renders children here */}
             <div
-                ref={echartsContainerRef}
+                ref={echartsContainerRefFromHook}
                 style={{
                     width: '100%',
                     height: '100%',

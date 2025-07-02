@@ -1,16 +1,22 @@
-import type { EChartsInstance, ChartTheme } from '@/types';
-interface UseEChartsOptions {
-    readonly renderer?: 'canvas' | 'svg';
-    readonly locale?: string;
-    readonly [key: string]: unknown;
+import type { RefObject } from 'react';
+import type { EChartsType } from 'echarts/core';
+import type { ChartRef } from '@/types';
+type EventHandler = (params: any, chart: EChartsType) => void;
+export interface UseEChartsProps {
+    option: unknown;
+    theme?: string | object | undefined;
+    loading?: boolean;
+    notMerge?: boolean;
+    lazyUpdate?: boolean;
+    onChartReady?: ((chart: EChartsType) => void) | undefined;
+    events?: Record<string, EventHandler> | undefined;
+    debounceResize?: number;
 }
-interface UseEChartsReturn {
-    readonly chart: EChartsInstance | null;
-    readonly loading: boolean;
-    readonly error: string | null;
-    readonly resize: () => void;
-    readonly refresh: () => void;
+export interface UseEChartsReturn extends ChartRef {
+    containerRef: RefObject<HTMLDivElement | null>;
+    loading: boolean;
+    error: Error | null;
 }
-export declare const useECharts: (containerRef: React.RefObject<HTMLDivElement | null>, option: unknown, theme?: string | ChartTheme, opts?: UseEChartsOptions, notMerge?: boolean, lazyUpdate?: boolean) => UseEChartsReturn;
+export declare function useECharts({ option, theme, loading: externalLoading, notMerge, lazyUpdate, onChartReady, events, debounceResize, }: UseEChartsProps): UseEChartsReturn;
 export {};
 //# sourceMappingURL=useECharts.d.ts.map
