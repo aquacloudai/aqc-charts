@@ -1188,6 +1188,156 @@ function buildClusterChartOption(props) {
 	};
 	return chartOption;
 }
+function buildCalendarHeatmapOption(props) {
+	const baseOption = buildBaseOption(props);
+	let calendarData = [];
+	if (props.data && props.data.length > 0) if (isObjectData(props.data)) {
+		const dateField = props.dateField || "date";
+		const valueField = props.valueField || "value";
+		calendarData = props.data.map((item) => {
+			const dateValue = item[dateField];
+			const formattedDate = typeof dateValue === "string" ? dateValue : dateValue ? new Date(dateValue).toISOString().split("T")[0] : new Date().toISOString().split("T")[0];
+			return [formattedDate, Number(item[valueField]) || 0];
+		});
+	} else calendarData = props.data.map((item) => {
+		const dateValue = item.date || item[0];
+		const valueValue = item.value || item[1];
+		const formattedDate = typeof dateValue === "string" ? dateValue : dateValue ? new Date(dateValue).toISOString().split("T")[0] : new Date().toISOString().split("T")[0];
+		return [formattedDate, Number(valueValue) || 0];
+	});
+	let years = [];
+	if (props.year) years = Array.isArray(props.year) ? [...props.year] : [props.year];
+	else if (props.range) {
+		const startYear = new Date(props.range[0]).getFullYear();
+		const endYear = new Date(props.range[1]).getFullYear();
+		for (let y = startYear; y <= endYear; y++) years.push(y);
+	} else if (calendarData.length > 0) {
+		const dataYears = new Set(calendarData.map(([date]) => new Date(date).getFullYear()));
+		years = Array.from(dataYears).sort();
+	} else years = [new Date().getFullYear()];
+	const colorScale = props.colorScale || [
+		"#ebedf0",
+		"#c6e48b",
+		"#7bc96f",
+		"#239a3b",
+		"#196127"
+	];
+	const defaultCellSize = props.orient === "vertical" ? [15, 15] : [20, 20];
+	const cellSize = Array.isArray(props.cellSize) ? [props.cellSize[0] || 20, props.cellSize[1] || 20] : props.cellSize ? [props.cellSize, props.cellSize] : defaultCellSize;
+	const values = calendarData.map(([, value]) => value);
+	const minValue = Math.min(...values, 0);
+	const maxValue = Math.max(...values, 1);
+	const hasTitle = !!props.title;
+	const isVertical = props.orient === "vertical";
+	const visualMapLegendConfig = {
+		show: true,
+		position: isVertical ? "right" : "bottom",
+		orientation: isVertical ? "vertical" : "horizontal"
+	};
+	const gridSpacing = calculateGridSpacing(visualMapLegendConfig, hasTitle, false, false);
+	const calendars = years.map((year, index) => {
+		const calendarConfig = {
+			orient: props.orient || "horizontal",
+			range: props.range || year.toString(),
+			cellSize,
+			dayLabel: {
+				show: props.showWeekLabel !== false,
+				firstDay: props.startOfWeek === "monday" ? 1 : 0
+			},
+			monthLabel: { show: props.showMonthLabel !== false },
+			yearLabel: { show: props.showYearLabel !== false },
+			splitLine: {
+				show: true,
+				lineStyle: {
+					color: props.cellBorderColor || "#eee",
+					width: props.cellBorderWidth || 1,
+					type: "solid"
+				}
+			},
+			itemStyle: {
+				borderColor: props.cellBorderColor || "#eee",
+				borderWidth: props.cellBorderWidth || 1
+			}
+		};
+		if (isVertical) {
+			calendarConfig.left = gridSpacing.left;
+			calendarConfig.top = gridSpacing.top;
+			calendarConfig.bottom = gridSpacing.bottom;
+			calendarConfig.right = gridSpacing.right;
+		} else if (years.length > 1) {
+			const availableHeight = 100 - parseInt(gridSpacing.top) - parseInt(gridSpacing.bottom);
+			calendarConfig.top = `${parseInt(gridSpacing.top) + index * (availableHeight / years.length)}%`;
+			calendarConfig.height = `${Math.floor(availableHeight / years.length * .8)}%`;
+			calendarConfig.left = gridSpacing.left;
+			calendarConfig.right = gridSpacing.right;
+		} else {
+			calendarConfig.top = gridSpacing.top;
+			calendarConfig.left = gridSpacing.left;
+			calendarConfig.right = gridSpacing.right;
+			calendarConfig.bottom = gridSpacing.bottom;
+		}
+		return calendarConfig;
+	});
+	const series = years.map((year, index) => ({
+		type: "heatmap",
+		coordinateSystem: "calendar",
+		calendarIndex: index,
+		data: calendarData.filter(([date]) => new Date(date).getFullYear() === year),
+		...props.showValues && { label: {
+			show: true,
+			formatter: props.valueFormat && typeof props.valueFormat === "function" ? (params) => props.valueFormat(params.value[1]) : props.valueFormat && typeof props.valueFormat === "string" ? (params) => {
+				const value = params.value[1];
+				if (props.valueFormat === "{value}") return value.toString();
+				if (props.valueFormat === "{value:,.0f}") return value.toLocaleString();
+				return value.toString();
+			} : void 0
+		} }
+	}));
+	const isDark = props.theme === "dark";
+	return {
+		...baseOption,
+		calendar: calendars,
+		series,
+		visualMap: (() => {
+			return {
+				type: "piecewise",
+				orient: isVertical ? "vertical" : "horizontal",
+				...isVertical ? {
+					right: "5%",
+					top: hasTitle ? gridSpacing.top : "center",
+					itemGap: 5
+				} : {
+					left: "center",
+					bottom: years.length > 1 ? "3%" : "5%"
+				},
+				min: minValue,
+				max: maxValue,
+				splitNumber: props.splitNumber || colorScale.length - 1,
+				inRange: { color: colorScale },
+				textStyle: {
+					color: isDark ? "#cccccc" : "#666666",
+					fontSize: isVertical ? 11 : 12
+				},
+				itemSymbol: "rect",
+				itemWidth: isVertical ? 15 : 20,
+				itemHeight: isVertical ? 12 : 14
+			};
+		})(),
+		tooltip: props.tooltip ? buildTooltipOption(props.tooltip, props.theme) : {
+			trigger: "item",
+			formatter: (params) => {
+				const [date, value] = params.value;
+				const formattedDate = new Date(date).toLocaleDateString();
+				const formattedValue = props.valueFormat && typeof props.valueFormat === "function" ? props.valueFormat(value) : value;
+				return `${formattedDate}<br/>Value: ${formattedValue}`;
+			},
+			textStyle: { color: isDark ? "#ffffff" : "#333333" },
+			backgroundColor: isDark ? "#333333" : "rgba(255, 255, 255, 0.95)",
+			borderColor: isDark ? "#555555" : "#dddddd"
+		},
+		...props.customOption
+	};
+}
 
 //#endregion
 //#region src/components/LineChart.tsx
@@ -2561,6 +2711,281 @@ const ClusterChart = forwardRef(({ width = "100%", height = 400, className, styl
 ClusterChart.displayName = "ClusterChart";
 
 //#endregion
+//#region src/components/CalendarHeatmapChart.tsx
+/**
+* Ergonomic CalendarHeatmapChart component with intuitive props
+* 
+* @example
+* // Simple calendar heatmap with object data
+* <CalendarHeatmapChart
+*   data={[
+*     { date: '2023-01-01', value: 10 },
+*     { date: '2023-01-02', value: 25 },
+*     { date: '2023-01-03', value: 15 }
+*   ]}
+*   year={2023}
+*   colorScale={['#ebedf0', '#c6e48b', '#7bc96f', '#239a3b', '#196127']}
+* />
+* 
+* @example
+* // Multi-year calendar heatmap with custom fields
+* <CalendarHeatmapChart
+*   data={commitData}
+*   dateField="commit_date"
+*   valueField="commits_count"
+*   year={[2022, 2023]}
+*   showValues
+*   cellSize={[20, 20]}
+* />
+* 
+* @example
+* // Calendar heatmap with custom styling
+* <CalendarHeatmapChart
+*   data={activityData}
+*   year={2023}
+*   colorScale={['#f0f0f0', '#d6e685', '#8cc665', '#44a340', '#1e6823']}
+*   cellBorderColor="#ccc"
+*   orient="vertical"
+*   showWeekLabel={false}
+* />
+*/
+const CalendarHeatmapChart = forwardRef(({ width = "100%", height = 400, className, style, data, dateField = "date", valueField = "value", theme = "light", colorPalette, backgroundColor, title, subtitle, titlePosition = "center", year, range, startOfWeek = "sunday", cellSize, colorScale, showWeekLabel = true, showMonthLabel = true, showYearLabel = true, valueFormat, showValues = false, cellBorderColor, cellBorderWidth, splitNumber, orient = "horizontal", monthGap, yearGap, legend, tooltip, loading = false, disabled = false, animate = true, animationDuration, onChartReady, onDataPointClick, onDataPointHover, customOption, responsive = true,...restProps }, ref) => {
+	const chartOption = useMemo(() => {
+		return buildCalendarHeatmapOption({
+			data: data || [],
+			dateField,
+			valueField,
+			theme,
+			colorPalette,
+			backgroundColor,
+			title,
+			subtitle,
+			titlePosition,
+			year,
+			range,
+			startOfWeek,
+			cellSize,
+			colorScale,
+			showWeekLabel,
+			showMonthLabel,
+			showYearLabel,
+			valueFormat,
+			showValues,
+			cellBorderColor,
+			cellBorderWidth,
+			splitNumber,
+			orient,
+			monthGap,
+			yearGap,
+			legend,
+			tooltip,
+			animate,
+			animationDuration,
+			customOption
+		});
+	}, [
+		data,
+		dateField,
+		valueField,
+		theme,
+		colorPalette,
+		backgroundColor,
+		title,
+		subtitle,
+		titlePosition,
+		year,
+		range,
+		startOfWeek,
+		cellSize,
+		colorScale,
+		showWeekLabel,
+		showMonthLabel,
+		showYearLabel,
+		valueFormat,
+		showValues,
+		cellBorderColor,
+		cellBorderWidth,
+		splitNumber,
+		orient,
+		monthGap,
+		yearGap,
+		legend,
+		tooltip,
+		animate,
+		animationDuration,
+		customOption
+	]);
+	const chartEvents = useMemo(() => {
+		const events = {};
+		if (onDataPointClick) events.click = (params, chart) => {
+			onDataPointClick(params, {
+				chart,
+				event: params
+			});
+		};
+		if (onDataPointHover) events.mouseover = (params, chart) => {
+			onDataPointHover(params, {
+				chart,
+				event: params
+			});
+		};
+		return Object.keys(events).length > 0 ? events : void 0;
+	}, [onDataPointClick, onDataPointHover]);
+	const { containerRef, loading: chartLoading, error, getEChartsInstance, resize, showLoading, hideLoading } = useECharts({
+		option: chartOption,
+		theme,
+		loading,
+		events: chartEvents,
+		onChartReady
+	});
+	const exportImage = (format = "png") => {
+		const chart = getEChartsInstance();
+		if (!chart) return "";
+		return chart.getDataURL({
+			type: format,
+			pixelRatio: 2,
+			backgroundColor: backgroundColor || "#fff"
+		});
+	};
+	const highlight = (dataIndex, seriesIndex = 0) => {
+		const chart = getEChartsInstance();
+		if (!chart) return;
+		chart.dispatchAction({
+			type: "highlight",
+			seriesIndex,
+			dataIndex
+		});
+	};
+	const clearHighlight = () => {
+		const chart = getEChartsInstance();
+		if (!chart) return;
+		chart.dispatchAction({ type: "downplay" });
+	};
+	const updateData = (newData) => {
+		const chart = getEChartsInstance();
+		if (!chart) return;
+		const newOption = buildCalendarHeatmapOption({
+			data: newData,
+			dateField,
+			valueField,
+			theme,
+			colorPalette,
+			backgroundColor,
+			title,
+			subtitle,
+			titlePosition,
+			year,
+			range,
+			startOfWeek,
+			cellSize,
+			colorScale,
+			showWeekLabel,
+			showMonthLabel,
+			showYearLabel,
+			valueFormat,
+			showValues,
+			cellBorderColor,
+			cellBorderWidth,
+			splitNumber,
+			orient,
+			monthGap,
+			yearGap,
+			legend,
+			tooltip,
+			animate,
+			animationDuration,
+			customOption
+		});
+		chart.setOption(newOption);
+	};
+	useImperativeHandle(ref, () => ({
+		getChart: getEChartsInstance,
+		exportImage,
+		resize,
+		showLoading: () => showLoading(),
+		hideLoading,
+		highlight,
+		clearHighlight,
+		updateData
+	}), [
+		getEChartsInstance,
+		exportImage,
+		resize,
+		showLoading,
+		hideLoading,
+		highlight,
+		clearHighlight,
+		updateData
+	]);
+	if (error) return /* @__PURE__ */ jsxs("div", {
+		className: `aqc-charts-error ${className || ""}`,
+		style: {
+			width,
+			height,
+			display: "flex",
+			alignItems: "center",
+			justifyContent: "center",
+			color: "#ff4d4f",
+			fontSize: "14px",
+			border: "1px dashed #ff4d4f",
+			borderRadius: "4px",
+			...style
+		},
+		children: ["Error: ", error.message || "Failed to render chart"]
+	});
+	const containerStyle = useMemo(() => ({
+		width,
+		height,
+		position: "relative",
+		...style
+	}), [
+		width,
+		height,
+		style
+	]);
+	return /* @__PURE__ */ jsxs("div", {
+		className: `aqc-charts-container ${className || ""}`,
+		style: containerStyle,
+		...restProps,
+		children: [/* @__PURE__ */ jsx("div", {
+			ref: containerRef,
+			style: {
+				width: "100%",
+				height: "100%"
+			}
+		}), (chartLoading || loading) && /* @__PURE__ */ jsxs("div", {
+			className: "aqc-charts-loading",
+			style: {
+				position: "absolute",
+				top: 0,
+				left: 0,
+				right: 0,
+				bottom: 0,
+				display: "flex",
+				alignItems: "center",
+				justifyContent: "center",
+				backgroundColor: "rgba(255, 255, 255, 0.8)",
+				fontSize: "14px",
+				color: "#666"
+			},
+			children: [/* @__PURE__ */ jsx("div", {
+				className: "aqc-charts-spinner",
+				style: {
+					width: "20px",
+					height: "20px",
+					border: "2px solid #f3f3f3",
+					borderTop: "2px solid #1890ff",
+					borderRadius: "50%",
+					animation: "spin 1s linear infinite",
+					marginRight: "8px"
+				}
+			}), "Loading..."]
+		})]
+	});
+});
+CalendarHeatmapChart.displayName = "CalendarHeatmapChart";
+
+//#endregion
 //#region src/components/legacy/OldCalendarHeatmapChart.tsx
 const OldCalendarHeatmapChart = forwardRef(({ data, year, calendar = {}, visualMap = {}, tooltipFormatter, title,...props }, ref) => {
 	const chartOption = useMemo(() => {
@@ -3895,4 +4320,4 @@ if (typeof document !== "undefined" && !document.getElementById("aqc-charts-styl
 }
 
 //#endregion
-export { BarChart, BaseChart, ClusterChart, LineChart, OldBarChart, OldCalendarHeatmapChart, OldClusterChart, OldGanttChart, OldLineChart, OldPieChart, OldRegressionChart, OldSankeyChart, OldScatterChart, OldStackedBarChart, PieChart, ScatterChart, clusterPointsToScatterData, darkTheme, extractPoints, lightTheme, performKMeansClustering, useChartEvents, useChartInstance, useChartOptions, useChartResize, useECharts };
+export { BarChart, BaseChart, CalendarHeatmapChart, ClusterChart, LineChart, OldBarChart, OldCalendarHeatmapChart, OldClusterChart, OldGanttChart, OldLineChart, OldPieChart, OldRegressionChart, OldSankeyChart, OldScatterChart, OldStackedBarChart, PieChart, ScatterChart, clusterPointsToScatterData, darkTheme, extractPoints, lightTheme, performKMeansClustering, useChartEvents, useChartInstance, useChartOptions, useChartResize, useECharts };

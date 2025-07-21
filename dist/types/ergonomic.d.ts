@@ -168,6 +168,32 @@ export interface ClusterChartProps extends BaseErgonomicChartProps {
     readonly legend?: LegendConfig | undefined;
     readonly tooltip?: TooltipConfig | undefined;
 }
+export interface CalendarHeatmapProps extends BaseErgonomicChartProps {
+    readonly data: readonly DataPoint[] | readonly {
+        readonly date: string;
+        readonly value: number;
+    }[];
+    readonly dateField?: string;
+    readonly valueField?: string;
+    readonly year?: number | readonly number[] | undefined;
+    readonly range?: readonly [string, string] | undefined;
+    readonly startOfWeek?: 'sunday' | 'monday';
+    readonly cellSize?: number | readonly [number, number] | undefined;
+    readonly colorScale?: readonly string[] | undefined;
+    readonly showWeekLabel?: boolean | undefined;
+    readonly showMonthLabel?: boolean | undefined;
+    readonly showYearLabel?: boolean | undefined;
+    readonly valueFormat?: string | ((value: number) => string) | undefined;
+    readonly showValues?: boolean | undefined;
+    readonly cellBorderColor?: string | undefined;
+    readonly cellBorderWidth?: number | undefined;
+    readonly splitNumber?: number | undefined;
+    readonly legend?: LegendConfig | undefined;
+    readonly tooltip?: TooltipConfig | undefined;
+    readonly orient?: 'horizontal' | 'vertical' | undefined;
+    readonly monthGap?: number | undefined;
+    readonly yearGap?: number | undefined;
+}
 export interface AreaChartProps extends Omit<LineChartProps, 'showArea'> {
     readonly stacked?: boolean;
     readonly stackType?: 'normal' | 'percent';

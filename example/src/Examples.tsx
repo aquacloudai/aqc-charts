@@ -4,6 +4,7 @@ import { BarChartExample } from './components/BarChartExample';
 import { PieChartExample } from './components/PieChartExample';
 import { ScatterChartExample } from './components/ScatterChartExample';
 import { ClusterChartExample } from './components/ClusterChartExample';
+import { CalendarHeatmapExample } from './components/CalendarHeatmapExample';
 
 
 // Component for theme and palette selection
@@ -272,6 +273,19 @@ export function Examples() {
         theme={theme}
       >
         <ClusterChartExample
+          theme={theme}
+          colorPalette={colorPalettes[palette as keyof typeof colorPalettes]}
+          onInteraction={(data) => setInteractionData(data)}
+        />
+      </ChartCard>
+
+      {/* Calendar Heatmap Showcase */}
+      <ChartCard
+        title="Calendar Heatmap Showcase"
+        description="Visualize time series data with a calendar heatmap: daily, weekly, and monthly views, highlighting trends and patterns over time."
+        theme={theme}
+      >
+        <CalendarHeatmapExample
           theme={theme}
           colorPalette={colorPalettes[palette as keyof typeof colorPalettes]}
           onInteraction={(data) => setInteractionData(data)}

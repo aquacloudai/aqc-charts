@@ -266,6 +266,45 @@ export interface ClusterChartProps extends BaseErgonomicChartProps {
   readonly tooltip?: TooltipConfig | undefined;
 }
 
+// Calendar Heatmap Chart Props
+export interface CalendarHeatmapProps extends BaseErgonomicChartProps {
+  readonly data: readonly DataPoint[] | readonly { readonly date: string; readonly value: number }[];
+  
+  // Field mappings for object data
+  readonly dateField?: string;
+  readonly valueField?: string;
+  
+  // Calendar configuration
+  readonly year?: number | readonly number[] | undefined; // Single year or array of years
+  readonly range?: readonly [string, string] | undefined; // Date range ['YYYY-MM-DD', 'YYYY-MM-DD']
+  readonly startOfWeek?: 'sunday' | 'monday';
+  readonly cellSize?: number | readonly [number, number] | undefined; // Width, height of cells
+  
+  // Visual styling
+  readonly colorScale?: readonly string[] | undefined; // Color gradient [min, max] or [min, mid, max]
+  readonly showWeekLabel?: boolean | undefined;
+  readonly showMonthLabel?: boolean | undefined;
+  readonly showYearLabel?: boolean | undefined;
+  
+  // Value formatting
+  readonly valueFormat?: string | ((value: number) => string) | undefined;
+  readonly showValues?: boolean | undefined; // Show values in cells
+  
+  // Interaction
+  readonly cellBorderColor?: string | undefined;
+  readonly cellBorderWidth?: number | undefined;
+  readonly splitNumber?: number | undefined; // Number of segments in the color scale
+  
+  // Legend and tooltip
+  readonly legend?: LegendConfig | undefined;
+  readonly tooltip?: TooltipConfig | undefined;
+  
+  // Layout
+  readonly orient?: 'horizontal' | 'vertical' | undefined;
+  readonly monthGap?: number | undefined; // Gap between months
+  readonly yearGap?: number | undefined; // Gap between years (for multi-year view)
+}
+
 // Area Chart Props (extends LineChart)
 export interface AreaChartProps extends Omit<LineChartProps, 'showArea'> {
   readonly stacked?: boolean;

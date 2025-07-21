@@ -5,6 +5,7 @@ export { BarChart } from './components/BarChart';
 export { PieChart } from './components/PieChart';
 export { ScatterChart } from './components/ScatterChart';
 export { ClusterChart } from './components/ClusterChart';
+export { CalendarHeatmapChart } from './components/CalendarHeatmapChart';
 
 // Legacy components (old API)
 export { OldCalendarHeatmapChart } from './components/legacy/OldCalendarHeatmapChart';
@@ -100,7 +101,8 @@ export type {
     BarChartProps, 
     PieChartProps,
     ScatterChartProps,
-    ClusterChartProps
+    ClusterChartProps,
+    CalendarHeatmapProps
 } from './types/ergonomic';
 
 // Legacy component types
