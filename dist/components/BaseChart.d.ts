@@ -1,4 +1,3 @@
-import React from 'react';
 import type { BaseChartProps, ChartRef } from '@/types';
-export declare const BaseChart: React.ForwardRefExoticComponent<BaseChartProps & React.RefAttributes<ChartRef>>;
+export declare const BaseChart: import("react").ForwardRefExoticComponent<BaseChartProps & import("react").RefAttributes<ChartRef>>;
 //# sourceMappingURL=BaseChart.d.ts.map

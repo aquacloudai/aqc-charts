@@ -5,9 +5,6 @@ var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
 var __getOwnPropNames = Object.getOwnPropertyNames;
 var __getProtoOf = Object.getPrototypeOf;
 var __hasOwnProp = Object.prototype.hasOwnProperty;
-var __commonJS = (cb, mod) => function() {
-	return mod || (0, cb[__getOwnPropNames(cb)[0]])((mod = { exports: {} }).exports, mod), mod.exports;
-};
 var __copyProps = (to, from, except, desc) => {
 	if (from && typeof from === "object" || typeof from === "function") for (var keys = __getOwnPropNames(from), i = 0, n = keys.length, key; i < n; i++) {
 		key = keys[i];
@@ -25,1448 +22,266 @@ var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__ge
 
 //#endregion
 const react = __toESM(require("react"));
-const echarts = __toESM(require("echarts"));
 const react_jsx_runtime = __toESM(require("react/jsx-runtime"));
 
-//#region node_modules/echarts-stat/dist/ecStat.js
-var require_ecStat = __commonJS({ "node_modules/echarts-stat/dist/ecStat.js"(exports, module) {
-	(function webpackUniversalModuleDefinition(root, factory) {
-		if (typeof exports === "object" && typeof module === "object") module.exports = factory();
-		else if (typeof define === "function" && define.amd) define([], factory);
-		else if (typeof exports === "object") exports["ecStat"] = factory();
-		else root["ecStat"] = factory();
-	})(void 0, function() {
-		return function(modules) {
-			var installedModules = {};
-			function __webpack_require__(moduleId) {
-				if (installedModules[moduleId]) return installedModules[moduleId].exports;
-				var module$1 = installedModules[moduleId] = {
-					exports: {},
-					id: moduleId,
-					loaded: false
-				};
-				modules[moduleId].call(module$1.exports, module$1, module$1.exports, __webpack_require__);
-				module$1.loaded = true;
-				return module$1.exports;
-			}
-			__webpack_require__.m = modules;
-			__webpack_require__.c = installedModules;
-			__webpack_require__.p = "";
-			return __webpack_require__(0);
-		}([
-			function(module$1, exports$1, __webpack_require__) {
-				var __WEBPACK_AMD_DEFINE_RESULT__;
-				__WEBPACK_AMD_DEFINE_RESULT__ = function(require$1) {
-					return {
-						clustering: __webpack_require__(1),
-						regression: __webpack_require__(5),
-						statistics: __webpack_require__(6),
-						histogram: __webpack_require__(15),
-						transform: {
-							regression: __webpack_require__(18),
-							histogram: __webpack_require__(21),
-							clustering: __webpack_require__(22)
-						}
-					};
-				}.call(exports$1, __webpack_require__, exports$1, module$1), __WEBPACK_AMD_DEFINE_RESULT__ !== void 0 && (module$1.exports = __WEBPACK_AMD_DEFINE_RESULT__);
-			},
-			function(module$1, exports$1, __webpack_require__) {
-				var __WEBPACK_AMD_DEFINE_RESULT__;
-				__WEBPACK_AMD_DEFINE_RESULT__ = function(require$1) {
-					var dataProcess = __webpack_require__(2);
-					var dataPreprocess = dataProcess.dataPreprocess;
-					var normalizeDimensions = dataProcess.normalizeDimensions;
-					var arrayUtil = __webpack_require__(3);
-					var numberUtil = __webpack_require__(4);
-					var arraySize = arrayUtil.size;
-					var sumOfColumn = arrayUtil.sumOfColumn;
-					var arraySum = arrayUtil.sum;
-					var zeros = arrayUtil.zeros;
-					var numberUtil = __webpack_require__(4);
-					var isNumber = numberUtil.isNumber;
-					var mathPow = Math.pow;
-					var OutputType = {
-						SINGLE: "single",
-						MULTIPLE: "multiple"
-					};
-					/**
-					* KMeans of clustering algorithm.
-					* @param {Array.<Array.<number>>} data two-dimension array
-					* @param {number} k the number of clusters in a dataset
-					* @return {Object}
-					*/
-					function kMeans(data, k, dataMeta) {
-						var clusterAssigned = zeros(data.length, 2);
-						var centroids = createRandCent(k, calcExtents(data, dataMeta.dimensions));
-						var clusterChanged = true;
-						var minDist;
-						var minIndex;
-						var distIJ;
-						var ptsInClust;
-						while (clusterChanged) {
-							clusterChanged = false;
-							for (var i = 0; i < data.length; i++) {
-								minDist = Infinity;
-								minIndex = -1;
-								for (var j = 0; j < k; j++) {
-									distIJ = distEuclid(data[i], centroids[j], dataMeta);
-									if (distIJ < minDist) {
-										minDist = distIJ;
-										minIndex = j;
-									}
-								}
-								if (clusterAssigned[i][0] !== minIndex) clusterChanged = true;
-								clusterAssigned[i][0] = minIndex;
-								clusterAssigned[i][1] = minDist;
-							}
-							for (var i = 0; i < k; i++) {
-								ptsInClust = [];
-								for (var j = 0; j < clusterAssigned.length; j++) if (clusterAssigned[j][0] === i) ptsInClust.push(data[j]);
-								centroids[i] = meanInColumns(ptsInClust, dataMeta);
-							}
-						}
-						var clusterWithKmeans = {
-							centroids,
-							clusterAssigned
-						};
-						return clusterWithKmeans;
-					}
-					/**
-					* Calculate the average of each column in a two-dimensional array
-					* and returns the values as an array.
-					*/
-					function meanInColumns(dataList, dataMeta) {
-						var meanArray = [];
-						var sum;
-						var mean;
-						for (var j = 0; j < dataMeta.dimensions.length; j++) {
-							var dimIdx = dataMeta.dimensions[j];
-							sum = 0;
-							for (var i = 0; i < dataList.length; i++) sum += dataList[i][dimIdx];
-							mean = sum / dataList.length;
-							meanArray.push(mean);
-						}
-						return meanArray;
-					}
-					/**
-					* The combine of hierarchical clustering and k-means.
-					* @param {Array} data two-dimension array.
-					* @param {Object|number} [clusterCountOrConfig] config or clusterCountOrConfig.
-					* @param {number} clusterCountOrConfig.clusterCount Mandatory.
-					*        The number of clusters in a dataset. It has to be greater than 1.
-					* @param {boolean} [clusterCountOrConfig.stepByStep=false] Optional.
-					* @param {OutputType} [clusterCountOrConfig.outputType='multiple'] Optional.
-					*        See `OutputType`.
-					* @param {number} [clusterCountOrConfig.outputClusterIndexDimension] Mandatory.
-					*        Only work in `OutputType.SINGLE`.
-					* @param {number} [clusterCountOrConfig.outputCentroidDimensions] Optional.
-					*        If specified, the centroid will be set to those dimensions of the result data one by one.
-					*        By default not set centroid to result.
-					*        Only work in `OutputType.SINGLE`.
-					* @param {Array.<number>} [clusterCountOrConfig.dimensions] Optional.
-					*        Target dimensions to calculate the regression.
-					*        By default: use all of the data.
-					* @return {Array} See `OutputType`.
-					*/
-					function hierarchicalKMeans(data, clusterCountOrConfig, stepByStep) {
-						var config = (isNumber(clusterCountOrConfig) ? {
-							clusterCount: clusterCountOrConfig,
-							stepByStep
-						} : clusterCountOrConfig) || { clusterCount: 2 };
-						var k = config.clusterCount;
-						if (k < 2) return;
-						var dataMeta = parseDataMeta(data, config);
-						var isOutputTypeSingle = dataMeta.outputType === OutputType.SINGLE;
-						var dataSet = dataPreprocess(data, { dimensions: dataMeta.dimensions });
-						var clusterAssment = zeros(dataSet.length, 2);
-						var outputSingleData;
-						var setClusterIndex;
-						var getClusterIndex;
-						function setDistance(dataIndex, dist$1) {
-							clusterAssment[dataIndex][1] = dist$1;
-						}
-						function getDistance(dataIndex) {
-							return clusterAssment[dataIndex][1];
-						}
-						if (isOutputTypeSingle) {
-							outputSingleData = [];
-							var outputClusterIndexDimension = dataMeta.outputClusterIndexDimension;
-							setClusterIndex = function(dataIndex, clusterIndex) {
-								outputSingleData[dataIndex][outputClusterIndexDimension] = clusterIndex;
-							};
-							getClusterIndex = function(dataIndex) {
-								return outputSingleData[dataIndex][outputClusterIndexDimension];
-							};
-							for (var i = 0; i < dataSet.length; i++) {
-								outputSingleData.push(dataSet[i].slice());
-								setDistance(i, 0);
-								setClusterIndex(i, 0);
-							}
-						} else {
-							setClusterIndex = function(dataIndex, clusterIndex) {
-								clusterAssment[dataIndex][0] = clusterIndex;
-							};
-							getClusterIndex = function(dataIndex) {
-								return clusterAssment[dataIndex][0];
-							};
-						}
-						var centroid0 = meanInColumns(dataSet, dataMeta);
-						var centList = [centroid0];
-						for (var i = 0; i < dataSet.length; i++) {
-							var dist = distEuclid(dataSet[i], centroid0, dataMeta);
-							setDistance(i, dist);
-						}
-						var lowestSSE;
-						var ptsInClust;
-						var ptsNotClust;
-						var clusterInfo;
-						var sseSplit;
-						var sseNotSplit;
-						var index = 1;
-						var result = {
-							data: outputSingleData,
-							centroids: centList,
-							isEnd: false
-						};
-						if (!isOutputTypeSingle) result.clusterAssment = clusterAssment;
-						function oneStep() {
-							if (index < k) {
-								lowestSSE = Infinity;
-								var centSplit;
-								var newCentroid;
-								var newClusterAss;
-								for (var j = 0; j < centList.length; j++) {
-									ptsInClust = [];
-									ptsNotClust = [];
-									for (var i$1 = 0; i$1 < dataSet.length; i$1++) if (getClusterIndex(i$1) === j) ptsInClust.push(dataSet[i$1]);
-									else ptsNotClust.push(getDistance(i$1));
-									clusterInfo = kMeans(ptsInClust, 2, dataMeta);
-									sseSplit = sumOfColumn(clusterInfo.clusterAssigned, 1);
-									sseNotSplit = arraySum(ptsNotClust);
-									if (sseSplit + sseNotSplit < lowestSSE) {
-										lowestSSE = sseNotSplit + sseSplit;
-										centSplit = j;
-										newCentroid = clusterInfo.centroids;
-										newClusterAss = clusterInfo.clusterAssigned;
-									}
-								}
-								for (var i$1 = 0; i$1 < newClusterAss.length; i$1++) if (newClusterAss[i$1][0] === 0) newClusterAss[i$1][0] = centSplit;
-								else if (newClusterAss[i$1][0] === 1) newClusterAss[i$1][0] = centList.length;
-								centList[centSplit] = newCentroid[0];
-								centList.push(newCentroid[1]);
-								for (var i$1 = 0, j = 0; i$1 < dataSet.length && j < newClusterAss.length; i$1++) if (getClusterIndex(i$1) === centSplit) {
-									setClusterIndex(i$1, newClusterAss[j][0]);
-									setDistance(i$1, newClusterAss[j++][1]);
-								}
-								var pointInClust = [];
-								if (!isOutputTypeSingle) {
-									for (var i$1 = 0; i$1 < centList.length; i$1++) {
-										pointInClust[i$1] = [];
-										for (var j = 0; j < dataSet.length; j++) if (getClusterIndex(j) === i$1) pointInClust[i$1].push(dataSet[j]);
-									}
-									result.pointsInCluster = pointInClust;
-								}
-								index++;
-							} else result.isEnd = true;
-						}
-						if (!config.stepByStep) while (oneStep(), !result.isEnd);
-						else result.next = function() {
-							oneStep();
-							setCentroidToResultData(result, dataMeta);
-							return result;
-						};
-						setCentroidToResultData(result, dataMeta);
-						return result;
-					}
-					function setCentroidToResultData(result, dataMeta) {
-						var outputCentroidDimensions = dataMeta.outputCentroidDimensions;
-						if (dataMeta.outputType !== OutputType.SINGLE || outputCentroidDimensions == null) return;
-						var outputSingleData = result.data;
-						var centroids = result.centroids;
-						for (var i = 0; i < outputSingleData.length; i++) {
-							var line = outputSingleData[i];
-							var clusterIndex = line[dataMeta.outputClusterIndexDimension];
-							var centroid = centroids[clusterIndex];
-							var dimLen = Math.min(centroid.length, outputCentroidDimensions.length);
-							for (var j = 0; j < dimLen; j++) line[outputCentroidDimensions[j]] = centroid[j];
-						}
-					}
-					/**
-					* Create random centroid of kmeans.
-					*/
-					function createRandCent(k, extents) {
-						var centroids = zeros(k, extents.length);
-						for (var j = 0; j < extents.length; j++) {
-							var extentItem = extents[j];
-							for (var i = 0; i < k; i++) centroids[i][j] = extentItem.min + extentItem.span * Math.random();
-						}
-						return centroids;
-					}
-					/**
-					* Distance method for calculating similarity
-					*/
-					function distEuclid(dataItem, centroid, dataMeta) {
-						var powerSum = 0;
-						var dimensions = dataMeta.dimensions;
-						var extents = dataMeta.rawExtents;
-						for (var i = 0; i < dimensions.length; i++) {
-							var span = extents[i].span;
-							if (span) {
-								var dimIdx = dimensions[i];
-								var dist = (dataItem[dimIdx] - centroid[i]) / span;
-								powerSum += mathPow(dist, 2);
-							}
-						}
-						return powerSum;
-					}
-					function parseDataMeta(dataSet, config) {
-						var size = arraySize(dataSet);
-						if (size.length < 1) throw new Error("The input data of clustering should be two-dimension array.");
-						var colCount = size[1];
-						var defaultDimensions = [];
-						for (var i = 0; i < colCount; i++) defaultDimensions.push(i);
-						var dimensions = normalizeDimensions(config.dimensions, defaultDimensions);
-						var outputType = config.outputType || OutputType.MULTIPLE;
-						var outputClusterIndexDimension = config.outputClusterIndexDimension;
-						if (outputType === OutputType.SINGLE && !numberUtil.isNumber(outputClusterIndexDimension)) throw new Error("outputClusterIndexDimension is required as a number.");
-						var extents = calcExtents(dataSet, dimensions);
-						return {
-							dimensions,
-							rawExtents: extents,
-							outputType,
-							outputClusterIndexDimension,
-							outputCentroidDimensions: config.outputCentroidDimensions
-						};
-					}
-					function calcExtents(dataSet, dimensions) {
-						var extents = [];
-						var dimLen = dimensions.length;
-						for (var i = 0; i < dimLen; i++) extents.push({
-							min: Infinity,
-							max: -Infinity
-						});
-						for (var i = 0; i < dataSet.length; i++) {
-							var line = dataSet[i];
-							for (var j = 0; j < dimLen; j++) {
-								var extentItem = extents[j];
-								var val = line[dimensions[j]];
-								extentItem.min > val && (extentItem.min = val);
-								extentItem.max < val && (extentItem.max = val);
-							}
-						}
-						for (var i = 0; i < dimLen; i++) extents[i].span = extents[i].max - extents[i].min;
-						return extents;
-					}
-					return {
-						OutputType,
-						hierarchicalKMeans
-					};
-				}.call(exports$1, __webpack_require__, exports$1, module$1), __WEBPACK_AMD_DEFINE_RESULT__ !== void 0 && (module$1.exports = __WEBPACK_AMD_DEFINE_RESULT__);
-			},
-			function(module$1, exports$1, __webpack_require__) {
-				var __WEBPACK_AMD_DEFINE_RESULT__;
-				__WEBPACK_AMD_DEFINE_RESULT__ = function(require$1) {
-					var array = __webpack_require__(3);
-					var isArray = array.isArray;
-					var size = array.size;
-					var number = __webpack_require__(4);
-					var isNumber = number.isNumber;
-					/**
-					* @param  {Array.<number>|number} dimensions like `[2, 4]` or `4`
-					* @param  {Array.<number>} [defaultDimensions=undefined] By default `undefined`.
-					* @return {Array.<number>} number like `4` is normalized to `[4]`,
-					*         `null`/`undefined` is normalized to `defaultDimensions`.
-					*/
-					function normalizeDimensions(dimensions, defaultDimensions) {
-						return typeof dimensions === "number" ? [dimensions] : dimensions == null ? defaultDimensions : dimensions;
-					}
-					/**
-					* Data preprocessing, filter the wrong data object.
-					*  for example [12,] --- missing y value
-					*              [,12] --- missing x value
-					*              [12, b] --- incorrect y value
-					*              ['a', 12] --- incorrect x value
-					* @param  {Array.<Array>} data
-					* @param  {Object?} [opt]
-					* @param  {Array.<number>} [opt.dimensions] Optional. Like [2, 4],
-					*         means that dimension index 2 and dimension index 4 need to be number.
-					*         If null/undefined (by default), all dimensions need to be number.
-					* @param  {boolean} [opt.toOneDimensionArray] Convert to one dimension array.
-					*         Each value is from `opt.dimensions[0]` or dimension 0.
-					* @return {Array.<Array.<number>>}
-					*/
-					function dataPreprocess(data, opt) {
-						opt = opt || {};
-						var dimensions = opt.dimensions;
-						var numberDimensionMap = {};
-						if (dimensions != null) for (var i = 0; i < dimensions.length; i++) numberDimensionMap[dimensions[i]] = true;
-						var targetOneDim = opt.toOneDimensionArray ? dimensions ? dimensions[0] : 0 : null;
-						function shouldBeNumberDimension(dimIdx) {
-							return !dimensions || numberDimensionMap.hasOwnProperty(dimIdx);
-						}
-						if (!isArray(data)) throw new Error("Invalid data type, you should input an array");
-						var predata = [];
-						var arraySize = size(data);
-						if (arraySize.length === 1) for (var i = 0; i < arraySize[0]; i++) {
-							var item = data[i];
-							if (isNumber(item)) predata.push(item);
-						}
-						else if (arraySize.length === 2) for (var i = 0; i < arraySize[0]; i++) {
-							var isCorrect = true;
-							var item = data[i];
-							for (var j = 0; j < arraySize[1]; j++) if (shouldBeNumberDimension(j) && !isNumber(item[j])) isCorrect = false;
-							if (isCorrect) predata.push(targetOneDim != null ? item[targetOneDim] : item);
-						}
-						return predata;
-					}
-					/**
-					* @param {string|number} val
-					* @return {number}
-					*/
-					function getPrecision(val) {
-						var str = val.toString();
-						var dotIndex = str.indexOf(".");
-						return dotIndex < 0 ? 0 : str.length - 1 - dotIndex;
-					}
-					return {
-						normalizeDimensions,
-						dataPreprocess,
-						getPrecision
-					};
-				}.call(exports$1, __webpack_require__, exports$1, module$1), __WEBPACK_AMD_DEFINE_RESULT__ !== void 0 && (module$1.exports = __WEBPACK_AMD_DEFINE_RESULT__);
-			},
-			function(module$1, exports$1, __webpack_require__) {
-				var __WEBPACK_AMD_DEFINE_RESULT__;
-				__WEBPACK_AMD_DEFINE_RESULT__ = function(require$1) {
-					var objToString = Object.prototype.toString;
-					var arrayProto = Array.prototype;
-					var nativeMap = arrayProto.map;
-					/**
-					* Get the size of a array
-					* @param  {Array} data
-					* @return {Array}
-					*/
-					function size(data) {
-						var s = [];
-						while (isArray(data)) {
-							s.push(data.length);
-							data = data[0];
-						}
-						return s;
-					}
-					/**
-					* @param {*}  value
-					* @return {boolean}
-					*/
-					function isArray(value) {
-						return objToString.call(value) === "[object Array]";
-					}
-					/**
-					* constructs a (m x n) array with all values 0
-					* @param  {number} m  the row
-					* @param  {number} n  the column
-					* @return {Array}
-					*/
-					function zeros(m, n) {
-						var zeroArray = [];
-						for (var i = 0; i < m; i++) {
-							zeroArray[i] = [];
-							for (var j = 0; j < n; j++) zeroArray[i][j] = 0;
-						}
-						return zeroArray;
-					}
-					/**
-					* Sums each element in the array.
-					* Internal use, for performance considerations, to avoid
-					* unnecessary judgments and calculations.
-					* @param  {Array} vector
-					* @return {number}
-					*/
-					function sum(vector) {
-						var sum$1 = 0;
-						for (var i = 0; i < vector.length; i++) sum$1 += vector[i];
-						return sum$1;
-					}
-					/**
-					* Computes the sum of the specified column elements in a two-dimensional array
-					* @param  {Array.<Array>} dataList  two-dimensional array
-					* @param  {number} n  the specified column, zero-based
-					* @return {number}
-					*/
-					function sumOfColumn(dataList, n) {
-						var sum$1 = 0;
-						for (var i = 0; i < dataList.length; i++) sum$1 += dataList[i][n];
-						return sum$1;
-					}
-					function ascending(a, b) {
-						return a > b ? 1 : a < b ? -1 : a === b ? 0 : NaN;
-					}
-					/**
-					* Binary search algorithm --- this bisector is specidfied to histogram, which every bin like that [a, b),
-					* so the return value use to add 1.
-					* @param  {Array.<number>} array
-					* @param  {number} value
-					* @param  {number} start
-					* @param  {number} end
-					* @return {number}
-					*/
-					function bisect(array, value, start, end) {
-						if (start == null) start = 0;
-						if (end == null) end = array.length;
-						while (start < end) {
-							var mid = Math.floor((start + end) / 2);
-							var compare = ascending(array[mid], value);
-							if (compare > 0) end = mid;
-							else if (compare < 0) start = mid + 1;
-							else return mid + 1;
-						}
-						return start;
-					}
-					/**
-					* 数组映射
-					* @memberOf module:zrender/core/util
-					* @param {Array} obj
-					* @param {Function} cb
-					* @param {*} [context]
-					* @return {Array}
-					*/
-					function map(obj, cb, context) {
-						if (!(obj && cb)) return;
-						if (obj.map && obj.map === nativeMap) return obj.map(cb, context);
-						else {
-							var result = [];
-							for (var i = 0, len = obj.length; i < len; i++) result.push(cb.call(context, obj[i], i, obj));
-							return result;
-						}
-					}
-					return {
-						size,
-						isArray,
-						zeros,
-						sum,
-						sumOfColumn,
-						ascending,
-						bisect,
-						map
-					};
-				}.call(exports$1, __webpack_require__, exports$1, module$1), __WEBPACK_AMD_DEFINE_RESULT__ !== void 0 && (module$1.exports = __WEBPACK_AMD_DEFINE_RESULT__);
-			},
-			function(module$1, exports$1, __webpack_require__) {
-				var __WEBPACK_AMD_DEFINE_RESULT__;
-				__WEBPACK_AMD_DEFINE_RESULT__ = function(require$1) {
-					/**
-					* Test whether value is a number.
-					* @param  {*}  value
-					* @return {boolean}
-					*/
-					function isNumber(value) {
-						value = value === null ? NaN : +value;
-						return typeof value === "number" && !isNaN(value);
-					}
-					/**
-					* Test if a number is integer.
-					* @param  {number}  value
-					* @return {boolean}
-					*/
-					function isInteger(value) {
-						return isFinite(value) && value === Math.round(value);
-					}
-					function quantityExponent(val) {
-						if (val === 0) return 0;
-						var exp = Math.floor(Math.log(val) / Math.LN10);
-						if (val / Math.pow(10, exp) >= 10) exp++;
-						return exp;
-					}
-					return {
-						isNumber,
-						isInteger,
-						quantityExponent
-					};
-				}.call(exports$1, __webpack_require__, exports$1, module$1), __WEBPACK_AMD_DEFINE_RESULT__ !== void 0 && (module$1.exports = __WEBPACK_AMD_DEFINE_RESULT__);
-			},
-			function(module$1, exports$1, __webpack_require__) {
-				var __WEBPACK_AMD_DEFINE_RESULT__;
-				__WEBPACK_AMD_DEFINE_RESULT__ = function(require$1) {
-					var dataProcess = __webpack_require__(2);
-					var dataPreprocess = dataProcess.dataPreprocess;
-					var normalizeDimensions = dataProcess.normalizeDimensions;
-					var regreMethods = {
-						linear: function(predata, opt) {
-							var xDimIdx = opt.dimensions[0];
-							var yDimIdx = opt.dimensions[1];
-							var sumX = 0;
-							var sumY = 0;
-							var sumXY = 0;
-							var sumXX = 0;
-							var len = predata.length;
-							for (var i = 0; i < len; i++) {
-								var rawItem = predata[i];
-								sumX += rawItem[xDimIdx];
-								sumY += rawItem[yDimIdx];
-								sumXY += rawItem[xDimIdx] * rawItem[yDimIdx];
-								sumXX += rawItem[xDimIdx] * rawItem[xDimIdx];
-							}
-							var gradient = (len * sumXY - sumX * sumY) / (len * sumXX - sumX * sumX);
-							var intercept = sumY / len - gradient * sumX / len;
-							var result = [];
-							for (var j = 0; j < predata.length; j++) {
-								var rawItem = predata[j];
-								var resultItem = rawItem.slice();
-								resultItem[xDimIdx] = rawItem[xDimIdx];
-								resultItem[yDimIdx] = gradient * rawItem[xDimIdx] + intercept;
-								result.push(resultItem);
-							}
-							var expression = "y = " + Math.round(gradient * 100) / 100 + "x + " + Math.round(intercept * 100) / 100;
-							return {
-								points: result,
-								parameter: {
-									gradient,
-									intercept
-								},
-								expression
-							};
-						},
-						linearThroughOrigin: function(predata, opt) {
-							var xDimIdx = opt.dimensions[0];
-							var yDimIdx = opt.dimensions[1];
-							var sumXX = 0;
-							var sumXY = 0;
-							for (var i = 0; i < predata.length; i++) {
-								var rawItem = predata[i];
-								sumXX += rawItem[xDimIdx] * rawItem[xDimIdx];
-								sumXY += rawItem[xDimIdx] * rawItem[yDimIdx];
-							}
-							var gradient = sumXY / sumXX;
-							var result = [];
-							for (var j = 0; j < predata.length; j++) {
-								var rawItem = predata[j];
-								var resultItem = rawItem.slice();
-								resultItem[xDimIdx] = rawItem[xDimIdx];
-								resultItem[yDimIdx] = rawItem[xDimIdx] * gradient;
-								result.push(resultItem);
-							}
-							var expression = "y = " + Math.round(gradient * 100) / 100 + "x";
-							return {
-								points: result,
-								parameter: { gradient },
-								expression
-							};
-						},
-						exponential: function(predata, opt) {
-							var xDimIdx = opt.dimensions[0];
-							var yDimIdx = opt.dimensions[1];
-							var sumX = 0;
-							var sumY = 0;
-							var sumXXY = 0;
-							var sumYlny = 0;
-							var sumXYlny = 0;
-							var sumXY = 0;
-							for (var i = 0; i < predata.length; i++) {
-								var rawItem = predata[i];
-								sumX += rawItem[xDimIdx];
-								sumY += rawItem[yDimIdx];
-								sumXY += rawItem[xDimIdx] * rawItem[yDimIdx];
-								sumXXY += rawItem[xDimIdx] * rawItem[xDimIdx] * rawItem[yDimIdx];
-								sumYlny += rawItem[yDimIdx] * Math.log(rawItem[yDimIdx]);
-								sumXYlny += rawItem[xDimIdx] * rawItem[yDimIdx] * Math.log(rawItem[yDimIdx]);
-							}
-							var denominator = sumY * sumXXY - sumXY * sumXY;
-							var coefficient = Math.pow(Math.E, (sumXXY * sumYlny - sumXY * sumXYlny) / denominator);
-							var index = (sumY * sumXYlny - sumXY * sumYlny) / denominator;
-							var result = [];
-							for (var j = 0; j < predata.length; j++) {
-								var rawItem = predata[j];
-								var resultItem = rawItem.slice();
-								resultItem[xDimIdx] = rawItem[xDimIdx];
-								resultItem[yDimIdx] = coefficient * Math.pow(Math.E, index * rawItem[xDimIdx]);
-								result.push(resultItem);
-							}
-							var expression = "y = " + Math.round(coefficient * 100) / 100 + "e^(" + Math.round(index * 100) / 100 + "x)";
-							return {
-								points: result,
-								parameter: {
-									coefficient,
-									index
-								},
-								expression
-							};
-						},
-						logarithmic: function(predata, opt) {
-							var xDimIdx = opt.dimensions[0];
-							var yDimIdx = opt.dimensions[1];
-							var sumlnx = 0;
-							var sumYlnx = 0;
-							var sumY = 0;
-							var sumlnxlnx = 0;
-							for (var i = 0; i < predata.length; i++) {
-								var rawItem = predata[i];
-								sumlnx += Math.log(rawItem[xDimIdx]);
-								sumYlnx += rawItem[yDimIdx] * Math.log(rawItem[xDimIdx]);
-								sumY += rawItem[yDimIdx];
-								sumlnxlnx += Math.pow(Math.log(rawItem[xDimIdx]), 2);
-							}
-							var gradient = (i * sumYlnx - sumY * sumlnx) / (i * sumlnxlnx - sumlnx * sumlnx);
-							var intercept = (sumY - gradient * sumlnx) / i;
-							var result = [];
-							for (var j = 0; j < predata.length; j++) {
-								var rawItem = predata[j];
-								var resultItem = rawItem.slice();
-								resultItem[xDimIdx] = rawItem[xDimIdx];
-								resultItem[yDimIdx] = gradient * Math.log(rawItem[xDimIdx]) + intercept;
-								result.push(resultItem);
-							}
-							var expression = "y = " + Math.round(intercept * 100) / 100 + " + " + Math.round(gradient * 100) / 100 + "ln(x)";
-							return {
-								points: result,
-								parameter: {
-									gradient,
-									intercept
-								},
-								expression
-							};
-						},
-						polynomial: function(predata, opt) {
-							var xDimIdx = opt.dimensions[0];
-							var yDimIdx = opt.dimensions[1];
-							var order = opt.order;
-							if (order == null) order = 2;
-							var coeMatrix = [];
-							var lhs = [];
-							var k = order + 1;
-							for (var i = 0; i < k; i++) {
-								var sumA = 0;
-								for (var n = 0; n < predata.length; n++) {
-									var rawItem = predata[n];
-									sumA += rawItem[yDimIdx] * Math.pow(rawItem[xDimIdx], i);
-								}
-								lhs.push(sumA);
-								var temp = [];
-								for (var j = 0; j < k; j++) {
-									var sumB = 0;
-									for (var m = 0; m < predata.length; m++) sumB += Math.pow(predata[m][xDimIdx], i + j);
-									temp.push(sumB);
-								}
-								coeMatrix.push(temp);
-							}
-							coeMatrix.push(lhs);
-							var coeArray = gaussianElimination(coeMatrix, k);
-							var result = [];
-							for (var i = 0; i < predata.length; i++) {
-								var value = 0;
-								var rawItem = predata[i];
-								for (var n = 0; n < coeArray.length; n++) value += coeArray[n] * Math.pow(rawItem[xDimIdx], n);
-								var resultItem = rawItem.slice();
-								resultItem[xDimIdx] = rawItem[xDimIdx];
-								resultItem[yDimIdx] = value;
-								result.push(resultItem);
-							}
-							var expression = "y = ";
-							for (var i = coeArray.length - 1; i >= 0; i--) if (i > 1) expression += Math.round(coeArray[i] * Math.pow(10, i + 1)) / Math.pow(10, i + 1) + "x^" + i + " + ";
-							else if (i === 1) expression += Math.round(coeArray[i] * 100) / 100 + "x + ";
-							else expression += Math.round(coeArray[i] * 100) / 100;
-							return {
-								points: result,
-								parameter: coeArray,
-								expression
-							};
-						}
-					};
-					/**
-					* Gaussian elimination
-					* @param  {Array.<Array.<number>>} matrix   two-dimensional number array
-					* @param  {number} number
-					* @return {Array}
-					*/
-					function gaussianElimination(matrix, number) {
-						for (var i = 0; i < matrix.length - 1; i++) {
-							var maxColumn = i;
-							for (var j = i + 1; j < matrix.length - 1; j++) if (Math.abs(matrix[i][j]) > Math.abs(matrix[i][maxColumn])) maxColumn = j;
-							for (var k = i; k < matrix.length; k++) {
-								var temp = matrix[k][i];
-								matrix[k][i] = matrix[k][maxColumn];
-								matrix[k][maxColumn] = temp;
-							}
-							for (var n = i + 1; n < matrix.length - 1; n++) for (var m = matrix.length - 1; m >= i; m--) matrix[m][n] -= matrix[m][i] / matrix[i][i] * matrix[i][n];
-						}
-						var data = new Array(number);
-						var len = matrix.length - 1;
-						for (var j = matrix.length - 2; j >= 0; j--) {
-							var temp = 0;
-							for (var i = j + 1; i < matrix.length - 1; i++) temp += matrix[i][j] * data[i];
-							data[j] = (matrix[len][j] - temp) / matrix[j][j];
-						}
-						return data;
-					}
-					/**
-					* @param  {string} regreMethod
-					* @param  {Array.<Array.<number>>} data   two-dimensional number array
-					* @param  {Object|number} [optOrOrder]  opt or order
-					* @param  {number} [optOrOrder.order]  order of polynomials
-					* @param  {Array.<number>|number} [optOrOrder.dimensions=[0, 1]]  Target dimensions to calculate the regression.
-					*         By defualt: use [0, 1] as [x, y].
-					* @return {Array}
-					*/
-					var regression = function(regreMethod, data, optOrOrder) {
-						var opt = typeof optOrOrder === "number" ? { order: optOrOrder } : optOrOrder || {};
-						var dimensions = normalizeDimensions(opt.dimensions, [0, 1]);
-						var predata = dataPreprocess(data, { dimensions });
-						var result = regreMethods[regreMethod](predata, {
-							order: opt.order,
-							dimensions
-						});
-						var xDimIdx = dimensions[0];
-						result.points.sort(function(itemA, itemB) {
-							return itemA[xDimIdx] - itemB[xDimIdx];
-						});
-						return result;
-					};
-					return regression;
-				}.call(exports$1, __webpack_require__, exports$1, module$1), __WEBPACK_AMD_DEFINE_RESULT__ !== void 0 && (module$1.exports = __WEBPACK_AMD_DEFINE_RESULT__);
-			},
-			function(module$1, exports$1, __webpack_require__) {
-				var __WEBPACK_AMD_DEFINE_RESULT__;
-				__WEBPACK_AMD_DEFINE_RESULT__ = function(require$1) {
-					var statistics = {};
-					statistics.max = __webpack_require__(7);
-					statistics.deviation = __webpack_require__(8);
-					statistics.mean = __webpack_require__(10);
-					statistics.median = __webpack_require__(12);
-					statistics.min = __webpack_require__(14);
-					statistics.quantile = __webpack_require__(13);
-					statistics.sampleVariance = __webpack_require__(9);
-					statistics.sum = __webpack_require__(11);
-					return statistics;
-				}.call(exports$1, __webpack_require__, exports$1, module$1), __WEBPACK_AMD_DEFINE_RESULT__ !== void 0 && (module$1.exports = __WEBPACK_AMD_DEFINE_RESULT__);
-			},
-			function(module$1, exports$1, __webpack_require__) {
-				var __WEBPACK_AMD_DEFINE_RESULT__;
-				__WEBPACK_AMD_DEFINE_RESULT__ = function(require$1) {
-					var number = __webpack_require__(4);
-					var isNumber = number.isNumber;
-					/**
-					* Is a method for computing the max value of a list of numbers,
-					* which will filter other data types.
-					* @param  {Array.<number>} data
-					* @return {number}
-					*/
-					function max(data) {
-						var maxData = -Infinity;
-						for (var i = 0; i < data.length; i++) if (isNumber(data[i]) && data[i] > maxData) maxData = data[i];
-						return maxData;
-					}
-					return max;
-				}.call(exports$1, __webpack_require__, exports$1, module$1), __WEBPACK_AMD_DEFINE_RESULT__ !== void 0 && (module$1.exports = __WEBPACK_AMD_DEFINE_RESULT__);
-			},
-			function(module$1, exports$1, __webpack_require__) {
-				var __WEBPACK_AMD_DEFINE_RESULT__;
-				__WEBPACK_AMD_DEFINE_RESULT__ = function(require$1) {
-					var variance = __webpack_require__(9);
-					/**
-					* Computing the deviation
-					* @param  {Array.<number>} data
-					* @return {number}
-					*/
-					return function(data) {
-						var squaredDeviation = variance(data);
-						return squaredDeviation ? Math.sqrt(squaredDeviation) : squaredDeviation;
-					};
-				}.call(exports$1, __webpack_require__, exports$1, module$1), __WEBPACK_AMD_DEFINE_RESULT__ !== void 0 && (module$1.exports = __WEBPACK_AMD_DEFINE_RESULT__);
-			},
-			function(module$1, exports$1, __webpack_require__) {
-				var __WEBPACK_AMD_DEFINE_RESULT__;
-				__WEBPACK_AMD_DEFINE_RESULT__ = function(require$1) {
-					var number = __webpack_require__(4);
-					var isNumber = number.isNumber;
-					var mean = __webpack_require__(10);
-					/**
-					* Computing the variance of list of sample
-					* @param  {Array.<number>} data
-					* @return {number}
-					*/
-					function sampleVariance(data) {
-						var len = data.length;
-						if (!len || len < 2) return 0;
-						if (data.length >= 2) {
-							var meanValue = mean(data);
-							var sum = 0;
-							var temple;
-							for (var i = 0; i < data.length; i++) if (isNumber(data[i])) {
-								temple = data[i] - meanValue;
-								sum += temple * temple;
-							}
-							return sum / (data.length - 1);
-						}
-					}
-					return sampleVariance;
-				}.call(exports$1, __webpack_require__, exports$1, module$1), __WEBPACK_AMD_DEFINE_RESULT__ !== void 0 && (module$1.exports = __WEBPACK_AMD_DEFINE_RESULT__);
-			},
-			function(module$1, exports$1, __webpack_require__) {
-				var __WEBPACK_AMD_DEFINE_RESULT__;
-				__WEBPACK_AMD_DEFINE_RESULT__ = function(require$1) {
-					var sum = __webpack_require__(11);
-					/**
-					* Is a method for computing the mean value of a list of numbers,
-					* which will filter other data types.
-					* @param  {Array.<number>} data
-					* @return {number}
-					*/
-					function mean(data) {
-						var len = data.length;
-						if (!len) return 0;
-						return sum(data) / data.length;
-					}
-					return mean;
-				}.call(exports$1, __webpack_require__, exports$1, module$1), __WEBPACK_AMD_DEFINE_RESULT__ !== void 0 && (module$1.exports = __WEBPACK_AMD_DEFINE_RESULT__);
-			},
-			function(module$1, exports$1, __webpack_require__) {
-				var __WEBPACK_AMD_DEFINE_RESULT__;
-				__WEBPACK_AMD_DEFINE_RESULT__ = function(require$1) {
-					var number = __webpack_require__(4);
-					var isNumber = number.isNumber;
-					/**
-					* Is a method for computing the sum of a list of numbers,
-					* which will filter other data types.
-					* @param  {Array.<number>} data
-					* @return {number}
-					*/
-					function sum(data) {
-						var len = data.length;
-						if (!len) return 0;
-						var sumData = 0;
-						for (var i = 0; i < len; i++) if (isNumber(data[i])) sumData += data[i];
-						return sumData;
-					}
-					return sum;
-				}.call(exports$1, __webpack_require__, exports$1, module$1), __WEBPACK_AMD_DEFINE_RESULT__ !== void 0 && (module$1.exports = __WEBPACK_AMD_DEFINE_RESULT__);
-			},
-			function(module$1, exports$1, __webpack_require__) {
-				var __WEBPACK_AMD_DEFINE_RESULT__;
-				__WEBPACK_AMD_DEFINE_RESULT__ = function(require$1) {
-					var quantile = __webpack_require__(13);
-					/**
-					* Is a method for computing the median value of a sorted array of numbers
-					* @param  {Array.<number>} data
-					* @return {number}
-					*/
-					function median(data) {
-						return quantile(data, .5);
-					}
-					return median;
-				}.call(exports$1, __webpack_require__, exports$1, module$1), __WEBPACK_AMD_DEFINE_RESULT__ !== void 0 && (module$1.exports = __WEBPACK_AMD_DEFINE_RESULT__);
-			},
-			function(module$1, exports$1, __webpack_require__) {
-				var __WEBPACK_AMD_DEFINE_RESULT__;
-				__WEBPACK_AMD_DEFINE_RESULT__ = function(require$1) {
-					/**
-					* Estimating quantiles from a sorted sample of numbers
-					* @see https://en.wikipedia.org/wiki/Quantile#Estimating_quantiles_from_a_sample
-					* R-7 method
-					* @param  {Array.<number>} data  sorted array
-					* @param  {number} p
-					*/
-					return function(data, p) {
-						var len = data.length;
-						if (!len) return 0;
-						if (p <= 0 || len < 2) return data[0];
-						if (p >= 1) return data[len - 1];
-						var h = (len - 1) * p;
-						var i = Math.floor(h);
-						var a = data[i];
-						var b = data[i + 1];
-						return a + (b - a) * (h - i);
-					};
-				}.call(exports$1, __webpack_require__, exports$1, module$1), __WEBPACK_AMD_DEFINE_RESULT__ !== void 0 && (module$1.exports = __WEBPACK_AMD_DEFINE_RESULT__);
-			},
-			function(module$1, exports$1, __webpack_require__) {
-				var __WEBPACK_AMD_DEFINE_RESULT__;
-				__WEBPACK_AMD_DEFINE_RESULT__ = function(require$1) {
-					var number = __webpack_require__(4);
-					var isNumber = number.isNumber;
-					/**
-					* Is a method for computing the min value of a list of numbers,
-					* which will filter other data types.
-					* @param  {Array.<number>} data
-					* @return {number}
-					*/
-					function min(data) {
-						var minData = Infinity;
-						for (var i = 0; i < data.length; i++) if (isNumber(data[i]) && data[i] < minData) minData = data[i];
-						return minData;
-					}
-					return min;
-				}.call(exports$1, __webpack_require__, exports$1, module$1), __WEBPACK_AMD_DEFINE_RESULT__ !== void 0 && (module$1.exports = __WEBPACK_AMD_DEFINE_RESULT__);
-			},
-			function(module$1, exports$1, __webpack_require__) {
-				var __WEBPACK_AMD_DEFINE_RESULT__;
-				__WEBPACK_AMD_DEFINE_RESULT__ = function(require$1) {
-					var max = __webpack_require__(7);
-					var min = __webpack_require__(14);
-					var quantile = __webpack_require__(13);
-					var deviation = __webpack_require__(8);
-					var dataProcess = __webpack_require__(2);
-					var dataPreprocess = dataProcess.dataPreprocess;
-					var normalizeDimensions = dataProcess.normalizeDimensions;
-					var array = __webpack_require__(3);
-					var ascending = array.ascending;
-					var map = array.map;
-					var range = __webpack_require__(16);
-					var bisect = array.bisect;
-					var tickStep = __webpack_require__(17);
-					/**
-					* Compute bins for histogram
-					* @param  {Array.<number>} data
-					* @param  {Object|string} optOrMethod Optional settings or `method`.
-					* @param  {Object|string} optOrMethod.method 'squareRoot' | 'scott' | 'freedmanDiaconis' | 'sturges'
-					* @param  {Array.<number>|number} optOrMethod.dimensions If data is a 2-d array,
-					*         which dimension will be used to calculate histogram.
-					* @return {Object}
-					*/
-					function computeBins(data, optOrMethod) {
-						var opt = typeof optOrMethod === "string" ? { method: optOrMethod } : optOrMethod || {};
-						var threshold = opt.method == null ? thresholdMethod.squareRoot : thresholdMethod[opt.method];
-						var dimensions = normalizeDimensions(opt.dimensions);
-						var values = dataPreprocess(data, {
-							dimensions,
-							toOneDimensionArray: true
-						});
-						var maxValue = max(values);
-						var minValue = min(values);
-						var binsNumber = threshold(values, minValue, maxValue);
-						var tickStepResult = tickStep(minValue, maxValue, binsNumber);
-						var step = tickStepResult.step;
-						var toFixedPrecision = tickStepResult.toFixedPrecision;
-						var rangeArray = range(+(Math.ceil(minValue / step) * step).toFixed(toFixedPrecision), +(Math.floor(maxValue / step) * step).toFixed(toFixedPrecision), step, toFixedPrecision);
-						var len = rangeArray.length;
-						var bins = new Array(len + 1);
-						for (var i = 0; i <= len; i++) {
-							bins[i] = {};
-							bins[i].sample = [];
-							bins[i].x0 = i > 0 ? rangeArray[i - 1] : rangeArray[i] - minValue === step ? minValue : rangeArray[i] - step;
-							bins[i].x1 = i < len ? rangeArray[i] : maxValue - rangeArray[i - 1] === step ? maxValue : rangeArray[i - 1] + step;
-						}
-						for (var i = 0; i < values.length; i++) if (minValue <= values[i] && values[i] <= maxValue) bins[bisect(rangeArray, values[i], 0, len)].sample.push(values[i]);
-						var data = map(bins, function(bin) {
-							return [
-								+((bin.x0 + bin.x1) / 2).toFixed(toFixedPrecision),
-								bin.sample.length,
-								bin.x0,
-								bin.x1,
-								bin.x0 + " - " + bin.x1
-							];
-						});
-						var customData = map(bins, function(bin) {
-							return [
-								bin.x0,
-								bin.x1,
-								bin.sample.length
-							];
-						});
-						return {
-							bins,
-							data,
-							customData
-						};
-					}
-					/**
-					* Four kinds of threshold methods used to
-					* compute how much bins the histogram should be divided
-					* @see  https://en.wikipedia.org/wiki/Histogram
-					* @type {Object}
-					*/
-					var thresholdMethod = {
-						squareRoot: function(data) {
-							var bins = Math.ceil(Math.sqrt(data.length));
-							return bins > 50 ? 50 : bins;
-						},
-						scott: function(data, min$1, max$1) {
-							return Math.ceil((max$1 - min$1) / (3.5 * deviation(data) * Math.pow(data.length, -1 / 3)));
-						},
-						freedmanDiaconis: function(data, min$1, max$1) {
-							data.sort(ascending);
-							return Math.ceil((max$1 - min$1) / (2 * (quantile(data, .75) - quantile(data, .25)) * Math.pow(data.length, -1 / 3)));
-						},
-						sturges: function(data) {
-							return Math.ceil(Math.log(data.length) / Math.LN2) + 1;
-						}
-					};
-					return computeBins;
-				}.call(exports$1, __webpack_require__, exports$1, module$1), __WEBPACK_AMD_DEFINE_RESULT__ !== void 0 && (module$1.exports = __WEBPACK_AMD_DEFINE_RESULT__);
-			},
-			function(module$1, exports$1, __webpack_require__) {
-				var __WEBPACK_AMD_DEFINE_RESULT__;
-				__WEBPACK_AMD_DEFINE_RESULT__ = function(require$1) {
-					var dataProcess = __webpack_require__(2);
-					var getPrecision = dataProcess.getPrecision;
-					/**
-					* Computing range array.
-					* Adding param precision to fix range value, avoiding range[i] = 0.7000000001.
-					* @param  {number} start
-					* @param  {number} end
-					* @param  {number} step
-					* @param  {number} precision
-					* @return {Array.<number>}
-					*/
-					return function(start, end, step, precision) {
-						var len = arguments.length;
-						if (len < 2) {
-							end = start;
-							start = 0;
-							step = 1;
-						} else if (len < 3) step = 1;
-						else if (len < 4) {
-							step = +step;
-							precision = getPrecision(step);
-						} else precision = +precision;
-						var n = Math.ceil(((end - start) / step).toFixed(precision));
-						var range = new Array(n + 1);
-						for (var i = 0; i < n + 1; i++) range[i] = +(start + i * step).toFixed(precision);
-						return range;
-					};
-				}.call(exports$1, __webpack_require__, exports$1, module$1), __WEBPACK_AMD_DEFINE_RESULT__ !== void 0 && (module$1.exports = __WEBPACK_AMD_DEFINE_RESULT__);
-			},
-			function(module$1, exports$1, __webpack_require__) {
-				var __WEBPACK_AMD_DEFINE_RESULT__;
-				__WEBPACK_AMD_DEFINE_RESULT__ = function(require$1) {
-					var numberUtil = __webpack_require__(4);
-					/**
-					* Computing the length of step
-					* @see  https://github.com/d3/d3-array/blob/master/src/ticks.js
-					* @param {number} start
-					* @param {number} stop
-					* @param {number} count
-					*/
-					return function(start, stop, count) {
-						var step0 = Math.abs(stop - start) / count;
-						var precision = numberUtil.quantityExponent(step0);
-						var step1 = Math.pow(10, precision);
-						var error = step0 / step1;
-						if (error >= Math.sqrt(50)) step1 *= 10;
-						else if (error >= Math.sqrt(10)) step1 *= 5;
-						else if (error >= Math.sqrt(2)) step1 *= 2;
-						var toFixedPrecision = precision < 0 ? -precision : 0;
-						var resultStep = +(stop >= start ? step1 : -step1).toFixed(toFixedPrecision);
-						return {
-							step: resultStep,
-							toFixedPrecision
-						};
-					};
-				}.call(exports$1, __webpack_require__, exports$1, module$1), __WEBPACK_AMD_DEFINE_RESULT__ !== void 0 && (module$1.exports = __WEBPACK_AMD_DEFINE_RESULT__);
-			},
-			function(module$1, exports$1, __webpack_require__) {
-				var __WEBPACK_AMD_DEFINE_RESULT__;
-				__WEBPACK_AMD_DEFINE_RESULT__ = function(require$1) {
-					var regression = __webpack_require__(5);
-					var transformHelper = __webpack_require__(19);
-					var FORMULA_DIMENSION = 2;
-					return {
-						type: "ecStat:regression",
-						transform: function transform(params) {
-							var upstream = params.upstream;
-							var config = params.config || {};
-							var method = config.method || "linear";
-							var result = regression(method, upstream.cloneRawData(), {
-								order: config.order,
-								dimensions: transformHelper.normalizeExistingDimensions(params, config.dimensions)
-							});
-							var points = result.points;
-							var formulaOn = config.formulaOn;
-							if (formulaOn == null) formulaOn = "end";
-							var dimensions;
-							if (formulaOn !== "none") {
-								for (var i = 0; i < points.length; i++) points[i][FORMULA_DIMENSION] = formulaOn === "start" && i === 0 || formulaOn === "all" || formulaOn === "end" && i === points.length - 1 ? result.expression : "";
-								dimensions = upstream.cloneAllDimensionInfo();
-								dimensions[FORMULA_DIMENSION] = {};
-							}
-							return [{
-								dimensions,
-								data: points
-							}];
-						}
-					};
-				}.call(exports$1, __webpack_require__, exports$1, module$1), __WEBPACK_AMD_DEFINE_RESULT__ !== void 0 && (module$1.exports = __WEBPACK_AMD_DEFINE_RESULT__);
-			},
-			function(module$1, exports$1, __webpack_require__) {
-				var __WEBPACK_AMD_DEFINE_RESULT__;
-				__WEBPACK_AMD_DEFINE_RESULT__ = function(require$1) {
-					var arrayUtil = __webpack_require__(3);
-					var numberUtil = __webpack_require__(4);
-					var objectUtil = __webpack_require__(20);
-					/**
-					* type DimensionLoose = DimensionIndex | DimensionName;
-					* type DimensionIndex = number;
-					* type DimensionName = string;
-					*
-					* @param {object} transformParams The parameter of echarts transfrom.
-					* @param {DimensionLoose | DimensionLoose[]} dimensionsConfig
-					* @return {DimensionIndex | DimensionIndex[]}
-					*/
-					function normalizeExistingDimensions(transformParams, dimensionsConfig) {
-						if (dimensionsConfig == null) return;
-						var upstream = transformParams.upstream;
-						if (arrayUtil.isArray(dimensionsConfig)) {
-							var result = [];
-							for (var i = 0; i < dimensionsConfig.length; i++) {
-								var dimInfo = upstream.getDimensionInfo(dimensionsConfig[i]);
-								validateDimensionExists(dimInfo, dimensionsConfig[i]);
-								result[i] = dimInfo.index;
-							}
-							return result;
-						} else {
-							var dimInfo = upstream.getDimensionInfo(dimensionsConfig);
-							validateDimensionExists(dimInfo, dimensionsConfig);
-							return dimInfo.index;
-						}
-						function validateDimensionExists(dimInfo$1, dimConfig) {
-							if (!dimInfo$1) throw new Error("Can not find dimension by " + dimConfig);
-						}
-					}
-					/**
-					* @param {object} transformParams The parameter of echarts transfrom.
-					* @param {(DimensionIndex | {name: DimensionName, index: DimensionIndex})[]} dimensionsConfig
-					* @param {{name: DimensionName | DimensionName[], index: DimensionIndex | DimensionIndex[]}}
-					*/
-					function normalizeNewDimensions(dimensionsConfig) {
-						if (arrayUtil.isArray(dimensionsConfig)) {
-							var names = [];
-							var indices = [];
-							for (var i = 0; i < dimensionsConfig.length; i++) {
-								var item = parseDimensionNewItem(dimensionsConfig[i]);
-								names.push(item.name);
-								indices.push(item.index);
-							}
-							return {
-								name: names,
-								index: indices
-							};
-						} else if (dimensionsConfig != null) return parseDimensionNewItem(dimensionsConfig);
-						function parseDimensionNewItem(dimConfig) {
-							if (numberUtil.isNumber(dimConfig)) return { index: dimConfig };
-							else if (objectUtil.isObject(dimConfig) && numberUtil.isNumber(dimConfig.index)) return dimConfig;
-							throw new Error("Illegle new dimensions config. Expect `{ name: string, index: number }`.");
-						}
-					}
-					return {
-						normalizeExistingDimensions,
-						normalizeNewDimensions
-					};
-				}.call(exports$1, __webpack_require__, exports$1, module$1), __WEBPACK_AMD_DEFINE_RESULT__ !== void 0 && (module$1.exports = __WEBPACK_AMD_DEFINE_RESULT__);
-			},
-			function(module$1, exports$1, __webpack_require__) {
-				var __WEBPACK_AMD_DEFINE_RESULT__;
-				__WEBPACK_AMD_DEFINE_RESULT__ = function(require$1) {
-					function extend(target, source) {
-						if (Object.assign) Object.assign(target, source);
-						else for (var key in source) if (source.hasOwnProperty(key)) target[key] = source[key];
-						return target;
-					}
-					function isObject(value) {
-						const type = typeof value;
-						return type === "function" || !!value && type === "object";
-					}
-					return {
-						extend,
-						isObject
-					};
-				}.call(exports$1, __webpack_require__, exports$1, module$1), __WEBPACK_AMD_DEFINE_RESULT__ !== void 0 && (module$1.exports = __WEBPACK_AMD_DEFINE_RESULT__);
-			},
-			function(module$1, exports$1, __webpack_require__) {
-				var __WEBPACK_AMD_DEFINE_RESULT__;
-				__WEBPACK_AMD_DEFINE_RESULT__ = function(require$1) {
-					var histogram = __webpack_require__(15);
-					var transformHelper = __webpack_require__(19);
-					return {
-						type: "ecStat:histogram",
-						transform: function transform(params) {
-							var upstream = params.upstream;
-							var config = params.config || {};
-							var result = histogram(upstream.cloneRawData(), {
-								method: config.method,
-								dimensions: transformHelper.normalizeExistingDimensions(params, config.dimensions)
-							});
-							return [{
-								dimensions: [
-									"MeanOfV0V1",
-									"VCount",
-									"V0",
-									"V1",
-									"DisplayableName"
-								],
-								data: result.data
-							}, { data: result.customData }];
-						}
-					};
-				}.call(exports$1, __webpack_require__, exports$1, module$1), __WEBPACK_AMD_DEFINE_RESULT__ !== void 0 && (module$1.exports = __WEBPACK_AMD_DEFINE_RESULT__);
-			},
-			function(module$1, exports$1, __webpack_require__) {
-				var __WEBPACK_AMD_DEFINE_RESULT__;
-				__WEBPACK_AMD_DEFINE_RESULT__ = function(require$1) {
-					var clustering = __webpack_require__(1);
-					var numberUtil = __webpack_require__(4);
-					var transformHelper = __webpack_require__(19);
-					var isNumber = numberUtil.isNumber;
-					return {
-						type: "ecStat:clustering",
-						transform: function transform(params) {
-							var upstream = params.upstream;
-							var config = params.config || {};
-							var clusterCount = config.clusterCount;
-							if (!isNumber(clusterCount) || clusterCount <= 0) throw new Error("config param \"clusterCount\" need to be specified as an interger greater than 1.");
-							if (clusterCount === 1) return [{}, { data: [] }];
-							var outputClusterIndexDimension = transformHelper.normalizeNewDimensions(config.outputClusterIndexDimension);
-							var outputCentroidDimensions = transformHelper.normalizeNewDimensions(config.outputCentroidDimensions);
-							if (outputClusterIndexDimension == null) throw new Error("outputClusterIndexDimension is required as a number.");
-							var result = clustering.hierarchicalKMeans(upstream.cloneRawData(), {
-								clusterCount,
-								stepByStep: false,
-								dimensions: transformHelper.normalizeExistingDimensions(params, config.dimensions),
-								outputType: clustering.OutputType.SINGLE,
-								outputClusterIndexDimension: outputClusterIndexDimension.index,
-								outputCentroidDimensions: (outputCentroidDimensions || {}).index
-							});
-							var sourceDimAll = upstream.cloneAllDimensionInfo();
-							var resultDimsDef = [];
-							for (var i = 0; i < sourceDimAll.length; i++) {
-								var sourceDimItem = sourceDimAll[i];
-								resultDimsDef.push(sourceDimItem.name);
-							}
-							resultDimsDef[outputClusterIndexDimension.index] = outputClusterIndexDimension.name;
-							if (outputCentroidDimensions) {
-								for (var i = 0; i < outputCentroidDimensions.index.length; i++) if (outputCentroidDimensions.name[i] != null) resultDimsDef[outputCentroidDimensions.index[i]] = outputCentroidDimensions.name[i];
-							}
-							return [{
-								dimensions: resultDimsDef,
-								data: result.data
-							}, { data: result.centroids }];
-						}
-					};
-				}.call(exports$1, __webpack_require__, exports$1, module$1), __WEBPACK_AMD_DEFINE_RESULT__ !== void 0 && (module$1.exports = __WEBPACK_AMD_DEFINE_RESULT__);
-			}
-		]);
+//#region src/utils/EChartsLoader.ts
+let loadingPromise = null;
+let isLoaded = false;
+/**
+* Load ECharts dynamically from CDN
+*/
+async function loadECharts(options = {}) {
+	if (isLoaded && window.echarts) return window.echarts;
+	if (loadingPromise) return loadingPromise;
+	const { version = "5.6.0" } = options;
+	loadingPromise = new Promise((resolve, reject) => {
+		if (window.echarts) {
+			isLoaded = true;
+			resolve(window.echarts);
+			return;
+		}
+		const script = document.createElement("script");
+		script.src = `https://cdn.jsdelivr.net/npm/echarts@${version}/dist/echarts.min.js`;
+		script.async = true;
+		script.onload = () => {
+			if (window.echarts) {
+				isLoaded = true;
+				resolve(window.echarts);
+			} else reject(new Error("ECharts failed to load properly"));
+		};
+		script.onerror = () => {
+			reject(new Error(`Failed to load ECharts from CDN (version ${version})`));
+		};
+		document.head.appendChild(script);
 	});
-} });
+	return loadingPromise;
+}
 
 //#endregion
-//#region node_modules/echarts-stat/index.js
-var require_echarts_stat = __commonJS({ "node_modules/echarts-stat/index.js"(exports, module) {
-	module.exports = require_ecStat();
-} });
+//#region src/hooks/echarts/useChartInstance.ts
+function useChartInstance({ containerRef, onChartReady }) {
+	const chartRef = (0, react.useRef)(null);
+	const [isInitialized, setIsInitialized] = (0, react.useState)(false);
+	const [error, setError] = (0, react.useState)(null);
+	const disposeChart = (0, react.useCallback)(() => {
+		if (chartRef.current) {
+			chartRef.current.dispose();
+			chartRef.current = null;
+			setIsInitialized(false);
+		}
+	}, []);
+	const initChart = (0, react.useCallback)(async () => {
+		if (!containerRef.current) return;
+		try {
+			const echarts = await loadECharts();
+			disposeChart();
+			const chart = echarts.init(containerRef.current, void 0, {
+				renderer: "canvas",
+				useDirtyRect: true
+			});
+			chartRef.current = chart;
+			setIsInitialized(true);
+			setError(null);
+			onChartReady?.(chart);
+		} catch (err) {
+			const error$1 = err instanceof Error ? err : new Error("Failed to initialize chart");
+			setError(error$1);
+			setIsInitialized(false);
+			console.error("Failed to initialize ECharts:", error$1);
+		}
+	}, [
+		containerRef,
+		onChartReady,
+		disposeChart
+	]);
+	(0, react.useEffect)(() => {
+		if (containerRef.current) initChart();
+		return () => {
+			disposeChart();
+		};
+	}, [initChart, disposeChart]);
+	return {
+		chartInstance: chartRef.current,
+		isInitialized,
+		error,
+		initChart,
+		disposeChart
+	};
+}
+
+//#endregion
+//#region src/hooks/echarts/useChartResize.ts
+function useChartResize({ chartInstance, containerRef, debounceMs = 100 }) {
+	const resizeTimeoutRef = (0, react.useRef)(void 0);
+	const handleResize = (0, react.useCallback)(() => {
+		if (resizeTimeoutRef.current !== void 0) clearTimeout(resizeTimeoutRef.current);
+		resizeTimeoutRef.current = setTimeout(() => {
+			if (chartInstance) try {
+				chartInstance.resize();
+			} catch (error) {
+				console.warn("Failed to resize chart:", error);
+			}
+		}, debounceMs);
+	}, [chartInstance, debounceMs]);
+	(0, react.useEffect)(() => {
+		if (!containerRef.current || !chartInstance) return;
+		const resizeObserver = new ResizeObserver(handleResize);
+		resizeObserver.observe(containerRef.current);
+		window.addEventListener("resize", handleResize);
+		return () => {
+			resizeObserver.disconnect();
+			window.removeEventListener("resize", handleResize);
+			if (resizeTimeoutRef.current !== void 0) clearTimeout(resizeTimeoutRef.current);
+		};
+	}, [
+		containerRef,
+		chartInstance,
+		handleResize
+	]);
+	return { resize: handleResize };
+}
+
+//#endregion
+//#region src/hooks/echarts/useChartOptions.ts
+function useChartOptions({ chartInstance, option, theme, notMerge = true, lazyUpdate = true }) {
+	const lastChartInstanceRef = (0, react.useRef)(null);
+	(0, react.useEffect)(() => {
+		if (!chartInstance || !option) return;
+		const isNewChartInstance = lastChartInstanceRef.current !== chartInstance;
+		if (isNewChartInstance) lastChartInstanceRef.current = chartInstance;
+		try {
+			chartInstance.setOption(option, {
+				notMerge: isNewChartInstance ? true : notMerge,
+				lazyUpdate
+			});
+		} catch (error) {
+			console.error("Failed to set chart options:", error);
+		}
+	}, [
+		chartInstance,
+		option,
+		notMerge,
+		lazyUpdate
+	]);
+	(0, react.useEffect)(() => {
+		if (!chartInstance || !theme) return;
+		if (typeof theme === "object") try {
+			const currentOption = chartInstance.getOption();
+			if (currentOption && typeof currentOption === "object") {
+				const themedOption = {
+					...currentOption,
+					...theme
+				};
+				chartInstance.setOption(themedOption, { notMerge: true });
+			}
+		} catch (error) {
+			console.error("Failed to apply theme:", error);
+		}
+	}, [chartInstance, theme]);
+}
+
+//#endregion
+//#region src/hooks/echarts/useChartEvents.ts
+function useChartEvents({ chartInstance, events = {} }) {
+	const handlersRef = (0, react.useRef)(new Map());
+	(0, react.useEffect)(() => {
+		if (!chartInstance) return;
+		handlersRef.current.forEach((handler, eventName) => {
+			chartInstance.off(eventName, handler);
+		});
+		handlersRef.current.clear();
+		Object.entries(events).forEach(([eventName, handler]) => {
+			const wrappedHandler = (params) => {
+				handler(params, chartInstance);
+			};
+			handlersRef.current.set(eventName, wrappedHandler);
+			chartInstance.on(eventName, wrappedHandler);
+		});
+		return () => {
+			handlersRef.current.forEach((handler, eventName) => {
+				chartInstance.off(eventName, handler);
+			});
+			handlersRef.current.clear();
+		};
+	}, [chartInstance, events]);
+}
 
 //#endregion
 //#region src/hooks/useECharts.ts
-var import_echarts_stat = __toESM(require_echarts_stat(), 1);
-if (typeof window !== "undefined") try {
-	const ecStatTransforms = import_echarts_stat.default.transform;
-	if (ecStatTransforms) {
-		if (ecStatTransforms.regression) {
-			echarts.registerTransform(ecStatTransforms.regression);
-			console.log("✓ Registered ecStat regression transform");
-		}
-		if (ecStatTransforms.clustering) {
-			echarts.registerTransform(ecStatTransforms.clustering);
-			console.log("✓ Registered ecStat clustering transform");
-		}
-		if (ecStatTransforms.histogram) {
-			echarts.registerTransform(ecStatTransforms.histogram);
-			console.log("✓ Registered ecStat histogram transform");
-		}
-	} else console.warn("ecStat.transform not found");
-} catch (err) {
-	console.warn("Failed to register ecStat transforms:", err);
-}
-const useECharts = (containerRef, option, theme = "light", opts = {}, notMerge = false, lazyUpdate = true) => {
-	const [loading, setLoading] = (0, react.useState)(true);
-	const [error, setError] = (0, react.useState)(null);
-	const chartRef = (0, react.useRef)(null);
-	(0, react.useEffect)(() => {
-		if (!containerRef.current) return;
-		try {
-			setLoading(true);
-			setError(null);
-			if (containerRef.current) echarts.dispose(containerRef.current);
-			if (chartRef.current) chartRef.current = null;
-			const chartInstance = echarts.init(containerRef.current, typeof theme === "string" ? theme : void 0, {
-				renderer: opts.renderer ?? "canvas",
-				locale: opts.locale ?? "en",
-				...opts
-			});
-			chartRef.current = chartInstance;
-			setLoading(false);
-		} catch (err) {
-			const errorMessage = err instanceof Error ? err.message : "Failed to initialize chart";
-			setError(errorMessage);
-			setLoading(false);
-		}
-		return () => {
-			if (containerRef.current) echarts.dispose(containerRef.current);
-			chartRef.current = null;
-		};
-	}, []);
-	(0, react.useEffect)(() => {
-		if (!chartRef.current || !option || loading) return;
-		const timeoutId = setTimeout(() => {
-			if (!chartRef.current) return;
-			try {
-				if (typeof theme === "object") {
-					const themedOption = {
-						backgroundColor: theme.backgroundColor,
-						textStyle: theme.textStyle,
-						color: theme.color,
-						...option
-					};
-					chartRef.current.setOption(themedOption, notMerge, lazyUpdate);
-				} else chartRef.current.setOption(option, notMerge, lazyUpdate);
-			} catch (err) {
-				const errorMessage = err instanceof Error ? err.message : "Failed to update chart";
-				setError(errorMessage);
-			}
-		}, 0);
-		return () => clearTimeout(timeoutId);
-	}, [
+function useECharts({ option, theme, loading: externalLoading = false, notMerge = false, lazyUpdate = true, onChartReady, events, debounceResize = 100 }) {
+	const containerRef = (0, react.useRef)(null);
+	const { chartInstance, isInitialized, error, disposeChart } = useChartInstance({
+		containerRef,
+		onChartReady
+	});
+	const { resize } = useChartResize({
+		chartInstance,
+		containerRef,
+		debounceMs: debounceResize
+	});
+	useChartOptions({
+		chartInstance,
 		option,
 		theme,
 		notMerge,
-		lazyUpdate,
-		loading
-	]);
+		lazyUpdate
+	});
+	useChartEvents({
+		chartInstance,
+		events: events || {}
+	});
+	const isLoading = (0, react.useMemo)(() => {
+		return !isInitialized || externalLoading;
+	}, [isInitialized, externalLoading]);
+	const showLoading = (0, react.useCallback)(() => {
+		if (chartInstance && isInitialized) chartInstance.showLoading("default", {
+			text: "Loading...",
+			color: "#1890ff",
+			textColor: "#000",
+			maskColor: "rgba(255, 255, 255, 0.8)",
+			zlevel: 0
+		});
+	}, [chartInstance, isInitialized]);
+	const hideLoading = (0, react.useCallback)(() => {
+		if (chartInstance && isInitialized) chartInstance.hideLoading();
+	}, [chartInstance, isInitialized]);
 	(0, react.useEffect)(() => {
-		const handleResize = () => {
-			if (chartRef.current) try {
-				chartRef.current.resize();
-			} catch (err) {
-				console.warn("Chart resize failed:", err);
-			}
-		};
-		window.addEventListener("resize", handleResize);
-		return () => window.removeEventListener("resize", handleResize);
-	}, []);
-	const resize = () => {
-		if (chartRef.current) try {
-			chartRef.current.resize();
-		} catch (err) {
-			console.warn("Chart resize failed:", err);
+		if (externalLoading) showLoading();
+		else hideLoading();
+	}, [
+		externalLoading,
+		showLoading,
+		hideLoading
+	]);
+	const getEChartsInstance = (0, react.useCallback)(() => {
+		return chartInstance;
+	}, [chartInstance]);
+	const refresh = (0, react.useCallback)(() => {
+		if (chartInstance && option) {
+			chartInstance.clear();
+			chartInstance.setOption(option, { notMerge: true });
 		}
-	};
-	const refresh = () => {
-		if (chartRef.current && option) try {
-			chartRef.current.setOption(option, true, false);
-		} catch (err) {
-			const errorMessage = err instanceof Error ? err.message : "Failed to refresh chart";
-			setError(errorMessage);
-		}
-	};
+	}, [chartInstance, option]);
+	const clear = (0, react.useCallback)(() => {
+		if (chartInstance) chartInstance.clear();
+	}, [chartInstance]);
 	return {
-		chart: chartRef.current,
-		loading,
+		containerRef,
+		loading: isLoading,
 		error,
 		resize,
-		refresh
+		refresh,
+		clear,
+		getEChartsInstance,
+		showLoading,
+		hideLoading,
+		dispose: disposeChart
 	};
-};
+}
 
 //#endregion
 //#region src/components/BaseChart.tsx
 const BaseChart = (0, react.forwardRef)(({ title, width = "100%", height = 400, theme = "light", loading: externalLoading = false, notMerge = false, lazyUpdate = true, onChartReady, onClick, onDoubleClick, onMouseOver, onMouseOut, onDataZoom, onBrush, className = "", style = {}, option, renderer = "canvas", locale = "en",...restProps }, ref) => {
-	const echartsContainerRef = (0, react.useRef)(null);
 	const chartOption = (0, react.useMemo)(() => {
 		if (title && typeof title === "string") return {
 			...option,
@@ -1478,10 +293,14 @@ const BaseChart = (0, react.forwardRef)(({ title, width = "100%", height = 400, 
 		};
 		return option;
 	}, [option, title]);
-	const { chart, loading: chartLoading, error, refresh } = useECharts(echartsContainerRef, chartOption, theme, {
-		renderer,
-		locale
-	}, notMerge, lazyUpdate);
+	const { containerRef: echartsContainerRefFromHook, loading: chartLoading, error, refresh, getEChartsInstance, clear, resize: resizeChart, showLoading: showChartLoading, hideLoading: hideChartLoading, dispose } = useECharts({
+		option: chartOption,
+		theme,
+		notMerge,
+		lazyUpdate,
+		onChartReady
+	});
+	const chart = getEChartsInstance();
 	(0, react.useEffect)(() => {
 		if (!chart) return;
 		const eventHandlers = [];
@@ -1546,9 +365,22 @@ const BaseChart = (0, react.forwardRef)(({ title, width = "100%", height = 400, 
 		else chart.hideLoading();
 	}, [chart, externalLoading]);
 	(0, react.useImperativeHandle)(ref, () => ({
-		getEChartsInstance: () => chart,
-		refresh
-	}), [chart, refresh]);
+		getEChartsInstance,
+		refresh,
+		clear,
+		resize: resizeChart,
+		showLoading: showChartLoading,
+		hideLoading: hideChartLoading,
+		dispose
+	}), [
+		getEChartsInstance,
+		refresh,
+		clear,
+		resizeChart,
+		showChartLoading,
+		hideChartLoading,
+		dispose
+	]);
 	const containerStyle = (0, react.useMemo)(() => ({
 		width,
 		height,
@@ -1571,7 +403,7 @@ const BaseChart = (0, react.forwardRef)(({ title, width = "100%", height = 400, 
 				color: "#ff4d4f",
 				fontSize: "14px"
 			},
-			children: ["Error: ", error]
+			children: ["Error: ", error?.message || "Unknown error"]
 		})
 	});
 	return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
@@ -1579,7 +411,7 @@ const BaseChart = (0, react.forwardRef)(({ title, width = "100%", height = 400, 
 		style: containerStyle,
 		...restProps,
 		children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
-			ref: echartsContainerRef,
+			ref: echartsContainerRefFromHook,
 			style: {
 				width: "100%",
 				height: "100%"
@@ -1613,6 +445,1580 @@ const BaseChart = (0, react.forwardRef)(({ title, width = "100%", height = 400, 
 	});
 });
 BaseChart.displayName = "BaseChart";
+
+//#endregion
+//#region src/utils/ergonomic.ts
+const COLOR_PALETTES = {
+	default: [
+		"#5470c6",
+		"#91cc75",
+		"#fac858",
+		"#ee6666",
+		"#73c0de",
+		"#3ba272",
+		"#fc8452",
+		"#9a60b4",
+		"#ea7ccc"
+	],
+	vibrant: [
+		"#FF6B6B",
+		"#4ECDC4",
+		"#45B7D1",
+		"#96CEB4",
+		"#FFEAA7",
+		"#DDA0DD",
+		"#98D8C8",
+		"#F7DC6F",
+		"#BB8FCE"
+	],
+	pastel: [
+		"#FFB3BA",
+		"#BAFFC9",
+		"#BAE1FF",
+		"#FFFFBA",
+		"#FFD9BA",
+		"#E6E6FA",
+		"#D3FFD3",
+		"#FFCCFF",
+		"#FFEFD5"
+	],
+	business: [
+		"#2E4057",
+		"#048A81",
+		"#54C6EB",
+		"#F8B500",
+		"#B83A4B",
+		"#5C7A89",
+		"#A8E6CF",
+		"#FFB6B3",
+		"#C7CEEA"
+	],
+	earth: [
+		"#8B4513",
+		"#228B22",
+		"#4682B4",
+		"#DAA520",
+		"#CD853F",
+		"#32CD32",
+		"#6495ED",
+		"#FF8C00",
+		"#9ACD32"
+	]
+};
+function isObjectData(data) {
+	return data.length > 0 && typeof data[0] === "object" && !Array.isArray(data[0]);
+}
+function extractUniqueValues(data, field) {
+	return [...new Set(data.map((item) => item[field]).filter((val) => val != null))];
+}
+function groupDataByField(data, field) {
+	return data.reduce((groups, item) => {
+		const key = String(item[field] ?? "Unknown");
+		if (!groups[key]) groups[key] = [];
+		groups[key].push(item);
+		return groups;
+	}, {});
+}
+function detectDataType(values) {
+	const nonNullValues = values.filter((v) => v != null);
+	if (nonNullValues.length === 0) return "categorical";
+	if (nonNullValues.every((v) => typeof v === "number" || !isNaN(Number(v)))) return "numeric";
+	if (nonNullValues.some((v) => v instanceof Date || typeof v === "string" && !isNaN(Date.parse(v)))) return "time";
+	return "categorical";
+}
+function buildBaseOption(props) {
+	const option = {};
+	const isDark = props.theme === "dark";
+	if (props.title) option.title = {
+		text: props.title,
+		subtext: props.subtitle,
+		left: props.titlePosition || "center",
+		textStyle: { color: isDark ? "#ffffff" : "#333333" },
+		subtextStyle: { color: isDark ? "#cccccc" : "#666666" }
+	};
+	option.animation = props.animate !== false;
+	if (props.animationDuration) option.animationDuration = props.animationDuration;
+	if (props.backgroundColor) option.backgroundColor = props.backgroundColor;
+	else option.backgroundColor = isDark ? "#1a1a1a" : "#ffffff";
+	if (props.colorPalette) option.color = [...props.colorPalette];
+	else option.color = [...COLOR_PALETTES.default];
+	option.textStyle = { color: isDark ? "#ffffff" : "#333333" };
+	if (!option.backgroundColor) option.backgroundColor = isDark ? "#1a1a1a" : "#ffffff";
+	return option;
+}
+function buildAxisOption(config, dataType = "categorical", theme) {
+	const isDark = theme === "dark";
+	if (!config) return {
+		type: dataType === "numeric" ? "value" : dataType === "time" ? "time" : "category",
+		...dataType === "categorical" && { boundaryGap: false },
+		axisLine: { lineStyle: { color: isDark ? "#666666" : "#cccccc" } },
+		axisTick: { lineStyle: { color: isDark ? "#666666" : "#cccccc" } },
+		axisLabel: { color: isDark ? "#cccccc" : "#666666" },
+		splitLine: { lineStyle: { color: isDark ? "#333333" : "#f0f0f0" } }
+	};
+	const axisType = config.type || (dataType === "numeric" ? "value" : dataType === "time" ? "time" : "category");
+	return {
+		type: axisType,
+		name: config.label,
+		min: config.min,
+		max: config.max,
+		splitLine: config.grid ? {
+			show: true,
+			lineStyle: { color: config.gridColor || (isDark ? "#333333" : "#f0f0f0") }
+		} : { lineStyle: { color: isDark ? "#333333" : "#f0f0f0" } },
+		interval: config.tickInterval,
+		axisLine: { lineStyle: { color: isDark ? "#666666" : "#cccccc" } },
+		axisTick: { lineStyle: { color: isDark ? "#666666" : "#cccccc" } },
+		axisLabel: {
+			rotate: config.rotate,
+			formatter: config.format,
+			color: isDark ? "#cccccc" : "#666666"
+		},
+		nameTextStyle: { color: isDark ? "#cccccc" : "#666666" },
+		...(axisType === "category" || axisType === "time") && { boundaryGap: config.boundaryGap !== void 0 ? config.boundaryGap : false }
+	};
+}
+function buildLegendOption(config, hasTitle, hasSubtitle, hasDataZoom, theme) {
+	if (!config || config.show === false) return { show: false };
+	const position = config.position || "top";
+	const orientation = config.orientation || (position === "left" || position === "right" ? "vertical" : "horizontal");
+	const align = config.align || "center";
+	let positioning = {};
+	switch (position) {
+		case "top":
+			if (hasTitle && hasSubtitle) positioning = { top: "12%" };
+			else if (hasTitle) positioning = { top: "8%" };
+			else positioning = { top: "5%" };
+			if (align === "center") positioning = {
+				...positioning,
+				left: "center"
+			};
+			else if (align === "start") positioning = {
+				...positioning,
+				left: "5%"
+			};
+			else if (align === "end") positioning = {
+				...positioning,
+				right: "5%"
+			};
+			break;
+		case "bottom":
+			if (hasDataZoom) positioning = { bottom: "15%" };
+			else positioning = { bottom: "8%" };
+			if (align === "center") positioning = {
+				...positioning,
+				left: "center"
+			};
+			else if (align === "start") positioning = {
+				...positioning,
+				left: "5%"
+			};
+			else if (align === "end") positioning = {
+				...positioning,
+				right: "5%"
+			};
+			break;
+		case "left":
+			positioning = {
+				left: "5%",
+				top: hasTitle ? hasSubtitle ? "15%" : "12%" : "center"
+			};
+			break;
+		case "right":
+			positioning = {
+				right: "5%",
+				top: hasTitle ? hasSubtitle ? "15%" : "12%" : "center"
+			};
+			break;
+	}
+	const isDark = theme === "dark";
+	return {
+		show: true,
+		type: "scroll",
+		orient: orientation,
+		...positioning,
+		itemGap: 10,
+		textStyle: {
+			fontSize: 12,
+			padding: [
+				2,
+				0,
+				0,
+				2
+			],
+			color: isDark ? "#cccccc" : "#666666"
+		}
+	};
+}
+function calculateGridSpacing(legendConfig, hasTitle, hasSubtitle, hasDataZoom) {
+	const defaultGrid = {
+		left: "3%",
+		right: "4%",
+		top: "10%",
+		bottom: "3%",
+		containLabel: true
+	};
+	if (!legendConfig || legendConfig.show === false) {
+		let topSpacing = "10%";
+		if (hasTitle && hasSubtitle) topSpacing = "15%";
+		else if (hasTitle) topSpacing = "12%";
+		return {
+			...defaultGrid,
+			top: topSpacing,
+			bottom: hasDataZoom ? "12%" : "3%"
+		};
+	}
+	const position = legendConfig.position || "top";
+	let gridAdjustments = { ...defaultGrid };
+	switch (position) {
+		case "top":
+			if (hasTitle && hasSubtitle) gridAdjustments.top = "20%";
+			else if (hasTitle) gridAdjustments.top = "18%";
+			else gridAdjustments.top = "15%";
+			gridAdjustments.bottom = hasDataZoom ? "12%" : "3%";
+			break;
+		case "bottom":
+			let topSpacing = "10%";
+			if (hasTitle && hasSubtitle) topSpacing = "15%";
+			else if (hasTitle) topSpacing = "12%";
+			gridAdjustments.top = topSpacing;
+			if (hasDataZoom) gridAdjustments.bottom = "25%";
+			else gridAdjustments.bottom = "15%";
+			break;
+		case "left":
+			gridAdjustments.left = "15%";
+			gridAdjustments.top = hasTitle ? hasSubtitle ? "15%" : "12%" : "10%";
+			gridAdjustments.bottom = hasDataZoom ? "12%" : "3%";
+			break;
+		case "right":
+			gridAdjustments.right = "15%";
+			gridAdjustments.top = hasTitle ? hasSubtitle ? "15%" : "12%" : "10%";
+			gridAdjustments.bottom = hasDataZoom ? "12%" : "3%";
+			break;
+	}
+	return gridAdjustments;
+}
+function buildTooltipOption(config, theme) {
+	if (!config || config.show === false) return { show: false };
+	const isDark = theme === "dark";
+	return {
+		show: true,
+		trigger: config.trigger || "item",
+		formatter: config.format,
+		backgroundColor: config.backgroundColor || (isDark ? "#333333" : "rgba(255, 255, 255, 0.95)"),
+		borderColor: config.borderColor || (isDark ? "#555555" : "#dddddd"),
+		textStyle: config.textColor ? { color: config.textColor } : { color: isDark ? "#ffffff" : "#333333" }
+	};
+}
+function buildLineChartOption(props) {
+	const baseOption = buildBaseOption(props);
+	let series = [];
+	let xAxisData = [];
+	if (props.series && props.data) {
+		series = props.series.map((s) => ({
+			name: s.name,
+			type: "line",
+			data: isObjectData(s.data) && props.yField ? s.data.map((item) => item[props.yField]) : s.data,
+			smooth: s.smooth ?? props.smooth,
+			lineStyle: { width: props.strokeWidth },
+			itemStyle: { color: s.color },
+			areaStyle: s.showArea ?? props.showArea ? { opacity: props.areaOpacity || .3 } : void 0,
+			symbol: props.showPoints !== false ? props.pointShape || "circle" : "none",
+			symbolSize: props.pointSize || 4
+		}));
+		if (props.series && props.series[0] && isObjectData(props.series[0].data) && props.xField) xAxisData = props.series[0].data.map((item) => item[props.xField]);
+	} else if (props.data) if (isObjectData(props.data)) if (props.seriesField) {
+		const groups = groupDataByField(props.data, props.seriesField);
+		series = Object.entries(groups).map(([name, groupData]) => ({
+			name,
+			type: "line",
+			data: groupData.map((item) => item[props.yField]),
+			smooth: props.smooth,
+			lineStyle: { width: props.strokeWidth },
+			areaStyle: props.showArea ? { opacity: props.areaOpacity || .3 } : void 0,
+			symbol: props.showPoints !== false ? props.pointShape || "circle" : "none",
+			symbolSize: props.pointSize || 4
+		}));
+		xAxisData = extractUniqueValues(props.data, props.xField);
+	} else {
+		if (Array.isArray(props.yField)) series = props.yField.map((field) => ({
+			name: field,
+			type: "line",
+			data: props.data.map((item) => item[field]),
+			smooth: props.smooth,
+			lineStyle: { width: props.strokeWidth },
+			areaStyle: props.showArea ? { opacity: props.areaOpacity || .3 } : void 0,
+			symbol: props.showPoints !== false ? props.pointShape || "circle" : "none",
+			symbolSize: props.pointSize || 4
+		}));
+		else series = [{
+			type: "line",
+			data: props.data.map((item) => item[props.yField]),
+			smooth: props.smooth,
+			lineStyle: { width: props.strokeWidth },
+			areaStyle: props.showArea ? { opacity: props.areaOpacity || .3 } : void 0,
+			symbol: props.showPoints !== false ? props.pointShape || "circle" : "none",
+			symbolSize: props.pointSize || 4
+		}];
+		if (props.data) xAxisData = props.data.map((item) => item[props.xField]);
+	}
+	else series = [{
+		type: "line",
+		data: props.data,
+		smooth: props.smooth,
+		lineStyle: { width: props.strokeWidth },
+		areaStyle: props.showArea ? { opacity: props.areaOpacity || .3 } : void 0,
+		symbol: props.showPoints !== false ? props.pointShape || "circle" : "none",
+		symbolSize: props.pointSize || 4
+	}];
+	const xAxisType = props.data && isObjectData(props.data) && props.xField ? detectDataType(props.data.map((item) => item[props.xField])) : "categorical";
+	return {
+		...baseOption,
+		grid: calculateGridSpacing(props.legend, !!props.title, !!props.subtitle, !!props.zoom),
+		xAxis: {
+			...buildAxisOption(props.xAxis, xAxisType, props.theme),
+			data: xAxisType === "categorical" ? xAxisData : void 0
+		},
+		yAxis: buildAxisOption(props.yAxis, "numeric", props.theme),
+		series,
+		legend: buildLegendOption(props.legend, !!props.title, !!props.subtitle, !!props.zoom, props.theme),
+		tooltip: buildTooltipOption(props.tooltip, props.theme),
+		...props.zoom && { dataZoom: [{ type: "inside" }, { type: "slider" }] },
+		...props.brush && { brush: {} },
+		...props.customOption
+	};
+}
+function buildBarChartOption(props) {
+	const baseOption = buildBaseOption(props);
+	let series = [];
+	let categoryData = [];
+	if (props.series) {
+		series = props.series.map((s) => ({
+			name: s.name,
+			type: "bar",
+			data: isObjectData(s.data) && props.valueField ? s.data.map((item) => item[props.valueField]) : s.data,
+			itemStyle: {
+				color: s.color,
+				borderRadius: props.borderRadius
+			},
+			stack: s.stack || (props.stack ? "defaultStack" : void 0),
+			barWidth: props.barWidth,
+			barGap: props.barGap
+		}));
+		if (props.series && props.series[0] && isObjectData(props.series[0].data) && props.categoryField) categoryData = props.series[0].data.map((item) => item[props.categoryField]);
+	} else if (props.data) if (isObjectData(props.data)) if (props.seriesField) {
+		const groups = groupDataByField(props.data, props.seriesField);
+		series = Object.entries(groups).map(([name, groupData]) => ({
+			name,
+			type: "bar",
+			data: groupData.map((item) => item[props.valueField]),
+			stack: props.stack ? "defaultStack" : void 0,
+			barWidth: props.barWidth,
+			barGap: props.barGap,
+			itemStyle: { borderRadius: props.borderRadius }
+		}));
+		categoryData = extractUniqueValues(props.data, props.categoryField);
+	} else {
+		if (Array.isArray(props.valueField)) series = props.valueField.map((field) => ({
+			name: field,
+			type: "bar",
+			data: props.data.map((item) => item[field]),
+			stack: props.stack ? "defaultStack" : void 0,
+			barWidth: props.barWidth,
+			barGap: props.barGap,
+			itemStyle: { borderRadius: props.borderRadius }
+		}));
+		else series = [{
+			type: "bar",
+			data: props.data.map((item) => item[props.valueField]),
+			stack: props.stack ? "defaultStack" : void 0,
+			barWidth: props.barWidth,
+			barGap: props.barGap,
+			itemStyle: { borderRadius: props.borderRadius }
+		}];
+		if (props.data) categoryData = props.data.map((item) => item[props.categoryField]);
+	}
+	else series = [{
+		type: "bar",
+		data: props.data,
+		stack: props.stack ? "defaultStack" : void 0,
+		barWidth: props.barWidth,
+		barGap: props.barGap,
+		itemStyle: { borderRadius: props.borderRadius }
+	}];
+	if (props.showPercentage && props.stack && series.length > 1) {
+		const totalsByCategory = [];
+		const categoryCount = Math.max(...series.map((s) => s.data.length));
+		for (let i = 0; i < categoryCount; i++) {
+			let sum = 0;
+			for (const seriesItem of series) sum += seriesItem.data[i] || 0;
+			totalsByCategory.push(sum);
+		}
+		series = series.map((seriesItem) => ({
+			...seriesItem,
+			data: seriesItem.data.map((value, index) => {
+				const total = totalsByCategory[index];
+				return total === void 0 || total <= 0 ? 0 : value / total;
+			}),
+			label: {
+				show: true,
+				position: props.orientation === "horizontal" ? "right" : "top",
+				formatter: (params) => `${Math.round(params.value * 1e3) / 10}%`
+			}
+		}));
+	}
+	if (props.sortBy && props.sortBy !== "none") {}
+	const isHorizontal = props.orientation === "horizontal";
+	if ((props.stackType === "percent" || props.showPercentage) && props.stack) {
+		const yAxisOptions = isHorizontal ? buildAxisOption(props.yAxis, "categorical", props.theme) : buildAxisOption(props.yAxis, "numeric", props.theme);
+		let tooltipConfig = props.tooltip;
+		if (props.showPercentage && !props.tooltip?.format) tooltipConfig = {
+			...props.tooltip,
+			show: true,
+			trigger: "axis",
+			format: (params) => {
+				if (!Array.isArray(params)) return "";
+				let result = `${params[0].name}<br/>`;
+				for (const param of params) {
+					const percentage = Math.round(param.value * 1e3) / 10;
+					result += `${param.marker}${param.seriesName}: ${percentage}%<br/>`;
+				}
+				return result;
+			}
+		};
+		if (!isHorizontal) {
+			if (props.stackType === "percent") {
+				yAxisOptions.max = 100;
+				yAxisOptions.axisLabel = {
+					...yAxisOptions.axisLabel,
+					formatter: "{value}%"
+				};
+			} else if (props.showPercentage) {
+				yAxisOptions.max = 1;
+				yAxisOptions.axisLabel = {
+					...yAxisOptions.axisLabel,
+					formatter: (value) => `${Math.round(value * 100)}%`
+				};
+			}
+		}
+		return {
+			...baseOption,
+			grid: calculateGridSpacing(props.legend, !!props.title, !!props.subtitle, false),
+			xAxis: isHorizontal ? {
+				...buildAxisOption(props.xAxis, "numeric", props.theme),
+				...props.stackType === "percent" ? {
+					max: 100,
+					axisLabel: { formatter: "{value}%" }
+				} : {},
+				...props.showPercentage && props.stackType !== "percent" ? {
+					max: 1,
+					axisLabel: { formatter: (value) => `${Math.round(value * 100)}%` }
+				} : {}
+			} : {
+				...buildAxisOption(props.xAxis, "categorical", props.theme),
+				data: categoryData,
+				boundaryGap: true
+			},
+			yAxis: isHorizontal ? {
+				...yAxisOptions,
+				data: categoryData,
+				boundaryGap: true
+			} : yAxisOptions,
+			series: series.map((s) => ({
+				...s,
+				stack: props.stackType === "percent" ? "percent" : "defaultStack"
+			})),
+			legend: buildLegendOption(props.legend, !!props.title, !!props.subtitle, false, props.theme),
+			tooltip: buildTooltipOption(tooltipConfig, props.theme),
+			...props.customOption
+		};
+	}
+	return {
+		...baseOption,
+		grid: calculateGridSpacing(props.legend, !!props.title, !!props.subtitle, false),
+		xAxis: isHorizontal ? buildAxisOption(props.xAxis, "numeric", props.theme) : {
+			...buildAxisOption(props.xAxis, "categorical", props.theme),
+			data: categoryData,
+			boundaryGap: true
+		},
+		yAxis: isHorizontal ? {
+			...buildAxisOption(props.yAxis, "categorical", props.theme),
+			data: categoryData,
+			boundaryGap: true
+		} : buildAxisOption(props.yAxis, "numeric", props.theme),
+		series,
+		legend: buildLegendOption(props.legend, !!props.title, !!props.subtitle, false, props.theme),
+		tooltip: buildTooltipOption(props.tooltip, props.theme),
+		...props.customOption
+	};
+}
+function buildPieChartOption(props) {
+	const baseOption = buildBaseOption(props);
+	let data = [];
+	if (props.data && isObjectData(props.data)) if (props.nameField && props.valueField) data = props.data.map((item) => ({
+		name: item[props.nameField],
+		value: item[props.valueField]
+	}));
+	else {
+		const firstItem = props.data[0];
+		if (firstItem) {
+			const keys = Object.keys(firstItem);
+			data = props.data.map((item) => ({
+				name: item[keys[0]],
+				value: item[keys[1]]
+			}));
+		}
+	}
+	else if (props.data) data = [...props.data];
+	const radius = Array.isArray(props.radius) ? props.radius : ["0%", (props.radius || 75) + "%"];
+	return {
+		...baseOption,
+		series: [{
+			type: "pie",
+			data,
+			radius,
+			startAngle: props.startAngle || 90,
+			...props.roseType ? { roseType: "area" } : {},
+			label: {
+				show: props.showLabels !== false,
+				position: props.labelPosition || "outside",
+				formatter: props.labelFormat || (props.showPercentages ? "{b}: {d}%" : "{b}: {c}")
+			},
+			selectedMode: props.selectedMode || false,
+			...props.emphasis !== false ? { emphasis: { focus: "self" } } : {}
+		}],
+		legend: buildLegendOption(props.legend, !!props.title, !!props.subtitle, false, props.theme),
+		tooltip: buildTooltipOption(props.tooltip, props.theme),
+		...props.customOption
+	};
+}
+
+//#endregion
+//#region src/components/LineChart.tsx
+/**
+* Ergonomic LineChart component with intuitive props
+* 
+* @example
+* // Simple line chart with object data
+* <ErgonomicLineChart
+*   data={[
+*     { month: 'Jan', sales: 100, profit: 20 },
+*     { month: 'Feb', sales: 120, profit: 25 },
+*     { month: 'Mar', sales: 110, profit: 22 }
+*   ]}
+*   xField="month"
+*   yField={['sales', 'profit']}
+*   smooth
+*   showArea
+* />
+* 
+* @example
+* // Multiple series with explicit configuration
+* <ErgonomicLineChart
+*   series={[
+*     {
+*       name: 'Sales',
+*       data: [{ date: '2023-01', value: 100 }, { date: '2023-02', value: 120 }],
+*       color: '#ff6b6b',
+*       smooth: true
+*     },
+*     {
+*       name: 'Profit',
+*       data: [{ date: '2023-01', value: 20 }, { date: '2023-02', value: 25 }],
+*       color: '#4ecdc4'
+*     }
+*   ]}
+*   xField="date"
+*   yField="value"
+* />
+*/
+const LineChart = (0, react.forwardRef)(({ width = "100%", height = 400, className, style, data, xField = "x", yField = "y", seriesField, series, theme = "light", colorPalette, backgroundColor, title, subtitle, titlePosition = "center", smooth = false, strokeWidth = 2, strokeStyle = "solid", showPoints = true, pointSize = 4, pointShape = "circle", showArea = false, areaOpacity = .3, areaGradient = false, xAxis, yAxis, legend, tooltip, zoom = false, pan = false, brush = false, loading = false, disabled = false, animate = true, animationDuration, onChartReady, onDataPointClick, onDataPointHover, customOption, responsive = true,...restProps }, ref) => {
+	const chartOption = (0, react.useMemo)(() => {
+		return buildLineChartOption({
+			data: data || void 0,
+			xField,
+			yField,
+			seriesField,
+			series,
+			theme,
+			colorPalette,
+			backgroundColor,
+			title,
+			subtitle,
+			titlePosition,
+			smooth,
+			strokeWidth,
+			strokeStyle,
+			showPoints,
+			pointSize,
+			pointShape,
+			showArea,
+			areaOpacity,
+			areaGradient,
+			xAxis: xAxis || void 0,
+			yAxis: yAxis || void 0,
+			legend,
+			tooltip,
+			zoom,
+			pan,
+			brush,
+			animate,
+			animationDuration,
+			customOption
+		});
+	}, [
+		data,
+		xField,
+		yField,
+		seriesField,
+		series,
+		theme,
+		colorPalette,
+		backgroundColor,
+		title,
+		subtitle,
+		titlePosition,
+		smooth,
+		strokeWidth,
+		strokeStyle,
+		showPoints,
+		pointSize,
+		pointShape,
+		showArea,
+		areaOpacity,
+		areaGradient,
+		xAxis,
+		yAxis,
+		legend,
+		tooltip,
+		zoom,
+		pan,
+		brush,
+		animate,
+		animationDuration,
+		customOption
+	]);
+	const chartEvents = (0, react.useMemo)(() => {
+		const events = {};
+		if (onDataPointClick) events.click = (params, chart) => {
+			onDataPointClick(params, {
+				chart,
+				event: params
+			});
+		};
+		if (onDataPointHover) events.mouseover = (params, chart) => {
+			onDataPointHover(params, {
+				chart,
+				event: params
+			});
+		};
+		return Object.keys(events).length > 0 ? events : void 0;
+	}, [onDataPointClick, onDataPointHover]);
+	const { containerRef, loading: chartLoading, error, getEChartsInstance, resize, showLoading, hideLoading } = useECharts({
+		option: chartOption,
+		theme,
+		loading,
+		events: chartEvents,
+		onChartReady
+	});
+	const exportImage = (format = "png") => {
+		const chart = getEChartsInstance();
+		if (!chart) return "";
+		return chart.getDataURL({
+			type: format,
+			pixelRatio: 2,
+			backgroundColor: backgroundColor || "#fff"
+		});
+	};
+	const highlight = (dataIndex, seriesIndex = 0) => {
+		const chart = getEChartsInstance();
+		if (!chart) return;
+		chart.dispatchAction({
+			type: "highlight",
+			seriesIndex,
+			dataIndex
+		});
+	};
+	const clearHighlight = () => {
+		const chart = getEChartsInstance();
+		if (!chart) return;
+		chart.dispatchAction({ type: "downplay" });
+	};
+	const updateData = (newData) => {
+		const chart = getEChartsInstance();
+		if (!chart) return;
+		const newOption = buildLineChartOption({
+			data: newData,
+			xField,
+			yField,
+			seriesField: seriesField || void 0,
+			series,
+			theme,
+			colorPalette,
+			backgroundColor,
+			title,
+			subtitle,
+			titlePosition,
+			smooth,
+			strokeWidth,
+			strokeStyle,
+			showPoints,
+			pointSize,
+			pointShape,
+			showArea,
+			areaOpacity,
+			areaGradient,
+			xAxis: xAxis || void 0,
+			yAxis: yAxis || void 0,
+			legend,
+			tooltip,
+			zoom,
+			pan,
+			brush,
+			animate,
+			animationDuration,
+			customOption
+		});
+		chart.setOption(newOption);
+	};
+	(0, react.useImperativeHandle)(ref, () => ({
+		getChart: getEChartsInstance,
+		exportImage,
+		resize,
+		showLoading: () => showLoading(),
+		hideLoading,
+		highlight,
+		clearHighlight,
+		updateData
+	}), [
+		getEChartsInstance,
+		exportImage,
+		resize,
+		showLoading,
+		hideLoading,
+		highlight,
+		clearHighlight,
+		updateData
+	]);
+	if (error) return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+		className: `aqc-charts-error ${className || ""}`,
+		style: {
+			width,
+			height,
+			display: "flex",
+			alignItems: "center",
+			justifyContent: "center",
+			color: "#ff4d4f",
+			fontSize: "14px",
+			border: "1px dashed #ff4d4f",
+			borderRadius: "4px",
+			...style
+		},
+		children: ["Error: ", error.message || "Failed to render chart"]
+	});
+	const containerStyle = (0, react.useMemo)(() => ({
+		width,
+		height,
+		position: "relative",
+		...style
+	}), [
+		width,
+		height,
+		style
+	]);
+	return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+		className: `aqc-charts-container ${className || ""}`,
+		style: containerStyle,
+		...restProps,
+		children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+			ref: containerRef,
+			style: {
+				width: "100%",
+				height: "100%"
+			}
+		}), (chartLoading || loading) && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+			className: "aqc-charts-loading",
+			style: {
+				position: "absolute",
+				top: 0,
+				left: 0,
+				right: 0,
+				bottom: 0,
+				display: "flex",
+				alignItems: "center",
+				justifyContent: "center",
+				backgroundColor: "rgba(255, 255, 255, 0.8)",
+				fontSize: "14px",
+				color: "#666"
+			},
+			children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+				className: "aqc-charts-spinner",
+				style: {
+					width: "20px",
+					height: "20px",
+					border: "2px solid #f3f3f3",
+					borderTop: "2px solid #1890ff",
+					borderRadius: "50%",
+					animation: "spin 1s linear infinite",
+					marginRight: "8px"
+				}
+			}), "Loading..."]
+		})]
+	});
+});
+LineChart.displayName = "LineChart";
+
+//#endregion
+//#region src/components/BarChart.tsx
+/**
+* Ergonomic BarChart component with intuitive props
+* 
+* @example
+* // Simple bar chart with object data
+* <ErgonomicBarChart
+*   data={[
+*     { category: 'Q1', sales: 100, profit: 20 },
+*     { category: 'Q2', sales: 120, profit: 25 },
+*     { category: 'Q3', sales: 110, profit: 22 },
+*     { category: 'Q4', sales: 140, profit: 30 }
+*   ]}
+*   categoryField="category"
+*   valueField={['sales', 'profit']}
+*   orientation="vertical"
+* />
+* 
+* @example
+* // Stacked bar chart
+* <ErgonomicBarChart
+*   data={salesData}
+*   categoryField="month"
+*   valueField="amount"
+*   seriesField="product"
+*   stack="normal"
+*   orientation="horizontal"
+* />
+* 
+* @example
+* // Multiple series with explicit configuration
+* <ErgonomicBarChart
+*   series={[
+*     {
+*       name: 'Sales',
+*       data: [{ quarter: 'Q1', value: 100 }, { quarter: 'Q2', value: 120 }],
+*       color: '#1890ff'
+*     },
+*     {
+*       name: 'Profit',
+*       data: [{ quarter: 'Q1', value: 20 }, { quarter: 'Q2', value: 25 }],
+*       color: '#52c41a'
+*     }
+*   ]}
+*   categoryField="quarter"
+*   valueField="value"
+* />
+*/
+const BarChart = (0, react.forwardRef)(({ width = "100%", height = 400, className, style, data, categoryField = "category", valueField = "value", seriesField, series, theme = "light", colorPalette, backgroundColor, title, subtitle, titlePosition = "center", orientation = "vertical", barWidth, barGap, borderRadius = 0, stack = false, stackType = "normal", showPercentage = false, xAxis, yAxis, legend, tooltip, sortBy = "none", sortOrder = "asc", loading = false, disabled = false, animate = true, animationDuration, onChartReady, onDataPointClick, onDataPointHover, customOption, responsive = true,...restProps }, ref) => {
+	const chartOption = (0, react.useMemo)(() => {
+		return buildBarChartOption({
+			data: data || void 0,
+			categoryField,
+			valueField,
+			seriesField,
+			series,
+			theme,
+			colorPalette,
+			backgroundColor,
+			title,
+			subtitle,
+			titlePosition,
+			orientation,
+			barWidth,
+			barGap,
+			borderRadius,
+			stack,
+			stackType,
+			showPercentage,
+			xAxis: xAxis || void 0,
+			yAxis: yAxis || void 0,
+			legend,
+			tooltip,
+			sortBy,
+			sortOrder,
+			animate,
+			animationDuration,
+			customOption
+		});
+	}, [
+		data,
+		categoryField,
+		valueField,
+		seriesField,
+		series,
+		theme,
+		colorPalette,
+		backgroundColor,
+		title,
+		subtitle,
+		titlePosition,
+		orientation,
+		barWidth,
+		barGap,
+		borderRadius,
+		stack,
+		stackType,
+		showPercentage,
+		xAxis,
+		yAxis,
+		legend,
+		tooltip,
+		sortBy,
+		sortOrder,
+		animate,
+		animationDuration,
+		customOption
+	]);
+	const chartEvents = (0, react.useMemo)(() => {
+		const events = {};
+		if (onDataPointClick) events.click = (params, chart) => {
+			onDataPointClick(params, {
+				chart,
+				event: params
+			});
+		};
+		if (onDataPointHover) events.mouseover = (params, chart) => {
+			onDataPointHover(params, {
+				chart,
+				event: params
+			});
+		};
+		return Object.keys(events).length > 0 ? events : void 0;
+	}, [onDataPointClick, onDataPointHover]);
+	const { containerRef, loading: chartLoading, error, getEChartsInstance, resize, showLoading, hideLoading } = useECharts({
+		option: chartOption,
+		theme,
+		loading,
+		events: chartEvents,
+		onChartReady
+	});
+	const exportImage = (format = "png") => {
+		const chart = getEChartsInstance();
+		if (!chart) return "";
+		return chart.getDataURL({
+			type: format,
+			pixelRatio: 2,
+			backgroundColor: backgroundColor || "#fff"
+		});
+	};
+	const highlight = (dataIndex, seriesIndex = 0) => {
+		const chart = getEChartsInstance();
+		if (!chart) return;
+		chart.dispatchAction({
+			type: "highlight",
+			seriesIndex,
+			dataIndex
+		});
+	};
+	const clearHighlight = () => {
+		const chart = getEChartsInstance();
+		if (!chart) return;
+		chart.dispatchAction({ type: "downplay" });
+	};
+	const updateData = (newData) => {
+		const chart = getEChartsInstance();
+		if (!chart) return;
+		const newOption = buildBarChartOption({
+			data: newData,
+			categoryField,
+			valueField,
+			seriesField,
+			series,
+			theme,
+			colorPalette,
+			backgroundColor,
+			title,
+			subtitle,
+			titlePosition,
+			orientation,
+			barWidth,
+			barGap,
+			borderRadius,
+			stack,
+			stackType,
+			showPercentage,
+			xAxis: xAxis || void 0,
+			yAxis: yAxis || void 0,
+			legend,
+			tooltip,
+			sortBy,
+			sortOrder,
+			animate,
+			animationDuration,
+			customOption
+		});
+		chart.setOption(newOption);
+	};
+	(0, react.useImperativeHandle)(ref, () => ({
+		getChart: getEChartsInstance,
+		exportImage,
+		resize,
+		showLoading: () => showLoading(),
+		hideLoading,
+		highlight,
+		clearHighlight,
+		updateData
+	}), [
+		getEChartsInstance,
+		exportImage,
+		resize,
+		showLoading,
+		hideLoading,
+		highlight,
+		clearHighlight,
+		updateData
+	]);
+	if (error) return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+		className: `aqc-charts-error ${className || ""}`,
+		style: {
+			width,
+			height,
+			display: "flex",
+			alignItems: "center",
+			justifyContent: "center",
+			color: "#ff4d4f",
+			fontSize: "14px",
+			border: "1px dashed #ff4d4f",
+			borderRadius: "4px",
+			...style
+		},
+		children: ["Error: ", error.message || "Failed to render chart"]
+	});
+	const containerStyle = (0, react.useMemo)(() => ({
+		width,
+		height,
+		position: "relative",
+		...style
+	}), [
+		width,
+		height,
+		style
+	]);
+	return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+		className: `aqc-charts-container ${className || ""}`,
+		style: containerStyle,
+		...restProps,
+		children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+			ref: containerRef,
+			style: {
+				width: "100%",
+				height: "100%"
+			}
+		}), (chartLoading || loading) && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+			className: "aqc-charts-loading",
+			style: {
+				position: "absolute",
+				top: 0,
+				left: 0,
+				right: 0,
+				bottom: 0,
+				display: "flex",
+				alignItems: "center",
+				justifyContent: "center",
+				backgroundColor: "rgba(255, 255, 255, 0.8)",
+				fontSize: "14px",
+				color: "#666"
+			},
+			children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+				className: "aqc-charts-spinner",
+				style: {
+					width: "20px",
+					height: "20px",
+					border: "2px solid #f3f3f3",
+					borderTop: "2px solid #1890ff",
+					borderRadius: "50%",
+					animation: "spin 1s linear infinite",
+					marginRight: "8px"
+				}
+			}), "Loading..."]
+		})]
+	});
+});
+BarChart.displayName = "BarChart";
+
+//#endregion
+//#region src/components/PieChart.tsx
+/**
+* Ergonomic PieChart component with intuitive props
+* 
+* @example
+* // Simple pie chart with object data
+* <ErgonomicPieChart
+*   data={[
+*     { category: 'Desktop', sales: 4200 },
+*     { category: 'Mobile', sales: 3800 },
+*     { category: 'Tablet', sales: 1200 }
+*   ]}
+*   nameField="category"
+*   valueField="sales"
+*   title="Sales by Platform"
+* />
+* 
+* @example
+* // Donut chart with custom styling
+* <ErgonomicPieChart
+*   data={marketData}
+*   nameField="segment"
+*   valueField="share"
+*   radius={[40, 70]}
+*   title="Market Share"
+*   showPercentages
+*   labelPosition="outside"
+* />
+* 
+* @example
+* // Rose/nightingale chart
+* <ErgonomicPieChart
+*   data={performanceData}
+*   nameField="department"
+*   valueField="score"
+*   roseType
+*   title="Performance by Department"
+*   showLabels
+* />
+*/
+const PieChart = (0, react.forwardRef)(({ width = "100%", height = 400, className, style, data, nameField = "name", valueField = "value", theme = "light", colorPalette, backgroundColor, title, subtitle, titlePosition = "center", radius = 75, startAngle = 90, roseType = false, showLabels = true, labelPosition = "outside", showValues = false, showPercentages = true, labelFormat, legend, tooltip, selectedMode = false, emphasis = true, loading = false, disabled = false, animate = true, animationDuration, onChartReady, onDataPointClick, onDataPointHover, customOption, responsive = true,...restProps }, ref) => {
+	const chartOption = (0, react.useMemo)(() => {
+		return buildPieChartOption({
+			data,
+			nameField,
+			valueField,
+			theme,
+			colorPalette,
+			backgroundColor,
+			title,
+			subtitle,
+			titlePosition,
+			radius,
+			startAngle,
+			roseType,
+			showLabels,
+			labelPosition,
+			showValues,
+			showPercentages,
+			labelFormat,
+			legend,
+			tooltip,
+			selectedMode,
+			emphasis,
+			animate,
+			animationDuration,
+			customOption
+		});
+	}, [
+		data,
+		nameField,
+		valueField,
+		theme,
+		colorPalette,
+		backgroundColor,
+		title,
+		subtitle,
+		titlePosition,
+		radius,
+		startAngle,
+		roseType,
+		showLabels,
+		labelPosition,
+		showValues,
+		showPercentages,
+		labelFormat,
+		legend,
+		tooltip,
+		selectedMode,
+		emphasis,
+		animate,
+		animationDuration,
+		customOption
+	]);
+	const chartEvents = (0, react.useMemo)(() => {
+		const events = {};
+		if (onDataPointClick) events.click = (params, chart) => {
+			onDataPointClick(params, {
+				chart,
+				event: params
+			});
+		};
+		if (onDataPointHover) events.mouseover = (params, chart) => {
+			onDataPointHover(params, {
+				chart,
+				event: params
+			});
+		};
+		return Object.keys(events).length > 0 ? events : void 0;
+	}, [onDataPointClick, onDataPointHover]);
+	const { containerRef, loading: chartLoading, error, getEChartsInstance, resize, showLoading, hideLoading } = useECharts({
+		option: chartOption,
+		theme,
+		loading,
+		events: chartEvents,
+		onChartReady
+	});
+	const exportImage = (format = "png") => {
+		const chart = getEChartsInstance();
+		if (!chart) return "";
+		return chart.getDataURL({
+			type: format,
+			pixelRatio: 2,
+			backgroundColor: backgroundColor || "#fff"
+		});
+	};
+	const highlight = (dataIndex) => {
+		const chart = getEChartsInstance();
+		if (!chart) return;
+		chart.dispatchAction({
+			type: "highlight",
+			seriesIndex: 0,
+			dataIndex
+		});
+	};
+	const clearHighlight = () => {
+		const chart = getEChartsInstance();
+		if (!chart) return;
+		chart.dispatchAction({ type: "downplay" });
+	};
+	const selectSlice = (dataIndex) => {
+		const chart = getEChartsInstance();
+		if (!chart) return;
+		chart.dispatchAction({
+			type: "pieSelect",
+			seriesIndex: 0,
+			dataIndex
+		});
+	};
+	const unselectSlice = (dataIndex) => {
+		const chart = getEChartsInstance();
+		if (!chart) return;
+		chart.dispatchAction({
+			type: "pieUnSelect",
+			seriesIndex: 0,
+			dataIndex
+		});
+	};
+	const updateData = (newData) => {
+		const chart = getEChartsInstance();
+		if (!chart) return;
+		const newOption = buildPieChartOption({
+			data: newData,
+			nameField,
+			valueField,
+			theme,
+			colorPalette,
+			backgroundColor,
+			title,
+			subtitle,
+			titlePosition,
+			radius,
+			startAngle,
+			roseType,
+			showLabels,
+			labelPosition,
+			showValues,
+			showPercentages,
+			labelFormat,
+			legend,
+			tooltip,
+			selectedMode,
+			emphasis,
+			animate,
+			animationDuration,
+			customOption
+		});
+		chart.setOption(newOption);
+	};
+	(0, react.useImperativeHandle)(ref, () => ({
+		getChart: getEChartsInstance,
+		exportImage,
+		resize,
+		showLoading: () => showLoading(),
+		hideLoading,
+		highlight,
+		clearHighlight,
+		updateData,
+		selectSlice,
+		unselectSlice
+	}), [
+		getEChartsInstance,
+		exportImage,
+		resize,
+		showLoading,
+		hideLoading,
+		highlight,
+		clearHighlight,
+		updateData,
+		selectSlice,
+		unselectSlice
+	]);
+	if (error) return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+		className: `aqc-charts-error ${className || ""}`,
+		style: {
+			width,
+			height,
+			display: "flex",
+			alignItems: "center",
+			justifyContent: "center",
+			color: "#ff4d4f",
+			fontSize: "14px",
+			border: "1px dashed #ff4d4f",
+			borderRadius: "4px",
+			...style
+		},
+		children: ["Error: ", error.message || "Failed to render chart"]
+	});
+	const containerStyle = (0, react.useMemo)(() => ({
+		width,
+		height,
+		position: "relative",
+		...style
+	}), [
+		width,
+		height,
+		style
+	]);
+	return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+		className: `aqc-charts-container ${className || ""}`,
+		style: containerStyle,
+		...restProps,
+		children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+			ref: containerRef,
+			style: {
+				width: "100%",
+				height: "100%"
+			}
+		}), (chartLoading || loading) && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+			className: "aqc-charts-loading",
+			style: {
+				position: "absolute",
+				top: 0,
+				left: 0,
+				right: 0,
+				bottom: 0,
+				display: "flex",
+				alignItems: "center",
+				justifyContent: "center",
+				backgroundColor: "rgba(255, 255, 255, 0.8)",
+				fontSize: "14px",
+				color: "#666"
+			},
+			children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+				className: "aqc-charts-spinner",
+				style: {
+					width: "20px",
+					height: "20px",
+					border: "2px solid #f3f3f3",
+					borderTop: "2px solid #1890ff",
+					borderRadius: "50%",
+					animation: "spin 1s linear infinite",
+					marginRight: "8px"
+				}
+			}), "Loading..."]
+		})]
+	});
+});
+PieChart.displayName = "PieChart";
+
+//#endregion
+//#region src/components/legacy/OldCalendarHeatmapChart.tsx
+const OldCalendarHeatmapChart = (0, react.forwardRef)(({ data, year, calendar = {}, visualMap = {}, tooltipFormatter, title,...props }, ref) => {
+	const chartOption = (0, react.useMemo)(() => {
+		const seriesData = data.map((item) => [item.date, item.value]);
+		const values = data.map((item) => item.value);
+		const minValue = Math.min(...values);
+		const maxValue = Math.max(...values);
+		const titleConfig = typeof title === "string" ? { text: title } : title;
+		return {
+			...titleConfig && { title: {
+				top: 30,
+				left: "center",
+				...titleConfig
+			} },
+			tooltip: { formatter: tooltipFormatter ? (params) => {
+				return tooltipFormatter(params);
+			} : (params) => {
+				const [date, value] = params.value;
+				return `${date}<br/>Value: ${value}`;
+			} },
+			visualMap: {
+				min: minValue,
+				max: maxValue,
+				type: "piecewise",
+				orient: "horizontal",
+				left: "center",
+				top: titleConfig ? 65 : 35,
+				inRange: { color: [
+					"#ebedf0",
+					"#c6e48b",
+					"#7bc96f",
+					"#239a3b",
+					"#196127"
+				] },
+				...visualMap
+			},
+			calendar: {
+				top: titleConfig ? 120 : 90,
+				left: 30,
+				right: 30,
+				cellSize: ["auto", 13],
+				range: year.toString(),
+				itemStyle: {
+					borderWidth: .5,
+					borderColor: "#fff"
+				},
+				yearLabel: { show: false },
+				dayLabel: {
+					firstDay: 1,
+					nameMap: [
+						"S",
+						"M",
+						"T",
+						"W",
+						"T",
+						"F",
+						"S"
+					]
+				},
+				monthLabel: { nameMap: "en" },
+				...calendar
+			},
+			series: {
+				type: "heatmap",
+				coordinateSystem: "calendar",
+				data: seriesData
+			}
+		};
+	}, [
+		data,
+		year,
+		calendar,
+		visualMap,
+		tooltipFormatter,
+		title
+	]);
+	return /* @__PURE__ */ (0, react_jsx_runtime.jsx)(BaseChart, {
+		ref,
+		option: chartOption,
+		...props
+	});
+});
+OldCalendarHeatmapChart.displayName = "OldCalendarHeatmapChart";
+
+//#endregion
+//#region src/components/legacy/OldStackedBarChart.tsx
+const OldStackedBarChart = (0, react.forwardRef)(({ data, horizontal = false, showPercentage = false, showValues = false, barWidth = "60%", barMaxWidth, stackName = "total", showLegend = true, legend, tooltip, xAxis, yAxis, grid, series: customSeries,...props }, ref) => {
+	const series = (0, react.useMemo)(() => {
+		if (customSeries) return customSeries;
+		const { series: rawSeries } = data;
+		const totalData = [];
+		if (showPercentage) for (let i = 0; i < data.categories.length; i++) {
+			let sum = 0;
+			for (const seriesItem of rawSeries) sum += seriesItem.data[i] || 0;
+			totalData.push(sum);
+		}
+		return rawSeries.map((seriesItem) => {
+			const processedData = showPercentage ? seriesItem.data.map((value, index) => {
+				const total = totalData[index];
+				return total === void 0 || total <= 0 ? 0 : value / total;
+			}) : seriesItem.data;
+			return {
+				name: seriesItem.name,
+				type: "bar",
+				stack: stackName,
+				barWidth,
+				...barMaxWidth && { barMaxWidth },
+				data: [...processedData],
+				...seriesItem.color && { itemStyle: { color: seriesItem.color } },
+				...showValues && { label: {
+					show: true,
+					position: horizontal ? "right" : "top",
+					...showPercentage && { formatter: (params) => `${Math.round(params.value * 1e3) / 10}%` }
+				} }
+			};
+		});
+	}, [
+		data,
+		showPercentage,
+		stackName,
+		barWidth,
+		barMaxWidth,
+		showValues,
+		horizontal,
+		customSeries
+	]);
+	const chartOption = (0, react.useMemo)(() => ({
+		tooltip: {
+			trigger: "axis",
+			axisPointer: { type: "shadow" },
+			...showPercentage && { formatter: (params) => {
+				if (!Array.isArray(params)) return "";
+				let result = `${params[0].name}<br/>`;
+				for (const param of params) {
+					const percentage = Math.round(param.value * 1e3) / 10;
+					result += `${param.marker}${param.seriesName}: ${percentage}%<br/>`;
+				}
+				return result;
+			} },
+			...tooltip
+		},
+		legend: showLegend && data?.series && data.series.length > 1 ? {
+			data: data.series.map((s) => s.name),
+			top: 20,
+			selectedMode: "multiple",
+			...legend
+		} : void 0,
+		grid: {
+			left: 100,
+			right: 100,
+			top: showLegend && data?.series && data.series.length > 1 ? 60 : 40,
+			bottom: 50,
+			containLabel: true,
+			...grid
+		},
+		xAxis: horizontal ? {
+			type: "value",
+			...showPercentage && { axisLabel: { formatter: (value) => `${Math.round(value * 100)}%` } },
+			...xAxis
+		} : {
+			type: "category",
+			data: data.categories,
+			...xAxis
+		},
+		yAxis: horizontal ? {
+			type: "category",
+			data: data.categories,
+			...yAxis
+		} : {
+			type: "value",
+			...showPercentage && { axisLabel: { formatter: (value) => `${Math.round(value * 100)}%` } },
+			...yAxis
+		},
+		series
+	}), [
+		data,
+		horizontal,
+		showPercentage,
+		showLegend,
+		tooltip,
+		legend,
+		grid,
+		xAxis,
+		yAxis,
+		series
+	]);
+	return /* @__PURE__ */ (0, react_jsx_runtime.jsx)(BaseChart, {
+		ref,
+		option: chartOption,
+		...props
+	});
+});
+OldStackedBarChart.displayName = "OldStackedBarChart";
 
 //#endregion
 //#region src/utils/chartHelpers.ts
@@ -1721,410 +2127,8 @@ function mergeOptions(base, override) {
 }
 
 //#endregion
-//#region src/components/LineChart.tsx
-const LineChart = (0, react.forwardRef)(({ data, smooth = false, area = false, stack = false, symbol = true, symbolSize = 4, connectNulls = false, title, option: customOption, series: customSeries,...props }, ref) => {
-	const chartOption = (0, react.useMemo)(() => {
-		if (customSeries) return {
-			xAxis: {
-				type: "category",
-				data: data?.categories || []
-			},
-			yAxis: { type: "value" },
-			series: customSeries,
-			...title && { title: {
-				text: title,
-				left: "center"
-			} },
-			...customOption && customOption
-		};
-		if (!data?.series || !Array.isArray(data.series)) return { series: [] };
-		const baseOption = createLineChartOption({
-			categories: data.categories,
-			series: data.series.map((s) => ({
-				name: s.name,
-				data: s.data,
-				...s.color && { color: s.color },
-				...Object.fromEntries(Object.entries(s).filter(([key]) => ![
-					"name",
-					"data",
-					"color"
-				].includes(key)))
-			})),
-			...title && { title }
-		});
-		if (baseOption.series && Array.isArray(baseOption.series)) baseOption.series = baseOption.series.map((series, index) => {
-			const result = {
-				...series,
-				smooth: data.series[index]?.smooth ?? smooth,
-				showSymbol: symbol,
-				symbolSize: data.series[index]?.symbolSize ?? symbolSize,
-				connectNulls: data.series[index]?.connectNulls ?? connectNulls
-			};
-			if (data.series[index]?.symbol) result.symbol = data.series[index].symbol;
-			if (stack && data.series[index]?.stack) result.stack = data.series[index].stack;
-			else if (stack) result.stack = "total";
-			if (area) result.areaStyle = {};
-			return result;
-		});
-		return customOption ? mergeOptions(baseOption, customOption) : baseOption;
-	}, [
-		data,
-		smooth,
-		area,
-		stack,
-		symbol,
-		symbolSize,
-		connectNulls,
-		title,
-		customOption,
-		customSeries
-	]);
-	return /* @__PURE__ */ (0, react_jsx_runtime.jsx)(BaseChart, {
-		ref,
-		option: chartOption,
-		...props
-	});
-});
-LineChart.displayName = "LineChart";
-
-//#endregion
-//#region src/components/BarChart.tsx
-const BarChart = (0, react.forwardRef)(({ data, horizontal = false, stack = false, showValues = false, barWidth, barMaxWidth, showLegend = true, legend, tooltip, xAxis, yAxis, grid, series: customSeries,...props }, ref) => {
-	const series = (0, react.useMemo)(() => {
-		if (customSeries) return customSeries;
-		if (!data?.series || !Array.isArray(data.series)) return [];
-		return data.series.map((s) => ({
-			name: s.name,
-			type: "bar",
-			data: s.data,
-			stack: stack ? "total" : void 0,
-			...barWidth && { barWidth },
-			...barMaxWidth && { barMaxWidth },
-			...s.color && { itemStyle: { color: s.color } },
-			...showValues && { label: {
-				show: true,
-				position: horizontal ? "right" : "top"
-			} }
-		}));
-	}, [
-		data?.series,
-		stack,
-		barWidth,
-		barMaxWidth,
-		showValues,
-		horizontal,
-		customSeries
-	]);
-	const chartOption = (0, react.useMemo)(() => ({
-		tooltip: {
-			trigger: "axis",
-			axisPointer: { type: "shadow" },
-			...tooltip
-		},
-		grid: {
-			left: "3%",
-			right: "4%",
-			bottom: "3%",
-			top: showLegend && data?.series && data.series.length > 1 ? 60 : 40,
-			containLabel: true,
-			...grid
-		},
-		xAxis: horizontal ? {
-			type: "value",
-			...xAxis
-		} : {
-			type: "category",
-			data: data?.categories || [],
-			...xAxis
-		},
-		yAxis: horizontal ? {
-			type: "category",
-			data: data?.categories || [],
-			...yAxis
-		} : {
-			type: "value",
-			...yAxis
-		},
-		legend: showLegend && data?.series && data.series.length > 1 ? {
-			data: data.series.map((s) => s.name),
-			top: 20,
-			...legend
-		} : void 0,
-		series
-	}), [
-		data?.categories,
-		data?.series,
-		horizontal,
-		showLegend,
-		tooltip,
-		grid,
-		xAxis,
-		yAxis,
-		legend,
-		series
-	]);
-	return /* @__PURE__ */ (0, react_jsx_runtime.jsx)(BaseChart, {
-		ref,
-		option: chartOption,
-		...props
-	});
-});
-BarChart.displayName = "BarChart";
-
-//#endregion
-//#region src/components/PieChart.tsx
-const PieChart = (0, react.forwardRef)(({ data, radius = ["40%", "70%"], center = ["50%", "50%"], roseType = false, showLabels = true, showLegend = true, legend, series: customSeries,...props }, ref) => {
-	const series = (0, react.useMemo)(() => {
-		if (customSeries) return customSeries;
-		return [{
-			type: "pie",
-			data: [...data],
-			radius,
-			center: [...center],
-			...roseType && { roseType: roseType === true ? "radius" : roseType },
-			label: { show: showLabels },
-			emphasis: { label: {
-				show: true,
-				fontSize: 14,
-				fontWeight: "bold"
-			} }
-		}];
-	}, [
-		data,
-		radius,
-		center,
-		roseType,
-		showLabels,
-		customSeries
-	]);
-	const chartOption = (0, react.useMemo)(() => ({
-		tooltip: {
-			trigger: "item",
-			formatter: "{a} <br/>{b}: {c} ({d}%)"
-		},
-		legend: {
-			type: "scroll",
-			orient: "vertical",
-			right: 10,
-			top: 20,
-			bottom: 20,
-			show: showLegend,
-			data: data.map((item) => item.name),
-			...legend
-		},
-		series
-	}), [
-		series,
-		showLegend,
-		legend,
-		data
-	]);
-	return /* @__PURE__ */ (0, react_jsx_runtime.jsx)(BaseChart, {
-		ref,
-		option: chartOption,
-		...props
-	});
-});
-PieChart.displayName = "PieChart";
-
-//#endregion
-//#region src/components/CalendarHeatmapChart.tsx
-const CalendarHeatmapChart = (0, react.forwardRef)(({ data, year, calendar = {}, visualMap = {}, tooltipFormatter, title,...props }, ref) => {
-	const chartOption = (0, react.useMemo)(() => {
-		const seriesData = data.map((item) => [item.date, item.value]);
-		const values = data.map((item) => item.value);
-		const minValue = Math.min(...values);
-		const maxValue = Math.max(...values);
-		const titleConfig = typeof title === "string" ? { text: title } : title;
-		return {
-			...titleConfig && { title: {
-				top: 30,
-				left: "center",
-				...titleConfig
-			} },
-			tooltip: { formatter: tooltipFormatter ? (params) => {
-				return tooltipFormatter(params);
-			} : (params) => {
-				const [date, value] = params.value;
-				return `${date}<br/>Value: ${value}`;
-			} },
-			visualMap: {
-				min: minValue,
-				max: maxValue,
-				type: "piecewise",
-				orient: "horizontal",
-				left: "center",
-				top: titleConfig ? 65 : 35,
-				inRange: { color: [
-					"#ebedf0",
-					"#c6e48b",
-					"#7bc96f",
-					"#239a3b",
-					"#196127"
-				] },
-				...visualMap
-			},
-			calendar: {
-				top: titleConfig ? 120 : 90,
-				left: 30,
-				right: 30,
-				cellSize: ["auto", 13],
-				range: year.toString(),
-				itemStyle: {
-					borderWidth: .5,
-					borderColor: "#fff"
-				},
-				yearLabel: { show: false },
-				dayLabel: {
-					firstDay: 1,
-					nameMap: [
-						"S",
-						"M",
-						"T",
-						"W",
-						"T",
-						"F",
-						"S"
-					]
-				},
-				monthLabel: { nameMap: "en" },
-				...calendar
-			},
-			series: {
-				type: "heatmap",
-				coordinateSystem: "calendar",
-				data: seriesData
-			}
-		};
-	}, [
-		data,
-		year,
-		calendar,
-		visualMap,
-		tooltipFormatter,
-		title
-	]);
-	return /* @__PURE__ */ (0, react_jsx_runtime.jsx)(BaseChart, {
-		ref,
-		option: chartOption,
-		...props
-	});
-});
-CalendarHeatmapChart.displayName = "CalendarHeatmapChart";
-
-//#endregion
-//#region src/components/StackedBarChart.tsx
-const StackedBarChart = (0, react.forwardRef)(({ data, horizontal = false, showPercentage = false, showValues = false, barWidth = "60%", barMaxWidth, stackName = "total", showLegend = true, legend, tooltip, xAxis, yAxis, grid, series: customSeries,...props }, ref) => {
-	const series = (0, react.useMemo)(() => {
-		if (customSeries) return customSeries;
-		const { series: rawSeries } = data;
-		const totalData = [];
-		if (showPercentage) for (let i = 0; i < data.categories.length; i++) {
-			let sum = 0;
-			for (const seriesItem of rawSeries) sum += seriesItem.data[i] || 0;
-			totalData.push(sum);
-		}
-		return rawSeries.map((seriesItem) => {
-			const processedData = showPercentage ? seriesItem.data.map((value, index) => {
-				const total = totalData[index];
-				return total === void 0 || total <= 0 ? 0 : value / total;
-			}) : seriesItem.data;
-			return {
-				name: seriesItem.name,
-				type: "bar",
-				stack: stackName,
-				barWidth,
-				...barMaxWidth && { barMaxWidth },
-				data: [...processedData],
-				...seriesItem.color && { itemStyle: { color: seriesItem.color } },
-				...showValues && { label: {
-					show: true,
-					position: horizontal ? "right" : "top",
-					...showPercentage && { formatter: (params) => `${Math.round(params.value * 1e3) / 10}%` }
-				} }
-			};
-		});
-	}, [
-		data,
-		showPercentage,
-		stackName,
-		barWidth,
-		barMaxWidth,
-		showValues,
-		horizontal,
-		customSeries
-	]);
-	const chartOption = (0, react.useMemo)(() => ({
-		tooltip: {
-			trigger: "axis",
-			axisPointer: { type: "shadow" },
-			...showPercentage && { formatter: (params) => {
-				if (!Array.isArray(params)) return "";
-				let result = `${params[0].name}<br/>`;
-				for (const param of params) {
-					const percentage = Math.round(param.value * 1e3) / 10;
-					result += `${param.marker}${param.seriesName}: ${percentage}%<br/>`;
-				}
-				return result;
-			} },
-			...tooltip
-		},
-		legend: showLegend && data?.series && data.series.length > 1 ? {
-			data: data.series.map((s) => s.name),
-			top: 20,
-			selectedMode: "multiple",
-			...legend
-		} : void 0,
-		grid: {
-			left: 100,
-			right: 100,
-			top: showLegend && data?.series && data.series.length > 1 ? 60 : 40,
-			bottom: 50,
-			containLabel: true,
-			...grid
-		},
-		xAxis: horizontal ? {
-			type: "value",
-			...showPercentage && { axisLabel: { formatter: (value) => `${Math.round(value * 100)}%` } },
-			...xAxis
-		} : {
-			type: "category",
-			data: data.categories,
-			...xAxis
-		},
-		yAxis: horizontal ? {
-			type: "category",
-			data: data.categories,
-			...yAxis
-		} : {
-			type: "value",
-			...showPercentage && { axisLabel: { formatter: (value) => `${Math.round(value * 100)}%` } },
-			...yAxis
-		},
-		series
-	}), [
-		data,
-		horizontal,
-		showPercentage,
-		showLegend,
-		tooltip,
-		legend,
-		grid,
-		xAxis,
-		yAxis,
-		series
-	]);
-	return /* @__PURE__ */ (0, react_jsx_runtime.jsx)(BaseChart, {
-		ref,
-		option: chartOption,
-		...props
-	});
-});
-StackedBarChart.displayName = "StackedBarChart";
-
-//#endregion
-//#region src/components/SankeyChart.tsx
-const SankeyChart = (0, react.forwardRef)(({ data, layout = "none", orient = "horizontal", nodeAlign = "justify", nodeGap = 8, nodeWidth = 20, iterations = 32, title, option: customOption,...props }, ref) => {
+//#region src/components/legacy/OldSankeyChart.tsx
+const OldSankeyChart = (0, react.forwardRef)(({ data, layout = "none", orient = "horizontal", nodeAlign = "justify", nodeGap = 8, nodeWidth = 20, iterations = 32, title, option: customOption,...props }, ref) => {
 	const chartOption = (0, react.useMemo)(() => {
 		if (!data?.nodes || !data?.links || !Array.isArray(data.nodes) || !Array.isArray(data.links)) return { series: [] };
 		const baseOption = createSankeyChartOption({
@@ -2156,11 +2160,11 @@ const SankeyChart = (0, react.forwardRef)(({ data, layout = "none", orient = "ho
 		...props
 	});
 });
-SankeyChart.displayName = "SankeyChart";
+OldSankeyChart.displayName = "OldSankeyChart";
 
 //#endregion
-//#region src/components/ScatterChart.tsx
-const ScatterChart = (0, react.forwardRef)(({ data, symbolSize = 10, symbol = "circle", large = false, largeThreshold = 2e3, progressive = 400, progressiveThreshold = 3e3, enableAdvancedFeatures = false, title, option: customOption, series: customSeries,...props }, ref) => {
+//#region src/components/legacy/OldScatterChart.tsx
+const OldScatterChart = (0, react.forwardRef)(({ data, symbolSize = 10, symbol = "circle", large = false, largeThreshold = 2e3, progressive = 400, progressiveThreshold = 3e3, enableAdvancedFeatures = false, title, option: customOption, series: customSeries,...props }, ref) => {
 	const chartOption = (0, react.useMemo)(() => {
 		if (customSeries) return {
 			xAxis: {
@@ -2256,10 +2260,10 @@ const ScatterChart = (0, react.forwardRef)(({ data, symbolSize = 10, symbol = "c
 		...props
 	});
 });
-ScatterChart.displayName = "ScatterChart";
+OldScatterChart.displayName = "OldScatterChart";
 
 //#endregion
-//#region src/components/ClusterChart.tsx
+//#region src/components/legacy/OldClusterChart.tsx
 const DEFAULT_COLORS = [
 	"#37A2DA",
 	"#e06343",
@@ -2269,7 +2273,7 @@ const DEFAULT_COLORS = [
 	"#8378EA",
 	"#96BFFF"
 ];
-const ClusterChart = (0, react.forwardRef)(({ data, clusterCount = 6, outputClusterIndexDimension = 2, colors = DEFAULT_COLORS, symbolSize = 15, itemStyle = { borderColor: "#555" }, visualMapPosition = "left", gridLeft = 120, title, option: customOption,...props }, ref) => {
+const OldClusterChart = (0, react.forwardRef)(({ data, clusterCount = 6, outputClusterIndexDimension = 2, colors = DEFAULT_COLORS, symbolSize = 15, itemStyle = { borderColor: "#555" }, visualMapPosition = "left", gridLeft = 120, title, option: customOption,...props }, ref) => {
 	const chartOption = (0, react.useMemo)(() => {
 		if (!data?.data || !Array.isArray(data.data)) return { series: [] };
 		const sourceData = data.data.map((point) => [point.value[0], point.value[1]]);
@@ -2366,11 +2370,11 @@ const ClusterChart = (0, react.forwardRef)(({ data, clusterCount = 6, outputClus
 		...props
 	});
 });
-ClusterChart.displayName = "ClusterChart";
+OldClusterChart.displayName = "OldClusterChart";
 
 //#endregion
-//#region src/components/RegressionChart.tsx
-const RegressionChart = (0, react.forwardRef)(({ data, method = "linear", formulaOn = "end", scatterName = "scatter", lineName = "regression", scatterColor = "#5470c6", lineColor = "#91cc75", symbolSize = 8, showFormula = true, formulaFontSize = 16, formulaPosition = { dx: -20 }, splitLineStyle = "dashed", legendPosition = "bottom", title, option: customOption,...props }, ref) => {
+//#region src/components/legacy/OldRegressionChart.tsx
+const OldRegressionChart = (0, react.forwardRef)(({ data, method = "linear", formulaOn = "end", scatterName = "scatter", lineName = "regression", scatterColor = "#5470c6", lineColor = "#91cc75", symbolSize = 8, showFormula = true, formulaFontSize = 16, formulaPosition = { dx: -20 }, splitLineStyle = "dashed", legendPosition = "bottom", title, option: customOption,...props }, ref) => {
 	const chartOption = (0, react.useMemo)(() => {
 		if (!data?.data || !Array.isArray(data.data)) return { series: [] };
 		const sourceData = data.data.map((point) => [point.value[0], point.value[1]]);
@@ -2464,11 +2468,11 @@ const RegressionChart = (0, react.forwardRef)(({ data, method = "linear", formul
 		...props
 	});
 });
-RegressionChart.displayName = "RegressionChart";
+OldRegressionChart.displayName = "OldRegressionChart";
 
 //#endregion
-//#region src/components/GanttChart.tsx
-const GanttChart = (0, react.forwardRef)(({ data, heightRatio = .6, showDataZoom = true, draggable: _draggable = false, showLegend = false, legend, tooltip, xAxis, yAxis, grid, onTaskDrag: _onTaskDrag,...props }, ref) => {
+//#region src/components/legacy/OldGanttChart.tsx
+const OldGanttChart = (0, react.forwardRef)(({ data, heightRatio = .6, showDataZoom = true, draggable: _draggable = false, showLegend = false, legend, tooltip, xAxis, yAxis, grid, onTaskDrag: _onTaskDrag,...props }, ref) => {
 	const processedData = (0, react.useMemo)(() => {
 		if (!data?.tasks || !data?.categories) return {
 			tasks: [],
@@ -2776,7 +2780,214 @@ const GanttChart = (0, react.forwardRef)(({ data, heightRatio = .6, showDataZoom
 		...props
 	});
 });
-GanttChart.displayName = "GanttChart";
+OldGanttChart.displayName = "OldGanttChart";
+
+//#endregion
+//#region src/components/legacy/OldLineChart.tsx
+const OldLineChart = (0, react.forwardRef)(({ data, smooth = false, area = false, stack = false, symbol = true, symbolSize = 4, connectNulls = false, title, option: customOption, series: customSeries,...props }, ref) => {
+	const chartOption = (0, react.useMemo)(() => {
+		if (customSeries) return {
+			xAxis: {
+				type: "category",
+				data: data?.categories || []
+			},
+			yAxis: { type: "value" },
+			series: customSeries,
+			...title && { title: {
+				text: title,
+				left: "center"
+			} },
+			...customOption && customOption
+		};
+		if (!data?.series || !Array.isArray(data.series)) return { series: [] };
+		const baseOption = createLineChartOption({
+			categories: data.categories,
+			series: data.series.map((s) => ({
+				name: s.name,
+				data: s.data,
+				...s.color && { color: s.color },
+				...Object.fromEntries(Object.entries(s).filter(([key]) => ![
+					"name",
+					"data",
+					"color"
+				].includes(key)))
+			})),
+			...title && { title }
+		});
+		if (baseOption.series && Array.isArray(baseOption.series)) baseOption.series = baseOption.series.map((series, index) => {
+			const result = {
+				...series,
+				smooth: data.series[index]?.smooth ?? smooth,
+				showSymbol: symbol,
+				symbolSize: data.series[index]?.symbolSize ?? symbolSize,
+				connectNulls: data.series[index]?.connectNulls ?? connectNulls
+			};
+			if (data.series[index]?.symbol) result.symbol = data.series[index].symbol;
+			if (stack && data.series[index]?.stack) result.stack = data.series[index].stack;
+			else if (stack) result.stack = "total";
+			if (area) result.areaStyle = {};
+			return result;
+		});
+		return customOption ? mergeOptions(baseOption, customOption) : baseOption;
+	}, [
+		data,
+		smooth,
+		area,
+		stack,
+		symbol,
+		symbolSize,
+		connectNulls,
+		title,
+		customOption,
+		customSeries
+	]);
+	return /* @__PURE__ */ (0, react_jsx_runtime.jsx)(BaseChart, {
+		ref,
+		option: chartOption,
+		...props
+	});
+});
+OldLineChart.displayName = "OldLineChart";
+
+//#endregion
+//#region src/components/legacy/OldBarChart.tsx
+const OldBarChart = (0, react.forwardRef)(({ data, horizontal = false, stack = false, showValues = false, barWidth, barMaxWidth, showLegend = true, legend, tooltip, xAxis, yAxis, grid, series: customSeries,...props }, ref) => {
+	const series = (0, react.useMemo)(() => {
+		if (customSeries) return customSeries;
+		if (!data?.series || !Array.isArray(data.series)) return [];
+		return data.series.map((s) => ({
+			name: s.name,
+			type: "bar",
+			data: s.data,
+			stack: stack ? "total" : void 0,
+			...barWidth && { barWidth },
+			...barMaxWidth && { barMaxWidth },
+			...s.color && { itemStyle: { color: s.color } },
+			...showValues && { label: {
+				show: true,
+				position: horizontal ? "right" : "top"
+			} }
+		}));
+	}, [
+		data?.series,
+		stack,
+		barWidth,
+		barMaxWidth,
+		showValues,
+		horizontal,
+		customSeries
+	]);
+	const chartOption = (0, react.useMemo)(() => ({
+		tooltip: {
+			trigger: "axis",
+			axisPointer: { type: "shadow" },
+			...tooltip
+		},
+		grid: {
+			left: "3%",
+			right: "4%",
+			bottom: "3%",
+			top: showLegend && data?.series && data.series.length > 1 ? 60 : 40,
+			containLabel: true,
+			...grid
+		},
+		xAxis: horizontal ? {
+			type: "value",
+			...xAxis
+		} : {
+			type: "category",
+			data: data?.categories || [],
+			...xAxis
+		},
+		yAxis: horizontal ? {
+			type: "category",
+			data: data?.categories || [],
+			...yAxis
+		} : {
+			type: "value",
+			...yAxis
+		},
+		legend: showLegend && data?.series && data.series.length > 1 ? {
+			data: data.series.map((s) => s.name),
+			top: 20,
+			...legend
+		} : void 0,
+		series
+	}), [
+		data?.categories,
+		data?.series,
+		horizontal,
+		showLegend,
+		tooltip,
+		grid,
+		xAxis,
+		yAxis,
+		legend,
+		series
+	]);
+	return /* @__PURE__ */ (0, react_jsx_runtime.jsx)(BaseChart, {
+		ref,
+		option: chartOption,
+		...props
+	});
+});
+OldBarChart.displayName = "OldBarChart";
+
+//#endregion
+//#region src/components/legacy/OldPieChart.tsx
+const OldPieChart = (0, react.forwardRef)(({ data, radius = ["40%", "70%"], center = ["50%", "50%"], roseType = false, showLabels = true, showLegend = true, legend, series: customSeries,...props }, ref) => {
+	const series = (0, react.useMemo)(() => {
+		if (customSeries) return customSeries;
+		return [{
+			type: "pie",
+			data: [...data],
+			radius,
+			center: [...center],
+			...roseType && { roseType: roseType === true ? "radius" : roseType },
+			label: { show: showLabels },
+			emphasis: { label: {
+				show: true,
+				fontSize: 14,
+				fontWeight: "bold"
+			} }
+		}];
+	}, [
+		data,
+		radius,
+		center,
+		roseType,
+		showLabels,
+		customSeries
+	]);
+	const chartOption = (0, react.useMemo)(() => ({
+		tooltip: {
+			trigger: "item",
+			formatter: "{a} <br/>{b}: {c} ({d}%)"
+		},
+		legend: {
+			type: "scroll",
+			orient: "vertical",
+			right: 10,
+			top: 20,
+			bottom: 20,
+			show: showLegend,
+			data: data.map((item) => item.name),
+			...legend
+		},
+		series
+	}), [
+		series,
+		showLegend,
+		legend,
+		data
+	]);
+	return /* @__PURE__ */ (0, react_jsx_runtime.jsx)(BaseChart, {
+		ref,
+		option: chartOption,
+		...props
+	});
+});
+OldPieChart.displayName = "OldPieChart";
 
 //#endregion
 //#region src/utils/themes.ts
@@ -2923,6 +3134,11 @@ if (typeof document !== "undefined" && !document.getElementById("aqc-charts-styl
       100% { transform: rotate(360deg); }
     }
     
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    
     .aqc-charts-container {
       box-sizing: border-box;
     }
@@ -2935,6 +3151,10 @@ if (typeof document !== "undefined" && !document.getElementById("aqc-charts-styl
       border: 1px dashed #ff4d4f;
       border-radius: 4px;
     }
+    
+    .aqc-charts-spinner {
+      animation: spin 1s linear infinite;
+    }
   `;
 	document.head.appendChild(style);
 }
@@ -2942,18 +3162,25 @@ if (typeof document !== "undefined" && !document.getElementById("aqc-charts-styl
 //#endregion
 exports.BarChart = BarChart;
 exports.BaseChart = BaseChart;
-exports.CalendarHeatmapChart = CalendarHeatmapChart;
-exports.ClusterChart = ClusterChart;
-exports.GanttChart = GanttChart;
 exports.LineChart = LineChart;
+exports.OldBarChart = OldBarChart;
+exports.OldCalendarHeatmapChart = OldCalendarHeatmapChart;
+exports.OldClusterChart = OldClusterChart;
+exports.OldGanttChart = OldGanttChart;
+exports.OldLineChart = OldLineChart;
+exports.OldPieChart = OldPieChart;
+exports.OldRegressionChart = OldRegressionChart;
+exports.OldSankeyChart = OldSankeyChart;
+exports.OldScatterChart = OldScatterChart;
+exports.OldStackedBarChart = OldStackedBarChart;
 exports.PieChart = PieChart;
-exports.RegressionChart = RegressionChart;
-exports.SankeyChart = SankeyChart;
-exports.ScatterChart = ScatterChart;
-exports.StackedBarChart = StackedBarChart;
 exports.clusterPointsToScatterData = clusterPointsToScatterData;
 exports.darkTheme = darkTheme;
 exports.extractPoints = extractPoints;
 exports.lightTheme = lightTheme;
 exports.performKMeansClustering = performKMeansClustering;
+exports.useChartEvents = useChartEvents;
+exports.useChartInstance = useChartInstance;
+exports.useChartOptions = useChartOptions;
+exports.useChartResize = useChartResize;
 exports.useECharts = useECharts;

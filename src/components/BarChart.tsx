@@ -1,126 +1,360 @@
-import React, { forwardRef, useMemo } from 'react';
-import type { 
-    BaseChartProps, 
-    ChartRef, 
-    BarSeriesOption, 
-    LegendComponentOption,
-    TooltipOption,
-    XAXisOption,
-    YAXisOption
-} from '@/types';
-import { BaseChart } from './BaseChart';
+import { forwardRef, useMemo, useImperativeHandle } from 'react';
+import type { EChartsType } from 'echarts/core';
+import type { BarChartProps, ErgonomicChartRef } from '@/types/ergonomic';
+import { useECharts } from '@/hooks/useECharts';
+import { buildBarChartOption } from '@/utils/ergonomic';
 
-export interface BarChartProps extends Omit<BaseChartProps, 'option'> {
-    readonly data: {
-        readonly categories: string[];
-        readonly series: Array<{
-            readonly name: string;
-            readonly data: number[];
-            readonly color?: string;
-        }>;
-    };
-    readonly horizontal?: boolean;
-    readonly stack?: boolean;
-    readonly showValues?: boolean;
-    readonly barWidth?: string | number;
-    readonly barMaxWidth?: string | number;
-    readonly showLegend?: boolean;
-    readonly legend?: LegendComponentOption;
-    readonly tooltip?: TooltipOption;
-    readonly xAxis?: XAXisOption;
-    readonly yAxis?: YAXisOption;
-    readonly grid?: {
-        readonly left?: string | number;
-        readonly right?: string | number;
-        readonly top?: string | number;
-        readonly bottom?: string | number;
-        readonly containLabel?: boolean;
-        readonly [key: string]: unknown;
-    };
-    readonly series?: BarSeriesOption[];
-}
-
-export const BarChart = forwardRef<ChartRef, BarChartProps>(({
-    data,
-    horizontal = false,
-    stack = false,
-    showValues = false,
-    barWidth,
-    barMaxWidth,
-    showLegend = true,
-    legend,
-    tooltip,
-    xAxis,
-    yAxis,
-    grid,
-    series: customSeries,
-    ...props
+/**
+ * Ergonomic BarChart component with intuitive props
+ * 
+ * @example
+ * // Simple bar chart with object data
+ * <ErgonomicBarChart
+ *   data={[
+ *     { category: 'Q1', sales: 100, profit: 20 },
+ *     { category: 'Q2', sales: 120, profit: 25 },
+ *     { category: 'Q3', sales: 110, profit: 22 },
+ *     { category: 'Q4', sales: 140, profit: 30 }
+ *   ]}
+ *   categoryField="category"
+ *   valueField={['sales', 'profit']}
+ *   orientation="vertical"
+ * />
+ * 
+ * @example
+ * // Stacked bar chart
+ * <ErgonomicBarChart
+ *   data={salesData}
+ *   categoryField="month"
+ *   valueField="amount"
+ *   seriesField="product"
+ *   stack="normal"
+ *   orientation="horizontal"
+ * />
+ * 
+ * @example
+ * // Multiple series with explicit configuration
+ * <ErgonomicBarChart
+ *   series={[
+ *     {
+ *       name: 'Sales',
+ *       data: [{ quarter: 'Q1', value: 100 }, { quarter: 'Q2', value: 120 }],
+ *       color: '#1890ff'
+ *     },
+ *     {
+ *       name: 'Profit',
+ *       data: [{ quarter: 'Q1', value: 20 }, { quarter: 'Q2', value: 25 }],
+ *       color: '#52c41a'
+ *     }
+ *   ]}
+ *   categoryField="quarter"
+ *   valueField="value"
+ * />
+ */
+const BarChart = forwardRef<ErgonomicChartRef, BarChartProps>(({
+  // Chart dimensions
+  width = '100%',
+  height = 400,
+  className,
+  style,
+  
+  // Data and field mappings
+  data,
+  categoryField = 'category',
+  valueField = 'value',
+  seriesField,
+  series,
+  
+  // Styling
+  theme = 'light',
+  colorPalette,
+  backgroundColor,
+  
+  // Title
+  title,
+  subtitle,
+  titlePosition = 'center',
+  
+  // Bar styling
+  orientation = 'vertical',
+  barWidth,
+  barGap,
+  borderRadius = 0,
+  
+  // Stacking
+  stack = false,
+  stackType = 'normal',
+  showPercentage = false,
+  
+  // Configuration
+  xAxis,
+  yAxis,
+  legend,
+  tooltip,
+  
+  // Sorting
+  sortBy = 'none',
+  sortOrder = 'asc',
+  
+  // States
+  loading = false,
+  disabled = false,
+  animate = true,
+  animationDuration,
+  
+  // Events
+  onChartReady,
+  onDataPointClick,
+  onDataPointHover,
+  
+  // Advanced
+  customOption,
+  responsive = true,
+  
+  ...restProps
 }, ref) => {
-    const series = useMemo(() => {
-        if (customSeries) {
-            return customSeries;
-        }
+  
+  // Build ECharts option from ergonomic props
+  const chartOption = useMemo(() => {
+    return buildBarChartOption({
+      data: data || undefined,
+      categoryField,
+      valueField,
+      seriesField,
+      series,
+      theme,
+      colorPalette,
+      backgroundColor,
+      title,
+      subtitle,
+      titlePosition,
+      orientation,
+      barWidth,
+      barGap,
+      borderRadius,
+      stack,
+      stackType,
+      showPercentage,
+      xAxis: xAxis || undefined,
+      yAxis: yAxis || undefined,
+      legend,
+      tooltip,
+      sortBy,
+      sortOrder,
+      animate,
+      animationDuration,
+      customOption,
+    });
+  }, [
+    data, categoryField, valueField, seriesField, series,
+    theme, colorPalette, backgroundColor,
+    title, subtitle, titlePosition,
+    orientation, barWidth, barGap, borderRadius,
+    stack, stackType, showPercentage,
+    xAxis, yAxis, legend, tooltip,
+    sortBy, sortOrder, animate, animationDuration,
+    customOption
+  ]);
+  
+  // Handle data point interactions
+  const chartEvents = useMemo(() => {
+    const events: Record<string, any> = {};
+    
+    if (onDataPointClick) {
+      events.click = (params: any, chart: EChartsType) => {
+        onDataPointClick(params, { chart, event: params });
+      };
+    }
+    
+    if (onDataPointHover) {
+      events.mouseover = (params: any, chart: EChartsType) => {
+        onDataPointHover(params, { chart, event: params });
+      };
+    }
+    
+    return Object.keys(events).length > 0 ? events : undefined;
+  }, [onDataPointClick, onDataPointHover]);
 
-        if (!data?.series || !Array.isArray(data.series)) {
-            return [];
-        }
-
-        return data.series.map(s => ({
-            name: s.name,
-            type: 'bar' as const,
-            data: s.data,
-            stack: stack ? 'total' : undefined,
-            ...(barWidth && { barWidth }),
-            ...(barMaxWidth && { barMaxWidth }),
-            ...(s.color && { itemStyle: { color: s.color } }),
-            ...(showValues && {
-                label: {
-                    show: true,
-                    position: horizontal ? 'right' : 'top',
-                },
-            }),
-        })) as BarSeriesOption[];
-    }, [data?.series, stack, barWidth, barMaxWidth, showValues, horizontal, customSeries]);
-
-    const chartOption = useMemo(() => ({
-        tooltip: {
-            trigger: 'axis' as const,
-            axisPointer: {
-                type: 'shadow',
-            },
-            ...tooltip,
-        },
-        grid: {
-            left: '3%',
-            right: '4%',
-            bottom: '3%',
-            top: showLegend && data?.series && data.series.length > 1 ? 60 : 40,
-            containLabel: true,
-            ...grid,
-        },
-        xAxis: horizontal 
-            ? { type: 'value' as const, ...xAxis }
-            : { type: 'category' as const, data: data?.categories || [], ...xAxis },
-        yAxis: horizontal 
-            ? { type: 'category' as const, data: data?.categories || [], ...yAxis }
-            : { type: 'value' as const, ...yAxis },
-        legend: showLegend && data?.series && data.series.length > 1
-            ? {
-                data: data.series.map(s => s.name),
-                top: 20,
-                ...legend,
-            } as LegendComponentOption
-            : undefined,
-        series,
-    }), [data?.categories, data?.series, horizontal, showLegend, tooltip, grid, xAxis, yAxis, legend, series]);
-
+  // Use our refactored hook with events included
+  const {
+    containerRef,
+    loading: chartLoading,
+    error,
+    getEChartsInstance,
+    resize,
+    showLoading,
+    hideLoading,
+  } = useECharts({
+    option: chartOption,
+    theme,
+    loading,
+    events: chartEvents,
+    onChartReady,
+  });
+  
+  // Export image functionality
+  const exportImage = (format: 'png' | 'jpeg' | 'svg' = 'png'): string => {
+    const chart = getEChartsInstance();
+    if (!chart) return '';
+    
+    return chart.getDataURL({
+      type: format,
+      pixelRatio: 2,
+      backgroundColor: backgroundColor || '#fff',
+    });
+  };
+  
+  // Highlight functionality
+  const highlight = (dataIndex: number, seriesIndex: number = 0) => {
+    const chart = getEChartsInstance();
+    if (!chart) return;
+    
+    chart.dispatchAction({
+      type: 'highlight',
+      seriesIndex,
+      dataIndex,
+    });
+  };
+  
+  const clearHighlight = () => {
+    const chart = getEChartsInstance();
+    if (!chart) return;
+    
+    chart.dispatchAction({
+      type: 'downplay',
+    });
+  };
+  
+  // Update data functionality
+  const updateData = (newData: readonly any[]) => {
+    const chart = getEChartsInstance();
+    if (!chart) return;
+    
+    const newOption = buildBarChartOption({
+      data: newData,
+      categoryField,
+      valueField,
+      seriesField,
+      series,
+      theme,
+      colorPalette,
+      backgroundColor,
+      title,
+      subtitle,
+      titlePosition,
+      orientation,
+      barWidth,
+      barGap,
+      borderRadius,
+      stack,
+      stackType,
+      showPercentage,
+      xAxis: xAxis || undefined,
+      yAxis: yAxis || undefined,
+      legend,
+      tooltip,
+      sortBy,
+      sortOrder,
+      animate,
+      animationDuration,
+      customOption,
+    });
+    
+    chart.setOption(newOption as any);
+  };
+  
+  // Expose ergonomic API through ref
+  useImperativeHandle(ref, () => ({
+    getChart: getEChartsInstance,
+    exportImage,
+    resize,
+    showLoading: () => showLoading(),
+    hideLoading,
+    highlight,
+    clearHighlight,
+    updateData,
+  }), [getEChartsInstance, exportImage, resize, showLoading, hideLoading, highlight, clearHighlight, updateData]);
+  
+  // Error state
+  if (error) {
     return (
-        <BaseChart
-            ref={ref}
-            option={chartOption as any}
-            {...props}
-        />
+      <div
+        className={`aqc-charts-error ${className || ''}`}
+        style={{
+          width,
+          height,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          color: '#ff4d4f',
+          fontSize: '14px',
+          border: '1px dashed #ff4d4f',
+          borderRadius: '4px',
+          ...style,
+        }}
+      >
+        Error: {error.message || 'Failed to render chart'}
+      </div>
     );
+  }
+  
+  // Container style
+  const containerStyle = useMemo(() => ({
+    width,
+    height,
+    position: 'relative' as const,
+    ...style,
+  }), [width, height, style]);
+  
+  return (
+    <div
+      className={`aqc-charts-container ${className || ''}`}
+      style={containerStyle}
+      {...restProps}
+    >
+      {/* Chart container */}
+      <div
+        ref={containerRef}
+        style={{
+          width: '100%',
+          height: '100%',
+        }}
+      />
+      
+      {/* Loading overlay */}
+      {(chartLoading || loading) && (
+        <div 
+          className="aqc-charts-loading"
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            backgroundColor: 'rgba(255, 255, 255, 0.8)',
+            fontSize: '14px',
+            color: '#666',
+          }}
+        >
+          <div className="aqc-charts-spinner" style={{
+            width: '20px',
+            height: '20px',
+            border: '2px solid #f3f3f3',
+            borderTop: '2px solid #1890ff',
+            borderRadius: '50%',
+            animation: 'spin 1s linear infinite',
+            marginRight: '8px',
+          }} />
+          Loading...
+        </div>
+      )}
+    </div>
+  );
 });
 
 BarChart.displayName = 'BarChart';
+
+export { BarChart };

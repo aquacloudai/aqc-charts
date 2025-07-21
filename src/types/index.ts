@@ -18,9 +18,9 @@ export type {
 
 // ECharts instance interface
 export interface EChartsInstance {
-    setOption: (option: unknown, notMerge?: boolean, lazyUpdate?: boolean) => void;
+    setOption: (option: unknown, opts?: { notMerge?: boolean; lazyUpdate?: boolean; silent?: boolean } | boolean) => void;
     getOption: () => unknown;
-    resize: (opts?: { width?: number; height?: number }) => void;
+    resize: (opts?: { width?: number; height?: number; silent?: boolean }) => void;
     dispatchAction: (payload: unknown) => void;
     on: (eventName: string, handler: (...args: unknown[]) => void) => void;
     off: (eventName: string, handler?: (...args: unknown[]) => void) => void;
@@ -29,6 +29,7 @@ export interface EChartsInstance {
     hideLoading: () => void;
     getDataURL: (opts?: unknown) => string;
     getConnectedDataURL: (opts?: unknown) => string;
+    clear: () => void;
 }
 
 export interface BaseChartProps {
@@ -44,13 +45,13 @@ export interface BaseChartProps {
     readonly lazyUpdate?: boolean;
 
     // Event handlers
-    readonly onChartReady?: (chart: EChartsInstance) => void;
-    readonly onClick?: (params: unknown, chart: EChartsInstance) => void;
-    readonly onDoubleClick?: (params: unknown, chart: EChartsInstance) => void;
-    readonly onMouseOver?: (params: unknown, chart: EChartsInstance) => void;
-    readonly onMouseOut?: (params: unknown, chart: EChartsInstance) => void;
-    readonly onDataZoom?: (params: unknown, chart: EChartsInstance) => void;
-    readonly onBrush?: (params: unknown, chart: EChartsInstance) => void;
+    readonly onChartReady?: (chart: import('echarts/core').EChartsType) => void;
+    readonly onClick?: (params: unknown, chart: import('echarts/core').EChartsType) => void;
+    readonly onDoubleClick?: (params: unknown, chart: import('echarts/core').EChartsType) => void;
+    readonly onMouseOver?: (params: unknown, chart: import('echarts/core').EChartsType) => void;
+    readonly onMouseOut?: (params: unknown, chart: import('echarts/core').EChartsType) => void;
+    readonly onDataZoom?: (params: unknown, chart: import('echarts/core').EChartsType) => void;
+    readonly onBrush?: (params: unknown, chart: import('echarts/core').EChartsType) => void;
 
     // Style props
     readonly className?: string;
@@ -99,8 +100,13 @@ export type CalendarConfig = ImportedCalendarOption;
 export type LineStyleConfig = { readonly type?: string; readonly width?: number; readonly color?: string; readonly opacity?: number };
 
 export interface ChartRef {
-    getEChartsInstance: () => EChartsInstance | null;
+    getEChartsInstance: () => import('echarts/core').EChartsType | null;
     refresh: () => void;
+    clear: () => void;
+    resize: () => void;
+    showLoading: () => void;
+    hideLoading: () => void;
+    dispose: () => void;
 }
 
 // Convenience interfaces for specific chart types
