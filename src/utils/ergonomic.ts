@@ -8,6 +8,7 @@ import type {
   BarChartProps,
   PieChartProps,
   ScatterChartProps,
+  ClusterChartProps,
 } from '@/types/ergonomic';
 
 // Default color palettes
@@ -131,7 +132,9 @@ export function buildAxisOption(config?: AxisConfig, dataType: 'numeric' | 'cate
     };
   }
   
-  const axisType = config.type || (dataType === 'numeric' ? 'value' : dataType === 'time' ? 'time' : 'category');
+  const axisType = config.type === 'linear' ? 'value' : 
+    config.type === 'log' ? 'log' :
+    config.type || (dataType === 'numeric' ? 'value' : dataType === 'time' ? 'time' : 'category');
   
   return {
     type: axisType,
@@ -155,7 +158,24 @@ export function buildAxisOption(config?: AxisConfig, dataType: 'numeric' | 'cate
     },
     axisLabel: {
       rotate: config.rotate,
-      formatter: config.format,
+      formatter: config.format 
+        ? (typeof config.format === 'function' 
+          ? config.format 
+          : (value: number) => {
+              // Handle simple format strings like '${value:,.0f}'
+              if (config.format === '${value:,.0f}') {
+                return '$' + value.toLocaleString('en-US', { maximumFractionDigits: 0 });
+              }
+              if (config.format === '{value}%') {
+                return value + '%';
+              }
+              if (config.format === '${value}') {
+                return '$' + value;
+              }
+              // Default fallback
+              return value.toString();
+            })
+        : undefined,
       color: isDark ? '#cccccc' : '#666666',
     },
     nameTextStyle: {
@@ -697,62 +717,224 @@ export function buildPieChartOption(props: PieChartProps): EChartsOption {
   };
 }
 
-export function buildScatterChartOption(props: ScatterChartProps): EChartsOption {
+export function buildScatterChartOption(props: any): EChartsOption {
   const baseOption = buildBaseOption(props);
   
   let series: any[] = [];
   
   if (props.series) {
-    series = props.series.map(s => ({
+    series = props.series.map((s: any) => ({
       name: s.name,
       type: 'scatter',
       data: s.data,
-      itemStyle: { color: s.color },
+      itemStyle: { color: s.color, opacity: props.pointOpacity || 0.8 },
       symbolSize: s.pointSize || props.pointSize || 10,
       symbol: s.pointShape || props.pointShape || 'circle',
     }));
-  } else if (props.data) {
+  } else if (props.data && props.data.length > 0) {
     if (isObjectData(props.data)) {
-      let processedData;
-      if (props.sizeField) {
-        // Bubble chart with size dimension
-        processedData = props.data.map((item: any) => [
-          item[props.xField as string],
-          item[props.yField as string],
-          item[props.sizeField as string],
-        ]);
+      if (props.seriesField) {
+        // Group by series field
+        const groups = groupDataByField(props.data, props.seriesField);
+        series = Object.entries(groups).map(([name, groupData]) => {
+          let processedData;
+          if (props.sizeField) {
+            processedData = groupData.map((item: any) => [
+              item[props.xField || 'x'],
+              item[props.yField || 'y'],
+              item[props.sizeField],
+            ]);
+          } else {
+            processedData = groupData.map((item: any) => [
+              item[props.xField || 'x'],
+              item[props.yField || 'y'],
+            ]);
+          }
+          
+          return {
+            name,
+            type: 'scatter',
+            data: processedData,
+            symbolSize: props.sizeField 
+              ? (value: number[]) => Math.sqrt(value[2] || 1) * 5
+              : props.pointSize || 10,
+            symbol: props.pointShape || 'circle',
+            itemStyle: { opacity: props.pointOpacity || 0.8 },
+          };
+        });
       } else {
-        processedData = props.data.map((item: any) => [
-          item[props.xField as string],
-          item[props.yField as string],
-        ]);
+        // Single series
+        let processedData;
+        if (props.sizeField) {
+          // Bubble chart with size dimension
+          processedData = props.data.map((item: any) => [
+            item[props.xField || 'x'],
+            item[props.yField || 'y'],
+            item[props.sizeField],
+          ]);
+        } else {
+          processedData = props.data.map((item: any) => [
+            item[props.xField || 'x'],
+            item[props.yField || 'y'],
+          ]);
+        }
+        
+        series = [{
+          type: 'scatter',
+          data: processedData,
+          symbolSize: props.sizeField 
+            ? (value: number[]) => Math.sqrt(value[2] || 1) * 5 // Scale the size
+            : props.pointSize || 10,
+          symbol: props.pointShape || 'circle',
+          itemStyle: { opacity: props.pointOpacity || 0.8 },
+        }];
       }
-      
-      series = [{
-        type: 'scatter',
-        data: processedData,
-        symbolSize: props.sizeField 
-          ? (value: number[]) => Math.sqrt(value[2] || 1) * 5 // Scale the size
-          : props.pointSize || 10,
-        symbol: props.pointShape || 'circle',
-      }];
     } else {
+      // Array data format
       series = [{
         type: 'scatter',
         data: [...props.data],
         symbolSize: props.pointSize || 10,
         symbol: props.pointShape || 'circle',
+        itemStyle: { opacity: props.pointOpacity || 0.8 },
       }];
     }
   }
   
+  const xAxisOption = buildAxisOption(props.xAxis, 'numeric', props.theme);
+  const yAxisOption = buildAxisOption(props.yAxis, 'numeric', props.theme);
+  
+  // Ensure axis types are 'value' for scatter charts
+  if (xAxisOption.type === 'linear') xAxisOption.type = 'value';
+  if (yAxisOption.type === 'linear') yAxisOption.type = 'value';
+  
   return {
     ...baseOption,
-    xAxis: buildAxisOption(props.xAxis, 'numeric', props.theme),
-    yAxis: buildAxisOption(props.yAxis, 'numeric', props.theme),
+    grid: calculateGridSpacing(props.legend, !!props.title, !!props.subtitle, false),
+    xAxis: xAxisOption,
+    yAxis: yAxisOption,
     series,
     legend: buildLegendOption(props.legend, !!props.title, !!props.subtitle, false, props.theme),
     tooltip: buildTooltipOption(props.tooltip, props.theme),
     ...props.customOption,
   };
+}
+
+export function buildClusterChartOption(props: any): EChartsOption {
+  const baseOption = buildBaseOption(props);
+  
+  // Default cluster colors
+  const DEFAULT_CLUSTER_COLORS = [
+    '#37A2DA', '#e06343', '#37a354', '#b55dba', '#b5bd48', '#8378EA', '#96BFFF'
+  ];
+  
+  const clusterCount = props.clusterCount || 6;
+  const clusterColors = props.clusterColors || props.colorPalette || DEFAULT_CLUSTER_COLORS;
+  const visualMapPosition = props.visualMapPosition || 'left';
+  
+  if (!props.data || props.data.length === 0) {
+    return { ...baseOption, series: [] };
+  }
+  
+  // Process data into the format needed for ecStat clustering
+  let sourceData: number[][];
+  
+  if (isObjectData(props.data)) {
+    const xField = props.xField || 'x';
+    const yField = props.yField || 'y';
+    sourceData = props.data.map((item: any) => [
+      Number(item[xField]) || 0,
+      Number(item[yField]) || 0,
+    ]);
+  } else {
+    sourceData = props.data.map((point: any) => {
+      if (Array.isArray(point)) {
+        return [Number(point[0]) || 0, Number(point[1]) || 0];
+      }
+      return [0, 0];
+    });
+  }
+  
+  const outputClusterIndexDimension = 2;
+  const gridLeft = visualMapPosition === 'left' ? 120 : 60;
+  
+  // Debug logging
+  console.log('ClusterChart sourceData sample:', sourceData.slice(0, 3));
+  console.log('ClusterChart config:', { clusterCount, outputClusterIndexDimension });
+  
+  // Create visual map pieces for cluster coloring
+  const pieces = Array.from({ length: clusterCount }, (_, i) => ({
+    value: i,
+    label: `cluster ${i}`,
+    color: clusterColors[i % clusterColors.length] || clusterColors[0] || DEFAULT_CLUSTER_COLORS[0],
+  }));
+  
+  const chartOption: EChartsOption = {
+    ...baseOption,
+    dataset: [
+      {
+        source: sourceData
+      },
+      {
+        transform: {
+          type: 'ecStat:clustering',
+          print: true,
+          config: {
+            clusterCount,
+            outputType: 'single',
+            outputClusterIndexDimension
+          }
+        }
+      }
+    ],
+    tooltip: props.tooltip ? buildTooltipOption(props.tooltip, props.theme) : {
+      position: 'top',
+      formatter: (params: any) => {
+        const [x, y, cluster] = params.value;
+        const name = params.name || '';
+        return `${name ? name + '<br/>' : ''}X: ${x}<br/>Y: ${y}<br/>Cluster: ${cluster}`;
+      }
+    },
+    visualMap: {
+      type: 'piecewise',
+      top: visualMapPosition === 'top' ? 10 : visualMapPosition === 'bottom' ? 'bottom' : 'middle',
+      ...(visualMapPosition === 'left' && { left: 10 }),
+      ...(visualMapPosition === 'right' && { left: 'right', right: 10 }),
+      ...(visualMapPosition === 'bottom' && { bottom: 10 }),
+      min: 0,
+      max: clusterCount,
+      splitNumber: clusterCount,
+      dimension: outputClusterIndexDimension,
+      pieces: pieces
+    },
+    grid: {
+      left: gridLeft
+    },
+    xAxis: {
+      ...buildAxisOption(props.xAxis, 'numeric', props.theme),
+      // Always override type to 'value' for clustering
+      type: 'value',
+      scale: true,
+    },
+    yAxis: {
+      ...buildAxisOption(props.yAxis, 'numeric', props.theme),
+      // Always override type to 'value' for clustering
+      type: 'value',
+      scale: true,
+    },
+    series: {
+      type: 'scatter',
+      encode: { 
+        tooltip: [0, 1, 2],
+        x: 0,
+        y: 1
+      },
+      symbolSize: props.pointSize || 15,
+      itemStyle: props.itemStyle || { borderColor: '#555' },
+      datasetIndex: 1,
+    },
+    ...props.customOption,
+  };
+  
+  return chartOption;
 }

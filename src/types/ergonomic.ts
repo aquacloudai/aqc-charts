@@ -232,6 +232,40 @@ export interface ScatterChartProps extends BaseErgonomicChartProps {
   readonly trendlineType?: 'linear' | 'polynomial' | 'exponential';
 }
 
+// Cluster Chart Props
+export interface ClusterChartProps extends BaseErgonomicChartProps {
+  readonly data: readonly DataPoint[] | readonly (readonly [number, number])[];
+  
+  // Field mappings for object data
+  readonly xField?: string;
+  readonly yField?: string;
+  readonly nameField?: string;
+  
+  // Clustering configuration
+  readonly clusterCount?: number;
+  readonly clusterMethod?: 'kmeans' | 'hierarchical';
+  
+  // Visual styling
+  readonly pointSize?: number;
+  readonly pointOpacity?: number;
+  readonly showClusterCenters?: boolean;
+  readonly centerSymbol?: string;
+  readonly centerSize?: number;
+  
+  // Cluster coloring
+  readonly clusterColors?: readonly string[];
+  readonly showVisualMap?: boolean;
+  readonly visualMapPosition?: 'left' | 'right' | 'top' | 'bottom';
+  
+  // Axes
+  readonly xAxis?: AxisConfig | undefined;
+  readonly yAxis?: AxisConfig | undefined;
+  
+  // Legend and tooltip
+  readonly legend?: LegendConfig | undefined;
+  readonly tooltip?: TooltipConfig | undefined;
+}
+
 // Area Chart Props (extends LineChart)
 export interface AreaChartProps extends Omit<LineChartProps, 'showArea'> {
   readonly stacked?: boolean;

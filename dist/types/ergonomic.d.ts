@@ -148,6 +148,26 @@ export interface ScatterChartProps extends BaseErgonomicChartProps {
     readonly showTrendline?: boolean;
     readonly trendlineType?: 'linear' | 'polynomial' | 'exponential';
 }
+export interface ClusterChartProps extends BaseErgonomicChartProps {
+    readonly data: readonly DataPoint[] | readonly (readonly [number, number])[];
+    readonly xField?: string;
+    readonly yField?: string;
+    readonly nameField?: string;
+    readonly clusterCount?: number;
+    readonly clusterMethod?: 'kmeans' | 'hierarchical';
+    readonly pointSize?: number;
+    readonly pointOpacity?: number;
+    readonly showClusterCenters?: boolean;
+    readonly centerSymbol?: string;
+    readonly centerSize?: number;
+    readonly clusterColors?: readonly string[];
+    readonly showVisualMap?: boolean;
+    readonly visualMapPosition?: 'left' | 'right' | 'top' | 'bottom';
+    readonly xAxis?: AxisConfig | undefined;
+    readonly yAxis?: AxisConfig | undefined;
+    readonly legend?: LegendConfig | undefined;
+    readonly tooltip?: TooltipConfig | undefined;
+}
 export interface AreaChartProps extends Omit<LineChartProps, 'showArea'> {
     readonly stacked?: boolean;
     readonly stackType?: 'normal' | 'percent';

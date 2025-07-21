@@ -31,28 +31,49 @@ let isLoaded = false;
 * Load ECharts dynamically from CDN
 */
 async function loadECharts(options = {}) {
-	if (isLoaded && window.echarts) return window.echarts;
+	if (isLoaded && window.echarts && window.ecStat) return window.echarts;
 	if (loadingPromise) return loadingPromise;
 	const { version = "5.6.0" } = options;
 	loadingPromise = new Promise((resolve, reject) => {
-		if (window.echarts) {
+		if (window.echarts && window.ecStat) {
 			isLoaded = true;
 			resolve(window.echarts);
 			return;
 		}
-		const script = document.createElement("script");
-		script.src = `https://cdn.jsdelivr.net/npm/echarts@${version}/dist/echarts.min.js`;
-		script.async = true;
-		script.onload = () => {
-			if (window.echarts) {
+		let scriptsLoaded = 0;
+		const totalScripts = 2;
+		let hasError = false;
+		const onScriptLoad = () => {
+			scriptsLoaded++;
+			if (scriptsLoaded === totalScripts && !hasError) if (window.echarts && window.ecStat) try {
+				window.echarts.registerTransform(window.ecStat.transform.clustering);
+				window.echarts.registerTransform(window.ecStat.transform.regression);
+				window.echarts.registerTransform(window.ecStat.transform.histogram);
 				isLoaded = true;
 				resolve(window.echarts);
-			} else reject(new Error("ECharts failed to load properly"));
+			} catch (error) {
+				reject(new Error("Failed to register ecStat transforms"));
+			}
+			else reject(new Error("ECharts or ecStat failed to load properly"));
 		};
-		script.onerror = () => {
-			reject(new Error(`Failed to load ECharts from CDN (version ${version})`));
+		const onScriptError = (scriptName) => {
+			if (!hasError) {
+				hasError = true;
+				reject(new Error(`Failed to load ${scriptName} from CDN`));
+			}
 		};
-		document.head.appendChild(script);
+		const echartsScript = document.createElement("script");
+		echartsScript.src = `https://cdn.jsdelivr.net/npm/echarts@${version}/dist/echarts.min.js`;
+		echartsScript.async = true;
+		echartsScript.onload = onScriptLoad;
+		echartsScript.onerror = () => onScriptError("ECharts");
+		document.head.appendChild(echartsScript);
+		const ecStatScript = document.createElement("script");
+		ecStatScript.src = "https://cdn.jsdelivr.net/npm/echarts-stat@1.2.0/dist/ecStat.min.js";
+		ecStatScript.async = true;
+		ecStatScript.onload = onScriptLoad;
+		ecStatScript.onerror = () => onScriptError("ecStat");
+		document.head.appendChild(ecStatScript);
 	});
 	return loadingPromise;
 }
@@ -143,19 +164,38 @@ function useChartResize({ chartInstance, containerRef, debounceMs = 100 }) {
 
 //#endregion
 //#region src/hooks/echarts/useChartOptions.ts
+function deepEqual(a, b) {
+	if (a === b) return true;
+	if (a == null || b == null) return false;
+	if (typeof a !== typeof b) return false;
+	if (typeof a !== "object") return false;
+	const keysA = Object.keys(a);
+	const keysB = Object.keys(b);
+	if (keysA.length !== keysB.length) return false;
+	for (const key of keysA) {
+		if (!keysB.includes(key)) return false;
+		if (!deepEqual(a[key], b[key])) return false;
+	}
+	return true;
+}
 function useChartOptions({ chartInstance, option, theme, notMerge = true, lazyUpdate = true }) {
 	const lastChartInstanceRef = (0, react.useRef)(null);
+	const lastOptionRef = (0, react.useRef)(null);
 	(0, react.useEffect)(() => {
 		if (!chartInstance || !option) return;
 		const isNewChartInstance = lastChartInstanceRef.current !== chartInstance;
+		const hasOptionChanged = !deepEqual(lastOptionRef.current, option);
 		if (isNewChartInstance) lastChartInstanceRef.current = chartInstance;
-		try {
-			chartInstance.setOption(option, {
-				notMerge: isNewChartInstance ? true : notMerge,
-				lazyUpdate
-			});
-		} catch (error) {
-			console.error("Failed to set chart options:", error);
+		if (isNewChartInstance || hasOptionChanged) {
+			lastOptionRef.current = option;
+			try {
+				chartInstance.setOption(option, {
+					notMerge: isNewChartInstance ? true : notMerge,
+					lazyUpdate
+				});
+			} catch (error) {
+				console.error("Failed to set chart options:", error);
+			}
 		}
 	}, [
 		chartInstance,
@@ -556,7 +596,7 @@ function buildAxisOption(config, dataType = "categorical", theme) {
 		axisLabel: { color: isDark ? "#cccccc" : "#666666" },
 		splitLine: { lineStyle: { color: isDark ? "#333333" : "#f0f0f0" } }
 	};
-	const axisType = config.type || (dataType === "numeric" ? "value" : dataType === "time" ? "time" : "category");
+	const axisType = config.type === "linear" ? "value" : config.type === "log" ? "log" : config.type || (dataType === "numeric" ? "value" : dataType === "time" ? "time" : "category");
 	return {
 		type: axisType,
 		name: config.label,
@@ -571,7 +611,12 @@ function buildAxisOption(config, dataType = "categorical", theme) {
 		axisTick: { lineStyle: { color: isDark ? "#666666" : "#cccccc" } },
 		axisLabel: {
 			rotate: config.rotate,
-			formatter: config.format,
+			formatter: config.format ? typeof config.format === "function" ? config.format : (value) => {
+				if (config.format === "${value:,.0f}") return "$" + value.toLocaleString("en-US", { maximumFractionDigits: 0 });
+				if (config.format === "{value}%") return value + "%";
+				if (config.format === "${value}") return "$" + value;
+				return value.toString();
+			} : void 0,
 			color: isDark ? "#cccccc" : "#666666"
 		},
 		nameTextStyle: { color: isDark ? "#cccccc" : "#666666" },
@@ -991,6 +1036,180 @@ function buildPieChartOption(props) {
 		tooltip: buildTooltipOption(props.tooltip, props.theme),
 		...props.customOption
 	};
+}
+function buildScatterChartOption(props) {
+	const baseOption = buildBaseOption(props);
+	let series = [];
+	if (props.series) series = props.series.map((s) => ({
+		name: s.name,
+		type: "scatter",
+		data: s.data,
+		itemStyle: {
+			color: s.color,
+			opacity: props.pointOpacity || .8
+		},
+		symbolSize: s.pointSize || props.pointSize || 10,
+		symbol: s.pointShape || props.pointShape || "circle"
+	}));
+	else if (props.data && props.data.length > 0) if (isObjectData(props.data)) if (props.seriesField) {
+		const groups = groupDataByField(props.data, props.seriesField);
+		series = Object.entries(groups).map(([name, groupData]) => {
+			let processedData;
+			if (props.sizeField) processedData = groupData.map((item) => [
+				item[props.xField || "x"],
+				item[props.yField || "y"],
+				item[props.sizeField]
+			]);
+			else processedData = groupData.map((item) => [item[props.xField || "x"], item[props.yField || "y"]]);
+			return {
+				name,
+				type: "scatter",
+				data: processedData,
+				symbolSize: props.sizeField ? (value) => Math.sqrt(value[2] || 1) * 5 : props.pointSize || 10,
+				symbol: props.pointShape || "circle",
+				itemStyle: { opacity: props.pointOpacity || .8 }
+			};
+		});
+	} else {
+		let processedData;
+		if (props.sizeField) processedData = props.data.map((item) => [
+			item[props.xField || "x"],
+			item[props.yField || "y"],
+			item[props.sizeField]
+		]);
+		else processedData = props.data.map((item) => [item[props.xField || "x"], item[props.yField || "y"]]);
+		series = [{
+			type: "scatter",
+			data: processedData,
+			symbolSize: props.sizeField ? (value) => Math.sqrt(value[2] || 1) * 5 : props.pointSize || 10,
+			symbol: props.pointShape || "circle",
+			itemStyle: { opacity: props.pointOpacity || .8 }
+		}];
+	}
+	else series = [{
+		type: "scatter",
+		data: [...props.data],
+		symbolSize: props.pointSize || 10,
+		symbol: props.pointShape || "circle",
+		itemStyle: { opacity: props.pointOpacity || .8 }
+	}];
+	const xAxisOption = buildAxisOption(props.xAxis, "numeric", props.theme);
+	const yAxisOption = buildAxisOption(props.yAxis, "numeric", props.theme);
+	if (xAxisOption.type === "linear") xAxisOption.type = "value";
+	if (yAxisOption.type === "linear") yAxisOption.type = "value";
+	return {
+		...baseOption,
+		grid: calculateGridSpacing(props.legend, !!props.title, !!props.subtitle, false),
+		xAxis: xAxisOption,
+		yAxis: yAxisOption,
+		series,
+		legend: buildLegendOption(props.legend, !!props.title, !!props.subtitle, false, props.theme),
+		tooltip: buildTooltipOption(props.tooltip, props.theme),
+		...props.customOption
+	};
+}
+function buildClusterChartOption(props) {
+	const baseOption = buildBaseOption(props);
+	const DEFAULT_CLUSTER_COLORS = [
+		"#37A2DA",
+		"#e06343",
+		"#37a354",
+		"#b55dba",
+		"#b5bd48",
+		"#8378EA",
+		"#96BFFF"
+	];
+	const clusterCount = props.clusterCount || 6;
+	const clusterColors = props.clusterColors || props.colorPalette || DEFAULT_CLUSTER_COLORS;
+	const visualMapPosition = props.visualMapPosition || "left";
+	if (!props.data || props.data.length === 0) return {
+		...baseOption,
+		series: []
+	};
+	let sourceData;
+	if (isObjectData(props.data)) {
+		const xField = props.xField || "x";
+		const yField = props.yField || "y";
+		sourceData = props.data.map((item) => [Number(item[xField]) || 0, Number(item[yField]) || 0]);
+	} else sourceData = props.data.map((point) => {
+		if (Array.isArray(point)) return [Number(point[0]) || 0, Number(point[1]) || 0];
+		return [0, 0];
+	});
+	const outputClusterIndexDimension = 2;
+	const gridLeft = visualMapPosition === "left" ? 120 : 60;
+	console.log("ClusterChart sourceData sample:", sourceData.slice(0, 3));
+	console.log("ClusterChart config:", {
+		clusterCount,
+		outputClusterIndexDimension
+	});
+	const pieces = Array.from({ length: clusterCount }, (_, i) => ({
+		value: i,
+		label: `cluster ${i}`,
+		color: clusterColors[i % clusterColors.length] || clusterColors[0] || DEFAULT_CLUSTER_COLORS[0]
+	}));
+	const chartOption = {
+		...baseOption,
+		dataset: [{ source: sourceData }, { transform: {
+			type: "ecStat:clustering",
+			print: true,
+			config: {
+				clusterCount,
+				outputType: "single",
+				outputClusterIndexDimension
+			}
+		} }],
+		tooltip: props.tooltip ? buildTooltipOption(props.tooltip, props.theme) : {
+			position: "top",
+			formatter: (params) => {
+				const [x, y, cluster] = params.value;
+				const name = params.name || "";
+				return `${name ? name + "<br/>" : ""}X: ${x}<br/>Y: ${y}<br/>Cluster: ${cluster}`;
+			}
+		},
+		visualMap: {
+			type: "piecewise",
+			top: visualMapPosition === "top" ? 10 : visualMapPosition === "bottom" ? "bottom" : "middle",
+			...visualMapPosition === "left" && { left: 10 },
+			...visualMapPosition === "right" && {
+				left: "right",
+				right: 10
+			},
+			...visualMapPosition === "bottom" && { bottom: 10 },
+			min: 0,
+			max: clusterCount,
+			splitNumber: clusterCount,
+			dimension: outputClusterIndexDimension,
+			pieces
+		},
+		grid: { left: gridLeft },
+		xAxis: {
+			...buildAxisOption(props.xAxis, "numeric", props.theme),
+			type: "value",
+			scale: true
+		},
+		yAxis: {
+			...buildAxisOption(props.yAxis, "numeric", props.theme),
+			type: "value",
+			scale: true
+		},
+		series: {
+			type: "scatter",
+			encode: {
+				tooltip: [
+					0,
+					1,
+					2
+				],
+				x: 0,
+				y: 1
+			},
+			symbolSize: props.pointSize || 15,
+			itemStyle: props.itemStyle || { borderColor: "#555" },
+			datasetIndex: 1
+		},
+		...props.customOption
+	};
+	return chartOption;
 }
 
 //#endregion
@@ -1824,6 +2043,545 @@ const PieChart = (0, react.forwardRef)(({ width = "100%", height = 400, classNam
 	});
 });
 PieChart.displayName = "PieChart";
+
+//#endregion
+//#region src/components/ScatterChart.tsx
+/**
+* Ergonomic ScatterChart component with intuitive props
+* 
+* @example
+* // Simple scatter plot with object data
+* <ScatterChart
+*   data={[
+*     { x: 10, y: 20 },
+*     { x: 15, y: 25 },
+*     { x: 20, y: 18 }
+*   ]}
+*   xField="x"
+*   yField="y"
+*   pointSize={8}
+* />
+* 
+* @example
+* // Bubble chart with size dimension
+* <ScatterChart
+*   data={[
+*     { sales: 100, profit: 20, employees: 50 },
+*     { sales: 120, profit: 25, employees: 60 },
+*     { sales: 110, profit: 18, employees: 45 }
+*   ]}
+*   xField="sales"
+*   yField="profit"
+*   sizeField="employees"
+*   pointSize={[5, 30]}
+* />
+* 
+* @example
+* // Multiple series with explicit configuration
+* <ScatterChart
+*   series={[
+*     {
+*       name: 'Dataset A',
+*       data: [{ x: 10, y: 20 }, { x: 15, y: 25 }],
+*       color: '#ff6b6b',
+*       pointSize: 10
+*     },
+*     {
+*       name: 'Dataset B',
+*       data: [{ x: 5, y: 12 }, { x: 8, y: 18 }],
+*       color: '#4ecdc4',
+*       pointShape: 'square'
+*     }
+*   ]}
+*   xField="x"
+*   yField="y"
+* />
+*/
+const ScatterChart = (0, react.forwardRef)(({ width = "100%", height = 400, className, style, data, xField = "x", yField = "y", sizeField, colorField, seriesField, series, theme = "light", colorPalette, backgroundColor, title, subtitle, titlePosition = "center", pointSize = 10, pointShape = "circle", pointOpacity = .8, xAxis, yAxis, legend, tooltip, showTrendline = false, trendlineType = "linear", loading = false, disabled = false, animate = true, animationDuration, onChartReady, onDataPointClick, onDataPointHover, customOption, responsive = true,...restProps }, ref) => {
+	const chartOption = (0, react.useMemo)(() => {
+		const optionProps = {
+			data: data || [],
+			xField,
+			yField,
+			theme,
+			colorPalette,
+			backgroundColor,
+			title,
+			subtitle,
+			titlePosition,
+			pointSize,
+			pointShape,
+			pointOpacity,
+			animate,
+			animationDuration,
+			customOption
+		};
+		if (sizeField) optionProps.sizeField = sizeField;
+		if (colorField) optionProps.colorField = colorField;
+		if (seriesField) optionProps.seriesField = seriesField;
+		if (series) optionProps.series = series;
+		if (xAxis) optionProps.xAxis = xAxis;
+		if (yAxis) optionProps.yAxis = yAxis;
+		if (legend) optionProps.legend = legend;
+		if (tooltip) optionProps.tooltip = tooltip;
+		if (showTrendline) optionProps.showTrendline = showTrendline;
+		if (trendlineType) optionProps.trendlineType = trendlineType;
+		return buildScatterChartOption(optionProps);
+	}, [
+		data,
+		xField,
+		yField,
+		sizeField,
+		colorField,
+		seriesField,
+		series,
+		theme,
+		colorPalette,
+		backgroundColor,
+		title,
+		subtitle,
+		titlePosition,
+		pointSize,
+		pointShape,
+		pointOpacity,
+		xAxis,
+		yAxis,
+		legend,
+		tooltip,
+		showTrendline,
+		trendlineType,
+		animate,
+		animationDuration,
+		customOption
+	]);
+	const chartEvents = (0, react.useMemo)(() => {
+		const events = {};
+		if (onDataPointClick) events.click = (params, chart) => {
+			onDataPointClick(params, {
+				chart,
+				event: params
+			});
+		};
+		if (onDataPointHover) events.mouseover = (params, chart) => {
+			onDataPointHover(params, {
+				chart,
+				event: params
+			});
+		};
+		return Object.keys(events).length > 0 ? events : void 0;
+	}, [onDataPointClick, onDataPointHover]);
+	const { containerRef, loading: chartLoading, error, getEChartsInstance, resize, showLoading, hideLoading } = useECharts({
+		option: chartOption,
+		theme,
+		loading,
+		events: chartEvents,
+		onChartReady
+	});
+	const exportImage = (format = "png") => {
+		const chart = getEChartsInstance();
+		if (!chart) return "";
+		return chart.getDataURL({
+			type: format,
+			pixelRatio: 2,
+			backgroundColor: backgroundColor || "#fff"
+		});
+	};
+	const highlight = (dataIndex, seriesIndex = 0) => {
+		const chart = getEChartsInstance();
+		if (!chart) return;
+		chart.dispatchAction({
+			type: "highlight",
+			seriesIndex,
+			dataIndex
+		});
+	};
+	const clearHighlight = () => {
+		const chart = getEChartsInstance();
+		if (!chart) return;
+		chart.dispatchAction({ type: "downplay" });
+	};
+	const updateData = (newData) => {
+		const chart = getEChartsInstance();
+		if (!chart) return;
+		const optionProps = {
+			data: newData,
+			xField,
+			yField,
+			theme,
+			colorPalette,
+			backgroundColor,
+			title,
+			subtitle,
+			titlePosition,
+			pointSize,
+			pointShape,
+			pointOpacity,
+			animate,
+			animationDuration,
+			customOption
+		};
+		if (sizeField) optionProps.sizeField = sizeField;
+		if (colorField) optionProps.colorField = colorField;
+		if (seriesField) optionProps.seriesField = seriesField;
+		if (series) optionProps.series = series;
+		if (xAxis) optionProps.xAxis = xAxis;
+		if (yAxis) optionProps.yAxis = yAxis;
+		if (legend) optionProps.legend = legend;
+		if (tooltip) optionProps.tooltip = tooltip;
+		if (showTrendline) optionProps.showTrendline = showTrendline;
+		if (trendlineType) optionProps.trendlineType = trendlineType;
+		const newOption = buildScatterChartOption(optionProps);
+		chart.setOption(newOption);
+	};
+	(0, react.useImperativeHandle)(ref, () => ({
+		getChart: getEChartsInstance,
+		exportImage,
+		resize,
+		showLoading: () => showLoading(),
+		hideLoading,
+		highlight,
+		clearHighlight,
+		updateData
+	}), [
+		getEChartsInstance,
+		exportImage,
+		resize,
+		showLoading,
+		hideLoading,
+		highlight,
+		clearHighlight,
+		updateData
+	]);
+	if (error) return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+		className: `aqc-charts-error ${className || ""}`,
+		style: {
+			width,
+			height,
+			display: "flex",
+			alignItems: "center",
+			justifyContent: "center",
+			color: "#ff4d4f",
+			fontSize: "14px",
+			border: "1px dashed #ff4d4f",
+			borderRadius: "4px",
+			...style
+		},
+		children: ["Error: ", error.message || "Failed to render chart"]
+	});
+	const containerStyle = (0, react.useMemo)(() => ({
+		width,
+		height,
+		position: "relative",
+		...style
+	}), [
+		width,
+		height,
+		style
+	]);
+	return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+		className: `aqc-charts-container ${className || ""}`,
+		style: containerStyle,
+		...restProps,
+		children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+			ref: containerRef,
+			style: {
+				width: "100%",
+				height: "100%"
+			}
+		}), (chartLoading || loading) && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+			className: "aqc-charts-loading",
+			style: {
+				position: "absolute",
+				top: 0,
+				left: 0,
+				right: 0,
+				bottom: 0,
+				display: "flex",
+				alignItems: "center",
+				justifyContent: "center",
+				backgroundColor: "rgba(255, 255, 255, 0.8)",
+				fontSize: "14px",
+				color: "#666"
+			},
+			children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+				className: "aqc-charts-spinner",
+				style: {
+					width: "20px",
+					height: "20px",
+					border: "2px solid #f3f3f3",
+					borderTop: "2px solid #1890ff",
+					borderRadius: "50%",
+					animation: "spin 1s linear infinite",
+					marginRight: "8px"
+				}
+			}), "Loading..."]
+		})]
+	});
+});
+ScatterChart.displayName = "ScatterChart";
+
+//#endregion
+//#region src/components/ClusterChart.tsx
+/**
+* Ergonomic ClusterChart component with intuitive props
+* Uses K-means clustering to automatically group data points and visualize clusters
+* 
+* @example
+* // Simple cluster chart with object data
+* <ClusterChart
+*   data={[
+*     { x: 10, y: 20 },
+*     { x: 15, y: 25 },
+*     { x: 50, y: 60 },
+*     { x: 55, y: 65 }
+*   ]}
+*   xField="x"
+*   yField="y"
+*   clusterCount={2}
+* />
+* 
+* @example
+* // Advanced clustering with custom styling
+* <ClusterChart
+*   data={customerData}
+*   xField="age"
+*   yField="income"
+*   nameField="name"
+*   title="Customer Segmentation"
+*   clusterCount={4}
+*   clusterColors={['#ff6b6b', '#4ecdc4', '#45b7d1', '#96ceb4']}
+*   pointSize={12}
+*   showVisualMap={true}
+*   visualMapPosition="right"
+* />
+*/
+const ClusterChart = (0, react.forwardRef)(({ width = "100%", height = 400, className, style, data, xField = "x", yField = "y", nameField, clusterCount = 6, clusterMethod = "kmeans", theme = "light", colorPalette, backgroundColor, title, subtitle, titlePosition = "center", pointSize = 15, pointOpacity = .8, showClusterCenters = false, centerSymbol = "diamond", centerSize = 20, clusterColors, showVisualMap = true, visualMapPosition = "left", xAxis, yAxis, legend, tooltip, loading = false, disabled = false, animate = true, animationDuration, onChartReady, onDataPointClick, onDataPointHover, customOption, responsive = true,...restProps }, ref) => {
+	const dataKey = (0, react.useMemo)(() => JSON.stringify(data), [data]);
+	const chartOption = (0, react.useMemo)(() => {
+		const optionProps = {
+			data: data || [],
+			xField,
+			yField,
+			nameField,
+			clusterCount,
+			clusterMethod,
+			theme,
+			colorPalette: clusterColors || colorPalette,
+			backgroundColor,
+			title,
+			subtitle,
+			titlePosition,
+			pointSize,
+			pointOpacity,
+			showClusterCenters,
+			centerSymbol,
+			centerSize,
+			showVisualMap,
+			visualMapPosition,
+			animate,
+			animationDuration,
+			customOption
+		};
+		if (xAxis) optionProps.xAxis = xAxis;
+		if (yAxis) optionProps.yAxis = yAxis;
+		if (legend) optionProps.legend = legend;
+		if (tooltip) optionProps.tooltip = tooltip;
+		return buildClusterChartOption(optionProps);
+	}, [
+		dataKey,
+		xField,
+		yField,
+		nameField,
+		clusterCount,
+		clusterMethod,
+		theme,
+		clusterColors,
+		colorPalette,
+		backgroundColor,
+		title,
+		subtitle,
+		titlePosition,
+		pointSize,
+		pointOpacity,
+		showClusterCenters,
+		centerSymbol,
+		centerSize,
+		showVisualMap,
+		visualMapPosition,
+		xAxis,
+		yAxis,
+		legend,
+		tooltip,
+		animate,
+		animationDuration,
+		customOption
+	]);
+	const chartEvents = (0, react.useMemo)(() => {
+		const events = {};
+		if (onDataPointClick) events.click = (params, chart) => {
+			onDataPointClick(params, {
+				chart,
+				event: params
+			});
+		};
+		if (onDataPointHover) events.mouseover = (params, chart) => {
+			onDataPointHover(params, {
+				chart,
+				event: params
+			});
+		};
+		return Object.keys(events).length > 0 ? events : void 0;
+	}, [onDataPointClick, onDataPointHover]);
+	const { containerRef, loading: chartLoading, error, getEChartsInstance, resize, showLoading, hideLoading } = useECharts({
+		option: chartOption,
+		theme,
+		loading,
+		events: chartEvents,
+		onChartReady
+	});
+	const exportImage = (format = "png") => {
+		const chart = getEChartsInstance();
+		if (!chart) return "";
+		return chart.getDataURL({
+			type: format,
+			pixelRatio: 2,
+			backgroundColor: backgroundColor || "#fff"
+		});
+	};
+	const highlight = (dataIndex, seriesIndex = 0) => {
+		const chart = getEChartsInstance();
+		if (!chart) return;
+		chart.dispatchAction({
+			type: "highlight",
+			seriesIndex,
+			dataIndex
+		});
+	};
+	const clearHighlight = () => {
+		const chart = getEChartsInstance();
+		if (!chart) return;
+		chart.dispatchAction({ type: "downplay" });
+	};
+	const updateData = (newData) => {
+		const chart = getEChartsInstance();
+		if (!chart) return;
+		const optionProps = {
+			data: newData,
+			xField,
+			yField,
+			nameField,
+			clusterCount,
+			clusterMethod,
+			theme,
+			colorPalette: clusterColors || colorPalette,
+			backgroundColor,
+			title,
+			subtitle,
+			titlePosition,
+			pointSize,
+			pointOpacity,
+			showClusterCenters,
+			centerSymbol,
+			centerSize,
+			showVisualMap,
+			visualMapPosition,
+			animate,
+			animationDuration,
+			customOption
+		};
+		if (xAxis) optionProps.xAxis = xAxis;
+		if (yAxis) optionProps.yAxis = yAxis;
+		if (legend) optionProps.legend = legend;
+		if (tooltip) optionProps.tooltip = tooltip;
+		const newOption = buildClusterChartOption(optionProps);
+		chart.setOption(newOption);
+	};
+	(0, react.useImperativeHandle)(ref, () => ({
+		getChart: getEChartsInstance,
+		exportImage,
+		resize,
+		showLoading: () => showLoading(),
+		hideLoading,
+		highlight,
+		clearHighlight,
+		updateData
+	}), [
+		getEChartsInstance,
+		exportImage,
+		resize,
+		showLoading,
+		hideLoading,
+		highlight,
+		clearHighlight,
+		updateData
+	]);
+	if (error) return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+		className: `aqc-charts-error ${className || ""}`,
+		style: {
+			width,
+			height,
+			display: "flex",
+			alignItems: "center",
+			justifyContent: "center",
+			color: "#ff4d4f",
+			fontSize: "14px",
+			border: "1px dashed #ff4d4f",
+			borderRadius: "4px",
+			...style
+		},
+		children: ["Error: ", error.message || "Failed to render chart"]
+	});
+	const containerStyle = (0, react.useMemo)(() => ({
+		width,
+		height,
+		position: "relative",
+		...style
+	}), [
+		width,
+		height,
+		style
+	]);
+	return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+		className: `aqc-charts-container ${className || ""}`,
+		style: containerStyle,
+		...restProps,
+		children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+			ref: containerRef,
+			style: {
+				width: "100%",
+				height: "100%"
+			}
+		}), (chartLoading || loading) && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+			className: "aqc-charts-loading",
+			style: {
+				position: "absolute",
+				top: 0,
+				left: 0,
+				right: 0,
+				bottom: 0,
+				display: "flex",
+				alignItems: "center",
+				justifyContent: "center",
+				backgroundColor: "rgba(255, 255, 255, 0.8)",
+				fontSize: "14px",
+				color: "#666"
+			},
+			children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+				className: "aqc-charts-spinner",
+				style: {
+					width: "20px",
+					height: "20px",
+					border: "2px solid #f3f3f3",
+					borderTop: "2px solid #1890ff",
+					borderRadius: "50%",
+					animation: "spin 1s linear infinite",
+					marginRight: "8px"
+				}
+			}), "Loading..."]
+		})]
+	});
+});
+ClusterChart.displayName = "ClusterChart";
 
 //#endregion
 //#region src/components/legacy/OldCalendarHeatmapChart.tsx
@@ -3162,6 +3920,7 @@ if (typeof document !== "undefined" && !document.getElementById("aqc-charts-styl
 //#endregion
 exports.BarChart = BarChart;
 exports.BaseChart = BaseChart;
+exports.ClusterChart = ClusterChart;
 exports.LineChart = LineChart;
 exports.OldBarChart = OldBarChart;
 exports.OldCalendarHeatmapChart = OldCalendarHeatmapChart;
@@ -3174,6 +3933,7 @@ exports.OldSankeyChart = OldSankeyChart;
 exports.OldScatterChart = OldScatterChart;
 exports.OldStackedBarChart = OldStackedBarChart;
 exports.PieChart = PieChart;
+exports.ScatterChart = ScatterChart;
 exports.clusterPointsToScatterData = clusterPointsToScatterData;
 exports.darkTheme = darkTheme;
 exports.extractPoints = extractPoints;

@@ -1,6 +1,26 @@
 import { useEffect, useRef } from 'react';
 import type { EChartsType } from 'echarts/core';
 
+// Simple deep comparison for options stability
+function deepEqual(a: any, b: any): boolean {
+  if (a === b) return true;
+  if (a == null || b == null) return false;
+  if (typeof a !== typeof b) return false;
+  if (typeof a !== 'object') return false;
+  
+  const keysA = Object.keys(a);
+  const keysB = Object.keys(b);
+  
+  if (keysA.length !== keysB.length) return false;
+  
+  for (const key of keysA) {
+    if (!keysB.includes(key)) return false;
+    if (!deepEqual(a[key], b[key])) return false;
+  }
+  
+  return true;
+}
+
 interface UseChartOptionsProps {
   chartInstance: EChartsType | null;
   option: unknown;
@@ -17,6 +37,7 @@ export function useChartOptions({
   lazyUpdate = true,
 }: UseChartOptionsProps) {
   const lastChartInstanceRef = useRef<EChartsType | null>(null);
+  const lastOptionRef = useRef<unknown>(null);
 
   useEffect(() => {
     if (!chartInstance || !option) return;
@@ -24,18 +45,25 @@ export function useChartOptions({
     // Check if this is a new chart instance (e.g., from theme change)
     const isNewChartInstance = lastChartInstanceRef.current !== chartInstance;
     
+    // Check if the option has actually changed (deep comparison)
+    const hasOptionChanged = !deepEqual(lastOptionRef.current, option);
+    
     if (isNewChartInstance) {
       lastChartInstanceRef.current = chartInstance;
     }
 
-    // Always set options when chart instance or options change
-    try {
-      chartInstance.setOption(option as any, { 
-        notMerge: isNewChartInstance ? true : notMerge, 
-        lazyUpdate 
-      });
-    } catch (error) {
-      console.error('Failed to set chart options:', error);
+    // Only set options if instance is new OR options have genuinely changed
+    if (isNewChartInstance || hasOptionChanged) {
+      lastOptionRef.current = option;
+      
+      try {
+        chartInstance.setOption(option as any, { 
+          notMerge: isNewChartInstance ? true : notMerge, 
+          lazyUpdate 
+        });
+      } catch (error) {
+        console.error('Failed to set chart options:', error);
+      }
     }
   }, [chartInstance, option, notMerge, lazyUpdate]);
 

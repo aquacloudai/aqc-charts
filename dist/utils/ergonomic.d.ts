@@ -1,5 +1,5 @@
 import type { EChartsOption } from 'echarts/types/dist/shared';
-import type { DataPoint, AxisConfig, LegendConfig, TooltipConfig, LineChartProps, BarChartProps, PieChartProps, ScatterChartProps } from '@/types/ergonomic';
+import type { DataPoint, AxisConfig, LegendConfig, TooltipConfig, LineChartProps, BarChartProps, PieChartProps } from '@/types/ergonomic';
 export declare const COLOR_PALETTES: {
     readonly default: readonly ["#5470c6", "#91cc75", "#fac858", "#ee6666", "#73c0de", "#3ba272", "#fc8452", "#9a60b4", "#ea7ccc"];
     readonly vibrant: readonly ["#FF6B6B", "#4ECDC4", "#45B7D1", "#96CEB4", "#FFEAA7", "#DDA0DD", "#98D8C8", "#F7DC6F", "#BB8FCE"];
@@ -20,5 +20,6 @@ export declare function buildTooltipOption(config?: TooltipConfig, theme?: strin
 export declare function buildLineChartOption(props: LineChartProps): EChartsOption;
 export declare function buildBarChartOption(props: BarChartProps): EChartsOption;
 export declare function buildPieChartOption(props: PieChartProps): EChartsOption;
-export declare function buildScatterChartOption(props: ScatterChartProps): EChartsOption;
+export declare function buildScatterChartOption(props: any): EChartsOption;
+export declare function buildClusterChartOption(props: any): EChartsOption;
 //# sourceMappingURL=ergonomic.d.ts.map

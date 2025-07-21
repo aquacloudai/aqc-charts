@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
-import { ErgonomicComponentsExample } from './ErgonomicComponentsExample';
+import { Examples } from './Examples';
 
 
 function App() {
 
   return (
-    <ErgonomicComponentsExample />
+    <Examples />
 
   );
 }

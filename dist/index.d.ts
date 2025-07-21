@@ -2,6 +2,8 @@ export { BaseChart } from './components/BaseChart';
 export { LineChart } from './components/LineChart';
 export { BarChart } from './components/BarChart';
 export { PieChart } from './components/PieChart';
+export { ScatterChart } from './components/ScatterChart';
+export { ClusterChart } from './components/ClusterChart';
 export { OldCalendarHeatmapChart } from './components/legacy/OldCalendarHeatmapChart';
 export { OldStackedBarChart } from './components/legacy/OldStackedBarChart';
 export { OldSankeyChart } from './components/legacy/OldSankeyChart';
@@ -17,7 +19,7 @@ export { useChartInstance, useChartResize, useChartOptions, useChartEvents } fro
 export { lightTheme, darkTheme } from './utils/themes';
 export { extractPoints, performKMeansClustering, clusterPointsToScatterData } from './utils/regression';
 export type { EChartsInstance, ChartDataPoint, ChartSeries, ChartAxis, ChartTheme, BaseChartProps, ChartRef, CalendarHeatmapDataPoint, CalendarConfig, VisualMapConfig, StackedBarData, StackedBarDataSeries, SankeyNode, SankeyLink, SankeyData, LineStyleConfig, LegendConfig, TooltipConfig, ScatterDataPoint, ScatterSeries, ScatterChartData, ClusterPoint, ClusterResult, ClusterChartData, ClusterChartDataPoint, ClusterVisualMapPiece, RegressionChartData, RegressionChartDataPoint, RegressionMethod, DataTransformOption, EcStatClusteringTransformOption, EcStatRegressionTransformOption, EcStatTransformOption, DatasetOptionWithTransforms, EChartsOption, SeriesOption, BarSeriesOption, LineSeriesOption, PieSeriesOption, HeatmapSeriesOption, ScatterSeriesOption, TitleOption, LegendComponentOption, TooltipOption, XAXisOption, YAXisOption, VisualMapComponentOption, CalendarOption, } from './types';
-export type { LineChartProps, BarChartProps, PieChartProps } from './types/ergonomic';
+export type { LineChartProps, BarChartProps, PieChartProps, ScatterChartProps, ClusterChartProps } from './types/ergonomic';
 export type { OldLineChartProps } from './components/legacy/OldLineChart';
 export type { OldBarChartProps } from './components/legacy/OldBarChart';
 export type { OldPieChartProps } from './components/legacy/OldPieChart';

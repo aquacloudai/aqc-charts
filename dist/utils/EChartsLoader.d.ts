@@ -10,11 +10,21 @@ export interface EChartsLoadingOptions {
 interface EChartsGlobal {
     init: (dom: HTMLElement, theme?: string | object, opts?: any) => any;
     dispose: (chart: any) => void;
+    registerTransform: (transform: any) => void;
+    [key: string]: any;
+}
+interface EcStatGlobal {
+    transform: {
+        clustering: any;
+        regression: any;
+        histogram: any;
+    };
     [key: string]: any;
 }
 declare global {
     interface Window {
         echarts?: EChartsGlobal;
+        ecStat?: EcStatGlobal;
     }
 }
 /**

@@ -12,12 +12,23 @@ export interface EChartsLoadingOptions {
 interface EChartsGlobal {
   init: (dom: HTMLElement, theme?: string | object, opts?: any) => any;
   dispose: (chart: any) => void;
+  registerTransform: (transform: any) => void;
+  [key: string]: any;
+}
+
+interface EcStatGlobal {
+  transform: {
+    clustering: any;
+    regression: any;
+    histogram: any;
+  };
   [key: string]: any;
 }
 
 declare global {
   interface Window {
     echarts?: EChartsGlobal;
+    ecStat?: EcStatGlobal;
   }
 }
 
@@ -29,7 +40,7 @@ let isLoaded = false;
  */
 export async function loadECharts(options: EChartsLoadingOptions = {}): Promise<EChartsGlobal> {
   // Return immediately if already loaded
-  if (isLoaded && window.echarts) {
+  if (isLoaded && window.echarts && window.ecStat) {
     return window.echarts;
   }
 
@@ -42,34 +53,58 @@ export async function loadECharts(options: EChartsLoadingOptions = {}): Promise<
 
   loadingPromise = new Promise((resolve, reject) => {
     // Check if already loaded (in case of race condition)
-    if (window.echarts) {
+    if (window.echarts && window.ecStat) {
       isLoaded = true;
       resolve(window.echarts);
       return;
     }
 
-    // Create script element
-    const script = document.createElement('script');
-    script.src = `https://cdn.jsdelivr.net/npm/echarts@${version}/dist/echarts.min.js`;
-    script.async = true;
+    let scriptsLoaded = 0;
+    const totalScripts = 2;
+    let hasError = false;
 
-    // Handle load success
-    script.onload = () => {
-      if (window.echarts) {
-        isLoaded = true;
-        resolve(window.echarts);
-      } else {
-        reject(new Error('ECharts failed to load properly'));
+    const onScriptLoad = () => {
+      scriptsLoaded++;
+      if (scriptsLoaded === totalScripts && !hasError) {
+        if (window.echarts && window.ecStat) {
+          // Register ecStat transforms
+          try {
+            window.echarts.registerTransform(window.ecStat.transform.clustering);
+            window.echarts.registerTransform(window.ecStat.transform.regression);
+            window.echarts.registerTransform(window.ecStat.transform.histogram);
+            isLoaded = true;
+            resolve(window.echarts);
+          } catch (error) {
+            reject(new Error('Failed to register ecStat transforms'));
+          }
+        } else {
+          reject(new Error('ECharts or ecStat failed to load properly'));
+        }
       }
     };
 
-    // Handle load error
-    script.onerror = () => {
-      reject(new Error(`Failed to load ECharts from CDN (version ${version})`));
+    const onScriptError = (scriptName: string) => {
+      if (!hasError) {
+        hasError = true;
+        reject(new Error(`Failed to load ${scriptName} from CDN`));
+      }
     };
 
-    // Add to document
-    document.head.appendChild(script);
+    // Load ECharts
+    const echartsScript = document.createElement('script');
+    echartsScript.src = `https://cdn.jsdelivr.net/npm/echarts@${version}/dist/echarts.min.js`;
+    echartsScript.async = true;
+    echartsScript.onload = onScriptLoad;
+    echartsScript.onerror = () => onScriptError('ECharts');
+    document.head.appendChild(echartsScript);
+
+    // Load ecStat
+    const ecStatScript = document.createElement('script');
+    ecStatScript.src = 'https://cdn.jsdelivr.net/npm/echarts-stat@1.2.0/dist/ecStat.min.js';
+    ecStatScript.async = true;
+    ecStatScript.onload = onScriptLoad;
+    ecStatScript.onerror = () => onScriptError('ecStat');
+    document.head.appendChild(ecStatScript);
   });
 
   return loadingPromise;
@@ -79,15 +114,15 @@ export async function loadECharts(options: EChartsLoadingOptions = {}): Promise<
  * Check if ECharts is available
  */
 export function isEChartsLoaded(): boolean {
-  return isLoaded && !!window.echarts;
+  return isLoaded && !!window.echarts && !!window.ecStat;
 }
 
 /**
  * Get ECharts instance (throws if not loaded)
  */
 export function getECharts(): EChartsGlobal {
-  if (!window.echarts) {
-    throw new Error('ECharts not loaded. Call loadECharts() first.');
+  if (!window.echarts || !window.ecStat) {
+    throw new Error('ECharts and ecStat not loaded. Call loadECharts() first.');
   }
   return window.echarts;
 }
