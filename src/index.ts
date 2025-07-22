@@ -6,6 +6,9 @@ export { PieChart } from './components/PieChart';
 export { ScatterChart } from './components/ScatterChart';
 export { ClusterChart } from './components/ClusterChart';
 export { CalendarHeatmapChart } from './components/CalendarHeatmapChart';
+export { SankeyChart } from './components/SankeyChart';
+export { GanttChart } from './components/GanttChart';
+export { RegressionChart } from './components/RegressionChart';
 
 // Legacy components (old API)
 export { OldCalendarHeatmapChart } from './components/legacy/OldCalendarHeatmapChart';
@@ -52,8 +55,6 @@ export type {
     VisualMapConfig,
     StackedBarData,
     StackedBarDataSeries,
-    SankeyNode,
-    SankeyLink,
     SankeyData,
     LineStyleConfig,
     LegendConfig,
@@ -102,8 +103,21 @@ export type {
     PieChartProps,
     ScatterChartProps,
     ClusterChartProps,
-    CalendarHeatmapProps
-} from './types/ergonomic';
+    CalendarHeatmapProps,
+    SankeyChartProps,
+    SankeyNode,
+    SankeyLink,
+    GanttChartProps,
+    GanttTask,
+    GanttCategory,
+    TaskBarStyle,
+    CategoryLabelStyle,
+    TimelineStyle,
+    StatusStyleMap,
+    PriorityStyleMap,
+    GanttDataZoomConfig,
+    RegressionChartProps
+} from './types';
 
 // Legacy component types
 export type { OldLineChartProps } from './components/legacy/OldLineChart';
@@ -125,7 +139,7 @@ export type {
     ScatterChartProps as ErgonomicScatterChartProps,
     AreaChartProps,
     ErgonomicChartRef
-} from './types/ergonomic';
+} from './types';
 
 // CSS injection for styling (optimized for modern bundlers)
 if (typeof document !== 'undefined' && !document.getElementById('aqc-charts-styles')) {

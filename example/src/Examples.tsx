@@ -5,6 +5,9 @@ import { PieChartExample } from './components/PieChartExample';
 import { ScatterChartExample } from './components/ScatterChartExample';
 import { ClusterChartExample } from './components/ClusterChartExample';
 import { CalendarHeatmapExample } from './components/CalendarHeatmapExample';
+import { SankeyChartExample } from './components/SankeyChartExample';
+import { GanttChartExample } from './components/GanttChartExample';
+import { RegressionChartExample } from './components/RegressionChartExample';
 
 
 // Component for theme and palette selection
@@ -281,7 +284,7 @@ export function Examples() {
 
       {/* Calendar Heatmap Showcase */}
       <ChartCard
-        title="Calendar Heatmap Showcase"
+        title="📅 Calendar Heatmap Showcase"
         description="Visualize time series data with a calendar heatmap: daily, weekly, and monthly views, highlighting trends and patterns over time."
         theme={theme}
       >
@@ -290,6 +293,41 @@ export function Examples() {
           colorPalette={colorPalettes[palette as keyof typeof colorPalettes]}
           onInteraction={(data) => setInteractionData(data)}
         />
+      </ChartCard>
+
+      {/* Sankey Chart Showcase */}
+      <ChartCard
+        title="🌊 Sankey Chart Showcase"
+        description="Visualize flow and relationships between categories: budget flows, energy distribution, customer journeys, and website traffic analysis with interactive node and link exploration."
+        theme={theme}
+      >
+        <SankeyChartExample
+          theme={theme}
+          colorPalette={colorPalettes[palette as keyof typeof colorPalettes]}
+          onInteraction={(data) => setInteractionData(data)}
+        />
+      </ChartCard>
+
+      {/* Gantt Chart Showcase */}
+      <ChartCard
+        title="📅 Gantt Chart Showcase"
+        description="Project timeline visualization: task scheduling, progress tracking, resource allocation, and dependency management with interactive timeline navigation and status monitoring."
+        theme={theme}
+      >
+        <GanttChartExample
+          theme={theme}
+          colorPalette={colorPalettes[palette as keyof typeof colorPalettes]}
+          onInteraction={(data) => setInteractionData(data)}
+        />
+      </ChartCard>
+
+      {/* Regression Chart Showcase */}
+      <ChartCard
+        title="📈 Regression Chart Showcase"
+        description="Statistical analysis and trend visualization: linear, polynomial, exponential, and logarithmic regression with equation display, R-squared values, and interactive method comparison."
+        theme={theme}
+      >
+        <RegressionChartExample />
       </ChartCard>
 
       {/* Footer */}

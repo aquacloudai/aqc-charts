@@ -1,0 +1,163 @@
+import type { BaseErgonomicChartProps, DataPoint } from './base';
+import type { AxisConfig, LegendConfig, TooltipConfig } from './config';
+
+// Line Chart Props
+export interface LineChartProps extends BaseErgonomicChartProps {
+  // Data - array of objects or simple arrays
+  readonly data?: readonly DataPoint[] | readonly (readonly [string | number, number])[] | undefined;
+  
+  // Field mappings for object data
+  readonly xField?: string | undefined;
+  readonly yField?: string | readonly string[] | undefined; // Multiple y fields for multiple series
+  readonly seriesField?: string | undefined; // Field to group data into multiple series
+  
+  // Line styling
+  readonly smooth?: boolean;
+  readonly strokeWidth?: number;
+  readonly strokeStyle?: 'solid' | 'dashed' | 'dotted';
+  readonly showPoints?: boolean;
+  readonly pointSize?: number;
+  readonly pointShape?: 'circle' | 'square' | 'triangle' | 'diamond';
+  
+  // Area under curve
+  readonly showArea?: boolean;
+  readonly areaOpacity?: number;
+  readonly areaGradient?: boolean;
+  
+  // Multiple series options
+  readonly series?: readonly {
+    readonly name: string;
+    readonly data: readonly DataPoint[];
+    readonly color?: string;
+    readonly smooth?: boolean;
+    readonly showArea?: boolean;
+  }[] | undefined;
+  
+  // Axes
+  readonly xAxis?: AxisConfig | undefined;
+  readonly yAxis?: AxisConfig | undefined;
+  
+  // Legend and tooltip
+  readonly legend?: LegendConfig | undefined;
+  readonly tooltip?: TooltipConfig | undefined;
+  
+  // Zoom and interaction
+  readonly zoom?: boolean;
+  readonly pan?: boolean;
+  readonly brush?: boolean;
+}
+
+// Bar Chart Props
+export interface BarChartProps extends BaseErgonomicChartProps {
+  readonly data?: readonly DataPoint[] | readonly (readonly [string, number])[] | undefined;
+  
+  // Field mappings
+  readonly categoryField?: string | undefined; // For object data
+  readonly valueField?: string | readonly string[] | undefined;
+  readonly seriesField?: string | undefined;
+  
+  // Bar styling
+  readonly orientation?: 'vertical' | 'horizontal';
+  readonly barWidth?: number | string | undefined;
+  readonly barGap?: number | string | undefined;
+  readonly borderRadius?: number | undefined;
+  
+  // Stacking
+  readonly stack?: boolean;
+  readonly stackType?: 'normal' | 'percent';
+  readonly showPercentage?: boolean; // Display values as percentages of stack total
+  
+  // Multiple series
+  readonly series?: readonly {
+    readonly name: string;
+    readonly data: readonly DataPoint[];
+    readonly color?: string;
+    readonly stack?: string;
+  }[] | undefined;
+  
+  // Axes
+  readonly xAxis?: AxisConfig | undefined;
+  readonly yAxis?: AxisConfig | undefined;
+  
+  // Legend and tooltip
+  readonly legend?: LegendConfig | undefined;
+  readonly tooltip?: TooltipConfig | undefined;
+  
+  // Sorting
+  readonly sortBy?: 'value' | 'category' | 'none';
+  readonly sortOrder?: 'asc' | 'desc';
+}
+
+// Pie Chart Props
+export interface PieChartProps extends BaseErgonomicChartProps {
+  readonly data: readonly DataPoint[] | readonly { readonly name: string; readonly value: number }[];
+  
+  // Field mappings
+  readonly nameField?: string;
+  readonly valueField?: string;
+  
+  // Pie styling
+  readonly radius?: number | readonly [number, number]; // Inner and outer radius for donut
+  readonly startAngle?: number;
+  readonly roseType?: boolean; // Rose/nightingale chart
+  
+  // Labels
+  readonly showLabels?: boolean;
+  readonly labelPosition?: 'inside' | 'outside' | 'center';
+  readonly showValues?: boolean;
+  readonly showPercentages?: boolean;
+  readonly labelFormat?: string | ((params: any) => string) | undefined;
+  
+  // Legend and tooltip
+  readonly legend?: LegendConfig | undefined;
+  readonly tooltip?: TooltipConfig | undefined;
+  
+  // Interaction
+  readonly selectedMode?: 'single' | 'multiple' | false;
+  readonly emphasis?: boolean;
+}
+
+// Scatter Chart Props
+export interface ScatterChartProps extends BaseErgonomicChartProps {
+  readonly data: readonly DataPoint[] | readonly (readonly [number, number])[] | readonly (readonly [number, number, number])[];
+  
+  // Field mappings
+  readonly xField?: string;
+  readonly yField?: string;
+  readonly sizeField?: string; // For bubble charts
+  readonly colorField?: string; // For color-coded points
+  readonly seriesField?: string;
+  
+  // Point styling
+  readonly pointSize?: number | readonly [number, number]; // Min and max for size field
+  readonly pointShape?: 'circle' | 'square' | 'triangle' | 'diamond';
+  readonly pointOpacity?: number;
+  
+  // Multiple series
+  readonly series?: readonly {
+    readonly name: string;
+    readonly data: readonly DataPoint[];
+    readonly color?: string;
+    readonly pointSize?: number;
+    readonly pointShape?: string;
+  }[];
+  
+  // Axes
+  readonly xAxis?: AxisConfig | undefined;
+  readonly yAxis?: AxisConfig | undefined;
+  
+  // Legend and tooltip
+  readonly legend?: LegendConfig | undefined;
+  readonly tooltip?: TooltipConfig | undefined;
+  
+  // Regression line
+  readonly showTrendline?: boolean;
+  readonly trendlineType?: 'linear' | 'polynomial' | 'exponential';
+}
+
+// Area Chart Props (extends LineChart)
+export interface AreaChartProps extends Omit<LineChartProps, 'showArea'> {
+  readonly stacked?: boolean;
+  readonly stackType?: 'normal' | 'percent';
+  readonly opacity?: number;
+}

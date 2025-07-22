@@ -1,4 +1,4 @@
-import type { LineChartProps, ErgonomicChartRef } from '@/types/ergonomic';
+import type { LineChartProps, ErgonomicChartRef } from '@/types';
 /**
  * Ergonomic LineChart component with intuitive props
  *

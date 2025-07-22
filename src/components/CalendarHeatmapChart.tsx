@@ -1,6 +1,6 @@
 import { forwardRef, useMemo, useImperativeHandle } from 'react';
 import type { EChartsType } from 'echarts/core';
-import type { CalendarHeatmapProps, ErgonomicChartRef } from '@/types/ergonomic';
+import type { CalendarHeatmapProps, ErgonomicChartRef } from '@/types';
 import { useECharts } from '@/hooks/useECharts';
 import { buildCalendarHeatmapOption } from '@/utils/ergonomic';
 

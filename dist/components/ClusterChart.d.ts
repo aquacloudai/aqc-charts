@@ -1,4 +1,4 @@
-import type { ClusterChartProps, ErgonomicChartRef } from '@/types/ergonomic';
+import type { ClusterChartProps, ErgonomicChartRef } from '@/types';
 /**
  * Ergonomic ClusterChart component with intuitive props
  * Uses K-means clustering to automatically group data points and visualize clusters

@@ -1,6 +1,6 @@
 import { forwardRef, useMemo, useImperativeHandle } from 'react';
 import type { EChartsType } from 'echarts/core';
-import type { LineChartProps, ErgonomicChartRef } from '@/types/ergonomic';
+import type { LineChartProps, ErgonomicChartRef } from '@/types';
 import { useECharts } from '@/hooks/useECharts';
 import { buildLineChartOption } from '@/utils/ergonomic';
 

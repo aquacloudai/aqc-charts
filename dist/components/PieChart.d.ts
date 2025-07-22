@@ -1,4 +1,4 @@
-import type { PieChartProps, ErgonomicChartRef } from '@/types/ergonomic';
+import type { PieChartProps, ErgonomicChartRef } from '@/types';
 /**
  * Ergonomic PieChart component with intuitive props
  *

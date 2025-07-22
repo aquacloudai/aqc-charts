@@ -1,6 +1,6 @@
 import { forwardRef, useMemo, useImperativeHandle } from 'react';
 import type { EChartsType } from 'echarts/core';
-import type { ClusterChartProps, ErgonomicChartRef } from '@/types/ergonomic';
+import type { ClusterChartProps, ErgonomicChartRef } from '@/types';
 import { useECharts } from '@/hooks/useECharts';
 import { buildClusterChartOption } from '@/utils/ergonomic';
 

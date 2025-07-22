@@ -1,6 +1,6 @@
 import { forwardRef, useMemo, useImperativeHandle } from 'react';
 import type { EChartsType } from 'echarts/core';
-import type { PieChartProps, ErgonomicChartRef } from '@/types/ergonomic';
+import type { PieChartProps, ErgonomicChartRef } from '@/types';
 import { useECharts } from '@/hooks/useECharts';
 import { buildPieChartOption } from '@/utils/ergonomic';
 

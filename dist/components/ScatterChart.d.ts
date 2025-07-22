@@ -1,4 +1,4 @@
-import type { ScatterChartProps, ErgonomicChartRef } from '@/types/ergonomic';
+import type { ScatterChartProps, ErgonomicChartRef } from '@/types';
 /**
  * Ergonomic ScatterChart component with intuitive props
  *

@@ -1338,6 +1338,767 @@ function buildCalendarHeatmapOption(props) {
 		...props.customOption
 	};
 }
+function buildSankeyChartOption(props) {
+	const baseOption = buildBaseOption(props);
+	let nodes = [];
+	let links = [];
+	if (props.nodes && props.links) {
+		nodes = [...props.nodes];
+		links = [...props.links];
+	} else if (props.data) if (Array.isArray(props.data) && isObjectData(props.data)) {
+		const flatData = props.data;
+		const sourceField = props.sourceField || "source";
+		const targetField = props.targetField || "target";
+		const valueField = props.valueField || "value";
+		const nodeSet = new Set();
+		flatData.forEach((item) => {
+			const source = String(item[sourceField] || "");
+			const target = String(item[targetField] || "");
+			if (source) nodeSet.add(source);
+			if (target) nodeSet.add(target);
+		});
+		nodes = Array.from(nodeSet).map((name) => ({ name }));
+		links = flatData.map((item) => ({
+			source: String(item[sourceField] || ""),
+			target: String(item[targetField] || ""),
+			value: Number(item[valueField]) || 0
+		}));
+	} else {
+		const structuredData = props.data;
+		nodes = structuredData.nodes && Array.isArray(structuredData.nodes) ? [...structuredData.nodes] : [];
+		links = structuredData.links && Array.isArray(structuredData.links) ? [...structuredData.links] : [];
+	}
+	const processedNodes = nodes.map((node, index) => {
+		const processedNode = { ...node };
+		if (props.nodeColors && props.nodeColors[index]) processedNode.itemStyle = {
+			...processedNode.itemStyle,
+			color: props.nodeColors[index]
+		};
+		if (props.nodeLabels !== false) processedNode.label = {
+			show: true,
+			position: props.nodeLabelPosition || (props.orient === "vertical" ? "bottom" : "right"),
+			formatter: props.showNodeValues ? `{b}: {c}` : `{b}`,
+			...processedNode.label
+		};
+		else processedNode.label = { show: false };
+		return processedNode;
+	});
+	const processedLinks = links.map((link, index) => {
+		const processedLink = { ...link };
+		processedLink.lineStyle = {
+			opacity: props.linkOpacity || .6,
+			curveness: props.linkCurveness || .5,
+			...processedLink.lineStyle
+		};
+		if (props.linkColors && props.linkColors[index]) processedLink.lineStyle.color = props.linkColors[index];
+		if (props.showLinkLabels) processedLink.label = {
+			show: true,
+			formatter: "{c}",
+			...processedLink.label
+		};
+		return processedLink;
+	});
+	const series = {
+		type: "sankey",
+		layout: props.layout || "none",
+		orient: props.orient || "horizontal",
+		nodeAlign: props.nodeAlign || "justify",
+		nodeGap: props.nodeGap || 8,
+		nodeWidth: props.nodeWidth || 20,
+		layoutIterations: props.iterations || 32,
+		data: processedNodes,
+		links: processedLinks,
+		emphasis: {
+			focus: props.focusMode || "adjacency",
+			...props.blurScope && { blurScope: props.blurScope }
+		},
+		left: "5%",
+		top: props.title ? "15%" : "5%",
+		right: "5%",
+		bottom: "5%"
+	};
+	return {
+		...baseOption,
+		series: [series],
+		legend: props.legend ? buildLegendOption(props.legend, !!props.title, !!props.subtitle, false, props.theme) : void 0,
+		tooltip: props.tooltip ? buildTooltipOption(props.tooltip, props.theme) : {
+			trigger: "item",
+			triggerOn: "mousemove",
+			formatter: (params) => {
+				if (params.dataType === "edge") return `${params.data.source} → ${params.data.target}<br/>Value: ${params.data.value}`;
+				else return `${params.data.name}<br/>Value: ${params.data.value || "N/A"}`;
+			}
+		},
+		...props.customOption
+	};
+}
+function buildGanttChartOption(props) {
+	const baseOption = buildBaseOption(props);
+	const isDark = props.theme === "dark";
+	let tasks = [];
+	let categories = [];
+	if (props.tasks && props.categories) {
+		tasks = [...props.tasks];
+		categories = [...props.categories];
+	} else if (props.data) if (Array.isArray(props.data) && isObjectData(props.data)) {
+		const flatData = props.data;
+		const idField = props.idField || "id";
+		const nameField = props.nameField || "name";
+		const categoryField = props.categoryField || "category";
+		const startTimeField = props.startTimeField || "startTime";
+		const endTimeField = props.endTimeField || "endTime";
+		const colorField = props.colorField || "color";
+		const statusField = props.statusField || "status";
+		const priorityField = props.priorityField || "priority";
+		const progressField = props.progressField || "progress";
+		const assigneeField = props.assigneeField || "assignee";
+		const categorySet = new Set();
+		flatData.forEach((item) => {
+			const category = String(item[categoryField] || "");
+			if (category) categorySet.add(category);
+		});
+		categories = Array.from(categorySet).map((name) => ({ name }));
+		tasks = flatData.map((item) => {
+			const taskProps = {
+				id: String(item[idField] || ""),
+				name: String(item[nameField] || ""),
+				category: String(item[categoryField] || ""),
+				startTime: item[startTimeField] || new Date(),
+				endTime: item[endTimeField] || new Date()
+			};
+			if (item[colorField]) taskProps.color = String(item[colorField]);
+			if (item[statusField]) taskProps.status = String(item[statusField]);
+			if (item[priorityField] !== void 0) taskProps.priority = item[priorityField];
+			if (item[progressField] !== void 0) taskProps.progress = Number(item[progressField]);
+			if (item[assigneeField]) taskProps.assignee = String(item[assigneeField]);
+			return taskProps;
+		});
+	} else {
+		const structuredData = props.data;
+		tasks = structuredData.tasks && Array.isArray(structuredData.tasks) ? [...structuredData.tasks] : [];
+		categories = structuredData.categories && Array.isArray(structuredData.categories) ? [...structuredData.categories] : [];
+	}
+	if (props.sortBy === "category" || props.groupByCategory) categories.sort((a, b) => {
+		const orderA = a.order ?? 0;
+		const orderB = b.order ?? 0;
+		if (orderA !== orderB) return orderA - orderB;
+		return a.name.localeCompare(b.name);
+	});
+	if (props.sortBy) tasks.sort((a, b) => {
+		let aVal, bVal;
+		switch (props.sortBy) {
+			case "startTime":
+				aVal = new Date(a.startTime).getTime();
+				bVal = new Date(b.startTime).getTime();
+				break;
+			case "endTime":
+				aVal = new Date(a.endTime).getTime();
+				bVal = new Date(b.endTime).getTime();
+				break;
+			case "name":
+				aVal = a.name;
+				bVal = b.name;
+				break;
+			case "priority":
+				const priorityMap = {
+					low: 1,
+					medium: 2,
+					high: 3,
+					critical: 4
+				};
+				aVal = typeof a.priority === "number" ? a.priority : priorityMap[a.priority] || 0;
+				bVal = typeof b.priority === "number" ? b.priority : priorityMap[b.priority] || 0;
+				break;
+			default: return 0;
+		}
+		const result = aVal < bVal ? -1 : aVal > bVal ? 1 : 0;
+		return props.sortOrder === "desc" ? -result : result;
+	});
+	if (props.filterByStatus && props.filterByStatus.length > 0) tasks = tasks.filter((task) => task.status && props.filterByStatus.includes(task.status));
+	if (props.filterByPriority && props.filterByPriority.length > 0) tasks = tasks.filter((task) => task.priority && props.filterByPriority.includes(task.priority));
+	const categoryMap = new Map(categories.map((cat, index) => [cat.name, index]));
+	const defaultTaskBarStyle = {
+		height: .6,
+		borderRadius: 3,
+		borderWidth: 1,
+		borderColor: isDark ? "#404040" : "#e0e0e0",
+		showProgress: props.showTaskProgress !== false,
+		textStyle: {
+			color: isDark ? "#ffffff" : "#000000",
+			fontSize: 12,
+			position: "inside",
+			showDuration: false,
+			showProgress: false
+		},
+		hoverStyle: {
+			elevation: 2,
+			opacity: .9
+		}
+	};
+	const taskBarStyle = {
+		...defaultTaskBarStyle,
+		...props.taskBarStyle
+	};
+	const defaultCategoryLabelStyle = {
+		width: props.categoryWidth || 120,
+		backgroundColor: isDark ? "#2a2a2a" : "#f5f5f5",
+		textColor: isDark ? "#ffffff" : "#333333",
+		fontSize: 12,
+		fontWeight: "normal",
+		padding: [6, 12],
+		borderRadius: 4,
+		borderColor: isDark ? "#404040" : "#e0e0e0",
+		borderWidth: 1,
+		position: "left",
+		shape: "rounded"
+	};
+	const categoryLabelStyle = {
+		...defaultCategoryLabelStyle,
+		...props.categoryLabelStyle
+	};
+	const defaultTimelineStyle = {
+		position: "top",
+		showGrid: true,
+		gridStyle: {
+			color: isDark ? "#404040" : "#e9e9e9",
+			width: 1,
+			type: "solid",
+			opacity: .8
+		},
+		tickStyle: {
+			color: isDark ? "#666666" : "#999999",
+			width: 1,
+			length: 5
+		},
+		labelStyle: {
+			color: isDark ? "#cccccc" : "#666666",
+			fontSize: 12,
+			fontWeight: "normal"
+		}
+	};
+	const timelineStyle = {
+		...defaultTimelineStyle,
+		...props.timelineStyle
+	};
+	const defaultStatusStyles = {
+		"planned": {
+			backgroundColor: isDark ? "#404040" : "#e0e0e0",
+			color: isDark ? "#cccccc" : "#666666",
+			borderColor: isDark ? "#666666" : "#cccccc"
+		},
+		"in-progress": {
+			backgroundColor: "#4CAF50",
+			color: "#ffffff",
+			borderColor: "#45a049"
+		},
+		"completed": {
+			backgroundColor: "#2196F3",
+			color: "#ffffff",
+			borderColor: "#1976D2"
+		},
+		"delayed": {
+			backgroundColor: "#FF9800",
+			color: "#ffffff",
+			borderColor: "#F57C00"
+		},
+		"cancelled": {
+			backgroundColor: "#f44336",
+			color: "#ffffff",
+			borderColor: "#d32f2f"
+		}
+	};
+	const statusStyles = {
+		...defaultStatusStyles,
+		...props.statusStyles
+	};
+	const defaultPriorityStyles = {
+		"low": {
+			backgroundColor: isDark ? "#2c3e50" : "#ecf0f1",
+			borderColor: isDark ? "#34495e" : "#bdc3c7"
+		},
+		"medium": {
+			backgroundColor: "#3498db",
+			borderColor: "#2980b9"
+		},
+		"high": {
+			backgroundColor: "#e67e22",
+			borderColor: "#d35400"
+		},
+		"critical": {
+			backgroundColor: "#e74c3c",
+			borderColor: "#c0392b",
+			glowColor: "#ff6b6b"
+		}
+	};
+	const priorityStyles = {
+		...defaultPriorityStyles,
+		...props.priorityStyles
+	};
+	const processedTasks = tasks.map((task, taskIndex) => {
+		const categoryIndex = categoryMap.get(task.category) ?? 0;
+		const startTime = new Date(task.startTime).getTime();
+		const endTime = new Date(task.endTime).getTime();
+		const statusStyle = task.status ? statusStyles[task.status] : null;
+		const priorityStyle = task.priority ? priorityStyles[String(task.priority)] : null;
+		const customStyle = task.style;
+		const taskColor = customStyle?.backgroundColor || statusStyle?.backgroundColor || priorityStyle?.backgroundColor || task.color || props.colorPalette && props.colorPalette[taskIndex % props.colorPalette.length] || COLOR_PALETTES.default[taskIndex % COLOR_PALETTES.default.length];
+		return {
+			name: task.name,
+			value: [
+				categoryIndex,
+				startTime,
+				endTime,
+				task.name,
+				task.id,
+				taskColor,
+				task.progress || 0,
+				task.status || "",
+				task.priority || "",
+				task.assignee || ""
+			],
+			itemStyle: {
+				color: taskColor,
+				borderColor: customStyle?.borderColor || statusStyle?.borderColor || priorityStyle?.borderColor || taskBarStyle.borderColor,
+				borderWidth: customStyle?.borderWidth || taskBarStyle.borderWidth,
+				borderRadius: customStyle?.borderRadius || taskBarStyle.borderRadius,
+				opacity: customStyle?.opacity
+			},
+			emphasis: { itemStyle: {
+				opacity: taskBarStyle.hoverStyle?.opacity || 1,
+				borderColor: taskBarStyle.hoverStyle?.borderColor,
+				borderWidth: taskBarStyle.hoverStyle?.borderWidth || taskBarStyle.borderWidth + 1
+			} }
+		};
+	});
+	const processedCategories = categories.map((category, index) => ({
+		name: category.name,
+		value: [
+			index,
+			category.name,
+			category.label || category.name
+		],
+		itemStyle: {
+			color: category.color || categoryLabelStyle.backgroundColor,
+			borderColor: category.style?.borderColor || categoryLabelStyle.borderColor,
+			borderWidth: category.style?.borderWidth || categoryLabelStyle.borderWidth
+		},
+		textStyle: {
+			color: category.style?.textColor || categoryLabelStyle.textColor,
+			fontSize: category.style?.fontSize || categoryLabelStyle.fontSize,
+			fontWeight: category.style?.fontWeight || categoryLabelStyle.fontWeight
+		}
+	}));
+	const renderTaskItem = (params, api) => {
+		const categoryIndex = api.value(0);
+		const startTime = api.value(1);
+		const endTime = api.value(2);
+		const taskName = api.value(3);
+		const progress = api.value(6);
+		const timeStart = api.coord([startTime, categoryIndex]);
+		const timeEnd = api.coord([endTime, categoryIndex]);
+		const barLength = Math.max(timeEnd[0] - timeStart[0], 2);
+		const barHeight = api.size([0, 1])[1] * (typeof taskBarStyle.height === "number" ? taskBarStyle.height : .6);
+		const x = timeStart[0];
+		const y = timeStart[1] - barHeight / 2;
+		const showText = barLength > taskName.length * 6 + 20;
+		const children = [{
+			type: "rect",
+			shape: {
+				x,
+				y,
+				width: barLength,
+				height: barHeight
+			},
+			style: {
+				fill: api.style().fill,
+				stroke: api.style().stroke,
+				lineWidth: api.style().lineWidth
+			}
+		}];
+		if (taskBarStyle.showProgress && progress > 0) {
+			const progressWidth = barLength * progress / 100;
+			children.push({
+				type: "rect",
+				shape: {
+					x,
+					y,
+					width: progressWidth,
+					height: barHeight
+				},
+				style: {
+					fill: taskBarStyle.progressStyle?.backgroundColor || "rgba(255, 255, 255, 0.3)",
+					opacity: taskBarStyle.progressStyle?.opacity || .7
+				}
+			});
+		}
+		if (showText && taskBarStyle.textStyle?.position !== "outside") children.push({
+			type: "text",
+			style: {
+				text: taskName,
+				x: x + barLength / 2,
+				y: y + barHeight / 2,
+				textAlign: "center",
+				textVerticalAlign: "middle",
+				fill: taskBarStyle.textStyle?.color || "#ffffff",
+				fontSize: taskBarStyle.textStyle?.fontSize || 12,
+				fontWeight: taskBarStyle.textStyle?.fontWeight || "normal"
+			}
+		});
+		return {
+			type: "group",
+			children
+		};
+	};
+	const renderCategoryLabelItem = (params, api) => {
+		if (!props.showCategoryLabels) return null;
+		const categoryIndex = api.value(0);
+		const categoryName = api.value(1);
+		const categoryLabel = api.value(2);
+		const y = api.coord([0, categoryIndex])[1];
+		const labelWidth = categoryLabelStyle.width;
+		const labelHeight = api.size([0, 1])[1] * .8;
+		const x = categoryLabelStyle.position === "right" ? params.coordSys.x + params.coordSys.width + 10 : 10;
+		if (y < params.coordSys.y - labelHeight || y > params.coordSys.y + params.coordSys.height) return null;
+		const children = [];
+		if (categoryLabelStyle.shape === "rounded" || categoryLabelStyle.shape === "pill") children.push({
+			type: "rect",
+			shape: {
+				x: x - labelWidth / 2,
+				y: y - labelHeight / 2,
+				width: labelWidth,
+				height: labelHeight,
+				r: categoryLabelStyle.shape === "pill" ? labelHeight / 2 : categoryLabelStyle.borderRadius || 4
+			},
+			style: {
+				fill: api.style().fill,
+				stroke: api.style().stroke,
+				lineWidth: api.style().lineWidth
+			}
+		});
+		else children.push({
+			type: "rect",
+			shape: {
+				x: x - labelWidth / 2,
+				y: y - labelHeight / 2,
+				width: labelWidth,
+				height: labelHeight
+			},
+			style: {
+				fill: api.style().fill,
+				stroke: api.style().stroke,
+				lineWidth: api.style().lineWidth
+			}
+		});
+		children.push({
+			type: "text",
+			style: {
+				text: categoryLabel,
+				x,
+				y,
+				textAlign: "center",
+				textVerticalAlign: "middle",
+				fill: categoryLabelStyle.textColor,
+				fontSize: categoryLabelStyle.fontSize,
+				fontWeight: categoryLabelStyle.fontWeight
+			}
+		});
+		return {
+			type: "group",
+			children
+		};
+	};
+	const dataZoomConfig = [];
+	if (props.dataZoom !== false) {
+		const zoomConfig = typeof props.dataZoom === "boolean" ? {} : props.dataZoom || {};
+		const showSlider = zoomConfig.type === "slider" || zoomConfig.type === "both" || zoomConfig.show !== false;
+		const showInside = zoomConfig.type === "inside" || zoomConfig.type === "both";
+		if (showSlider) dataZoomConfig.push({
+			type: "slider",
+			xAxisIndex: 0,
+			height: zoomConfig.height || 20,
+			bottom: 0,
+			start: 0,
+			end: 50,
+			backgroundColor: zoomConfig.backgroundColor || (isDark ? "#2a2a2a" : "#f5f5f5"),
+			borderColor: zoomConfig.borderColor || (isDark ? "#404040" : "#e0e0e0"),
+			handleStyle: {
+				color: zoomConfig.handleStyle?.color || (isDark ? "#666666" : "#cccccc"),
+				borderColor: zoomConfig.handleStyle?.borderColor || (isDark ? "#888888" : "#999999"),
+				...zoomConfig.handleStyle
+			}
+		});
+		if (showInside) dataZoomConfig.push({
+			type: "inside",
+			xAxisIndex: 0,
+			zoomOnMouseWheel: props.allowZoom !== false,
+			moveOnMouseMove: props.allowPan !== false
+		});
+		if (categories.length > 10) dataZoomConfig.push({
+			type: "inside",
+			yAxisIndex: 0,
+			zoomOnMouseWheel: false,
+			moveOnMouseMove: true,
+			moveOnMouseWheel: true
+		});
+	}
+	const todayMarkerSeries = [];
+	if (props.todayMarker) {
+		const todayConfig = typeof props.todayMarker === "boolean" ? {} : props.todayMarker;
+		const today = new Date().getTime();
+		todayMarkerSeries.push({
+			type: "line",
+			markLine: {
+				silent: true,
+				symbol: "none",
+				data: [{ xAxis: today }],
+				lineStyle: {
+					color: todayConfig.color || "#ff4444",
+					width: todayConfig.width || 2,
+					type: todayConfig.style || "dashed"
+				}
+			}
+		});
+	}
+	return {
+		...baseOption,
+		grid: {
+			show: timelineStyle.showGrid || false,
+			left: categoryLabelStyle.width + 20 || 140,
+			right: 20,
+			top: timelineStyle.position === "top" ? 60 : 20,
+			bottom: (props.dataZoom !== false ? 40 : 20) + (timelineStyle.position === "bottom" ? 40 : 0),
+			backgroundColor: isDark ? "#1a1a1a" : "#ffffff",
+			borderWidth: 0
+		},
+		xAxis: {
+			type: "time",
+			position: timelineStyle.position || "top",
+			splitLine: {
+				show: timelineStyle.showGrid || false,
+				lineStyle: {
+					color: timelineStyle.gridStyle?.color || (isDark ? "#404040" : "#e9e9e9"),
+					width: timelineStyle.gridStyle?.width || 1,
+					type: timelineStyle.gridStyle?.type || "solid",
+					opacity: timelineStyle.gridStyle?.opacity || .8
+				}
+			},
+			axisTick: {
+				show: true,
+				lineStyle: {
+					color: timelineStyle.tickStyle?.color || (isDark ? "#666666" : "#999999"),
+					width: timelineStyle.tickStyle?.width || 1
+				},
+				length: timelineStyle.tickStyle?.length || 5
+			},
+			axisLine: {
+				show: true,
+				lineStyle: { color: timelineStyle.tickStyle?.color || (isDark ? "#666666" : "#999999") }
+			},
+			axisLabel: {
+				rotate: timelineStyle.labelStyle?.rotate || 0,
+				...timelineStyle.labelStyle?.color && { color: timelineStyle.labelStyle.color },
+				...timelineStyle.labelStyle?.fontSize && { fontSize: timelineStyle.labelStyle.fontSize },
+				...timelineStyle.labelStyle?.fontWeight && { fontWeight: timelineStyle.labelStyle.fontWeight },
+				...timelineStyle.labelStyle?.format && typeof timelineStyle.labelStyle.format === "string" && { formatter: timelineStyle.labelStyle.format },
+				...timelineStyle.labelStyle?.format && typeof timelineStyle.labelStyle.format === "function" && { formatter: (value) => timelineStyle.labelStyle.format(new Date(value)) }
+			},
+			...props.timeRange && {
+				min: new Date(props.timeRange[0]).getTime(),
+				max: new Date(props.timeRange[1]).getTime()
+			}
+		},
+		yAxis: {
+			type: "category",
+			data: categories.map((cat) => cat.label || cat.name),
+			axisTick: { show: false },
+			axisLine: { show: false },
+			axisLabel: { show: false },
+			splitLine: { show: false },
+			inverse: true
+		},
+		...dataZoomConfig.length > 0 && { dataZoom: dataZoomConfig },
+		series: [
+			{
+				type: "custom",
+				renderItem: renderTaskItem,
+				encode: {
+					x: [1, 2],
+					y: 0,
+					tooltip: [
+						0,
+						1,
+						2,
+						3,
+						4
+					]
+				},
+				data: processedTasks,
+				z: 10
+			},
+			{
+				type: "custom",
+				renderItem: renderCategoryLabelItem,
+				encode: {
+					x: -1,
+					y: 0
+				},
+				data: processedCategories,
+				z: 5
+			},
+			...todayMarkerSeries
+		],
+		tooltip: props.tooltip ? buildTooltipOption(props.tooltip, props.theme) : {
+			trigger: "item",
+			formatter: (params) => {
+				if (params.seriesIndex === 0) {
+					const [categoryIndex, startTime, endTime, taskName, taskId] = params.value;
+					const start = new Date(startTime).toLocaleString();
+					const end = new Date(endTime).toLocaleString();
+					const duration = Math.round((endTime - startTime) / (1e3 * 60 * 60 * 24 * 10)) / 100;
+					const category = categories[categoryIndex]?.name || "Unknown";
+					return `
+            <strong>${taskName}</strong><br/>
+            Category: ${category}<br/>
+            Start: ${start}<br/>
+            End: ${end}<br/>
+            Duration: ${duration} days
+          `;
+				}
+				return "";
+			},
+			backgroundColor: isDark ? "rgba(50, 50, 50, 0.95)" : "rgba(255, 255, 255, 0.95)",
+			borderColor: isDark ? "#666" : "#ddd",
+			textStyle: { color: isDark ? "#fff" : "#333" }
+		},
+		legend: props.legend ? buildLegendOption(props.legend, !!props.title, !!props.subtitle, false, props.theme) : void 0,
+		...props.customOption
+	};
+}
+function buildRegressionChartOption(props) {
+	const baseOption = buildBaseOption(props);
+	if (!props.data || props.data.length === 0) return {
+		...baseOption,
+		series: []
+	};
+	let sourceData;
+	if (isObjectData(props.data)) {
+		const xField = props.xField || "x";
+		const yField = props.yField || "y";
+		sourceData = props.data.map((item) => [Number(item[xField]) || 0, Number(item[yField]) || 0]);
+	} else sourceData = props.data.map((point) => {
+		if (Array.isArray(point)) return [Number(point[0]) || 0, Number(point[1]) || 0];
+		return [0, 0];
+	});
+	const method = props.method || "linear";
+	const order = props.order || (method === "polynomial" ? 2 : void 0);
+	const showPoints = props.showPoints !== false;
+	const showLine = props.showLine !== false;
+	const showEquation = props.showEquation !== false;
+	const showRSquared = props.showRSquared !== false;
+	const pointSize = props.pointSize || 8;
+	const pointShape = props.pointShape || "circle";
+	const pointOpacity = props.pointOpacity || .7;
+	const lineWidth = props.lineWidth || 2;
+	const lineStyle = props.lineStyle || "solid";
+	const lineColor = props.lineColor;
+	const lineOpacity = props.lineOpacity || 1;
+	const pointsLabel = props.pointsLabel || "Data Points";
+	const regressionLabel = props.regressionLabel || "Regression Line";
+	const datasets = [{ source: sourceData }];
+	if (showLine) {
+		const regressionConfig = {
+			method,
+			formulaOn: showEquation ? props.equationPosition === "top-left" || props.equationPosition === "bottom-left" ? "start" : "end" : false
+		};
+		if (method === "polynomial" && order !== void 0) regressionConfig.order = order;
+		datasets.push({ transform: {
+			type: "ecStat:regression",
+			config: regressionConfig
+		} });
+	}
+	const series = [];
+	if (showPoints) series.push({
+		name: pointsLabel,
+		type: "scatter",
+		datasetIndex: 0,
+		symbolSize: pointSize,
+		symbol: pointShape,
+		itemStyle: { opacity: pointOpacity },
+		emphasis: { focus: "series" }
+	});
+	if (showLine) {
+		const lineSeriesStyle = {
+			width: lineWidth,
+			type: lineStyle === "dashed" ? "dashed" : lineStyle === "dotted" ? "dotted" : "solid",
+			opacity: lineOpacity
+		};
+		if (lineColor) lineSeriesStyle.color = lineColor;
+		series.push({
+			name: regressionLabel,
+			type: "line",
+			datasetIndex: 1,
+			symbolSize: 0,
+			symbol: "none",
+			lineStyle: lineSeriesStyle,
+			emphasis: { focus: "series" },
+			encode: { tooltip: [0, 1] }
+		});
+	}
+	const equationGraphic = [];
+	if (showEquation && showLine) {
+		const position = props.equationPosition || "top-right";
+		let x = "90%";
+		let y = "10%";
+		switch (position) {
+			case "top-left":
+				x = "5%";
+				y = "15%";
+				break;
+			case "top-right":
+				x = "90%";
+				y = "15%";
+				break;
+			case "bottom-left":
+				x = "5%";
+				y = "85%";
+				break;
+			case "bottom-right":
+				x = "90%";
+				y = "85%";
+				break;
+		}
+		equationGraphic.push({
+			type: "text",
+			left: x,
+			top: y,
+			style: {
+				text: "Calculating equation...",
+				fontSize: 12,
+				fill: props.theme === "dark" ? "#cccccc" : "#666666"
+			}
+		});
+	}
+	return {
+		...baseOption,
+		dataset: datasets,
+		grid: calculateGridSpacing(props.legend, !!props.title, !!props.subtitle, false),
+		xAxis: {
+			...buildAxisOption(props.xAxis, "numeric", props.theme),
+			type: "value",
+			scale: true
+		},
+		yAxis: {
+			...buildAxisOption(props.yAxis, "numeric", props.theme),
+			type: "value",
+			scale: true
+		},
+		series,
+		legend: buildLegendOption(props.legend, !!props.title, !!props.subtitle, false, props.theme),
+		tooltip: buildTooltipOption(props.tooltip, props.theme),
+		...equationGraphic.length > 0 && { graphic: equationGraphic },
+		...props.customOption
+	};
+}
 
 //#endregion
 //#region src/components/LineChart.tsx
@@ -2986,6 +3747,1065 @@ const CalendarHeatmapChart = forwardRef(({ width = "100%", height = 400, classNa
 CalendarHeatmapChart.displayName = "CalendarHeatmapChart";
 
 //#endregion
+//#region src/components/SankeyChart.tsx
+/**
+* Ergonomic SankeyChart component with intuitive props
+* 
+* @example
+* // Simple sankey chart with nodes and links data structure
+* <SankeyChart
+*   data={{
+*     nodes: [
+*       { name: 'a' },
+*       { name: 'b' },
+*       { name: 'c' }
+*     ],
+*     links: [
+*       { source: 'a', target: 'b', value: 10 },
+*       { source: 'b', target: 'c', value: 15 }
+*     ]
+*   }}
+*   title="Flow Diagram"
+* />
+* 
+* @example
+* // Sankey chart with flat data structure
+* <SankeyChart
+*   data={[
+*     { source: 'Product A', target: 'Sales', value: 120 },
+*     { source: 'Product B', target: 'Sales', value: 80 },
+*     { source: 'Sales', target: 'Profit', value: 150 }
+*   ]}
+*   sourceField="source"
+*   targetField="target"
+*   valueField="value"
+*   orient="horizontal"
+*   nodeAlign="left"
+* />
+* 
+* @example
+* // Highly customized sankey chart
+* <SankeyChart
+*   nodes={[
+*     { name: 'Revenue', value: 1000 },
+*     { name: 'Costs', value: 400 },
+*     { name: 'Profit', value: 600 }
+*   ]}
+*   links={[
+*     { source: 'Revenue', target: 'Costs', value: 400 },
+*     { source: 'Revenue', target: 'Profit', value: 600 }
+*   ]}
+*   nodeColors={['#5470c6', '#91cc75', '#fac858']}
+*   linkColors={['#ff6b6b', '#4ecdc4']}
+*   linkOpacity={0.8}
+*   linkCurveness={0.7}
+*   showNodeValues
+*   showLinkLabels
+* />
+*/
+const SankeyChart = forwardRef(({ width = "100%", height = 400, className, style, data, sourceField = "source", targetField = "target", valueField = "value", nodeNameField, nodes, links, theme = "light", colorPalette, backgroundColor, title, subtitle, titlePosition = "center", layout = "none", orient = "horizontal", nodeAlign = "justify", nodeGap = 8, nodeWidth = 20, iterations = 32, nodeColors, showNodeValues = false, nodeLabels = true, nodeLabelPosition, linkColors, linkOpacity = .6, linkCurveness = .5, showLinkLabels = false, focusMode = "adjacency", blurScope, legend, tooltip, loading = false, disabled = false, animate = true, animationDuration, onChartReady, onDataPointClick, onDataPointHover, customOption, responsive = true,...restProps }, ref) => {
+	const chartOption = useMemo(() => {
+		return buildSankeyChartOption({
+			data: data || void 0,
+			sourceField,
+			targetField,
+			valueField,
+			nodeNameField,
+			nodes,
+			links,
+			theme,
+			colorPalette,
+			backgroundColor,
+			title,
+			subtitle,
+			titlePosition,
+			layout,
+			orient,
+			nodeAlign,
+			nodeGap,
+			nodeWidth,
+			iterations,
+			nodeColors,
+			showNodeValues,
+			nodeLabels,
+			nodeLabelPosition,
+			linkColors,
+			linkOpacity,
+			linkCurveness,
+			showLinkLabels,
+			focusMode,
+			blurScope,
+			legend,
+			tooltip,
+			animate,
+			animationDuration,
+			customOption
+		});
+	}, [
+		data,
+		sourceField,
+		targetField,
+		valueField,
+		nodeNameField,
+		nodes,
+		links,
+		theme,
+		colorPalette,
+		backgroundColor,
+		title,
+		subtitle,
+		titlePosition,
+		layout,
+		orient,
+		nodeAlign,
+		nodeGap,
+		nodeWidth,
+		iterations,
+		nodeColors,
+		showNodeValues,
+		nodeLabels,
+		nodeLabelPosition,
+		linkColors,
+		linkOpacity,
+		linkCurveness,
+		showLinkLabels,
+		focusMode,
+		blurScope,
+		legend,
+		tooltip,
+		animate,
+		animationDuration,
+		customOption
+	]);
+	const chartEvents = useMemo(() => {
+		const events = {};
+		if (onDataPointClick) events.click = (params, chart) => {
+			onDataPointClick(params, {
+				chart,
+				event: params
+			});
+		};
+		if (onDataPointHover) events.mouseover = (params, chart) => {
+			onDataPointHover(params, {
+				chart,
+				event: params
+			});
+		};
+		return Object.keys(events).length > 0 ? events : void 0;
+	}, [onDataPointClick, onDataPointHover]);
+	const { containerRef, loading: chartLoading, error, getEChartsInstance, resize, showLoading, hideLoading } = useECharts({
+		option: chartOption,
+		theme,
+		loading,
+		events: chartEvents,
+		onChartReady
+	});
+	const exportImage = (format = "png") => {
+		const chart = getEChartsInstance();
+		if (!chart) return "";
+		return chart.getDataURL({
+			type: format,
+			pixelRatio: 2,
+			backgroundColor: backgroundColor || "#fff"
+		});
+	};
+	const highlight = (dataIndex, seriesIndex = 0) => {
+		const chart = getEChartsInstance();
+		if (!chart) return;
+		chart.dispatchAction({
+			type: "highlight",
+			seriesIndex,
+			dataIndex
+		});
+	};
+	const clearHighlight = () => {
+		const chart = getEChartsInstance();
+		if (!chart) return;
+		chart.dispatchAction({ type: "downplay" });
+	};
+	const focusNode = (nodeName) => {
+		const chart = getEChartsInstance();
+		if (!chart) return;
+		const option = chart.getOption();
+		const series = option.series?.[0];
+		if (!series?.data) return;
+		const nodeIndex = series.data.findIndex((node) => node.name === nodeName);
+		if (nodeIndex >= 0) chart.dispatchAction({
+			type: "highlight",
+			seriesIndex: 0,
+			dataIndex: nodeIndex
+		});
+	};
+	const updateData = (newData) => {
+		const chart = getEChartsInstance();
+		if (!chart) return;
+		const newOption = buildSankeyChartOption({
+			data: newData,
+			sourceField,
+			targetField,
+			valueField,
+			nodeNameField,
+			nodes,
+			links,
+			theme,
+			colorPalette,
+			backgroundColor,
+			title,
+			subtitle,
+			titlePosition,
+			layout,
+			orient,
+			nodeAlign,
+			nodeGap,
+			nodeWidth,
+			iterations,
+			nodeColors,
+			showNodeValues,
+			nodeLabels,
+			nodeLabelPosition,
+			linkColors,
+			linkOpacity,
+			linkCurveness,
+			showLinkLabels,
+			focusMode,
+			blurScope,
+			legend,
+			tooltip,
+			animate,
+			animationDuration,
+			customOption
+		});
+		chart.setOption(newOption);
+	};
+	useImperativeHandle(ref, () => ({
+		getChart: getEChartsInstance,
+		exportImage,
+		resize,
+		showLoading: () => showLoading(),
+		hideLoading,
+		highlight,
+		clearHighlight,
+		updateData,
+		focusNode
+	}), [
+		getEChartsInstance,
+		exportImage,
+		resize,
+		showLoading,
+		hideLoading,
+		highlight,
+		clearHighlight,
+		updateData,
+		focusNode
+	]);
+	if (error) return /* @__PURE__ */ jsxs("div", {
+		className: `aqc-charts-error ${className || ""}`,
+		style: {
+			width,
+			height,
+			display: "flex",
+			alignItems: "center",
+			justifyContent: "center",
+			color: "#ff4d4f",
+			fontSize: "14px",
+			border: "1px dashed #ff4d4f",
+			borderRadius: "4px",
+			...style
+		},
+		children: ["Error: ", error.message || "Failed to render chart"]
+	});
+	const containerStyle = useMemo(() => ({
+		width,
+		height,
+		position: "relative",
+		...style
+	}), [
+		width,
+		height,
+		style
+	]);
+	return /* @__PURE__ */ jsxs("div", {
+		className: `aqc-charts-container ${className || ""}`,
+		style: containerStyle,
+		...restProps,
+		children: [/* @__PURE__ */ jsx("div", {
+			ref: containerRef,
+			style: {
+				width: "100%",
+				height: "100%"
+			}
+		}), (chartLoading || loading) && /* @__PURE__ */ jsxs("div", {
+			className: "aqc-charts-loading",
+			style: {
+				position: "absolute",
+				top: 0,
+				left: 0,
+				right: 0,
+				bottom: 0,
+				display: "flex",
+				alignItems: "center",
+				justifyContent: "center",
+				backgroundColor: "rgba(255, 255, 255, 0.8)",
+				fontSize: "14px",
+				color: "#666"
+			},
+			children: [/* @__PURE__ */ jsx("div", {
+				className: "aqc-charts-spinner",
+				style: {
+					width: "20px",
+					height: "20px",
+					border: "2px solid #f3f3f3",
+					borderTop: "2px solid #1890ff",
+					borderRadius: "50%",
+					animation: "spin 1s linear infinite",
+					marginRight: "8px"
+				}
+			}), "Loading..."]
+		})]
+	});
+});
+SankeyChart.displayName = "SankeyChart";
+
+//#endregion
+//#region src/components/GanttChart.tsx
+/**
+* Ergonomic GanttChart component with extensive customization options
+* 
+* @example
+* // Simple project timeline with tasks and categories
+* <GanttChart
+*   data={{
+*     tasks: [
+*       {
+*         id: 'task1',
+*         name: 'Design Phase',
+*         category: 'Development',
+*         startTime: '2024-01-01',
+*         endTime: '2024-01-15',
+*         status: 'completed'
+*       },
+*       {
+*         id: 'task2',
+*         name: 'Implementation',
+*         category: 'Development',
+*         startTime: '2024-01-10',
+*         endTime: '2024-02-01',
+*         status: 'in-progress',
+*         progress: 65
+*       }
+*     ],
+*     categories: [
+*       { name: 'Development', label: 'Development Team' },
+*       { name: 'Marketing', label: 'Marketing Department' }
+*     ]
+*   }}
+*   title="Project Timeline"
+*   showTaskProgress
+*   todayMarker
+* />
+* 
+* @example
+* // Highly customized Gantt chart with status-based styling
+* <GanttChart
+*   tasks={projectTasks}
+*   categories={departments}
+*   title="Q1 Project Schedule"
+*   theme="dark"
+*   taskBarStyle={{
+*     height: 0.8,
+*     borderRadius: 6,
+*     showProgress: true,
+*     textStyle: { 
+*       position: 'inside',
+*       showDuration: true 
+*     }
+*   }}
+*   categoryLabelStyle={{
+*     width: 150,
+*     shape: 'pill',
+*     backgroundColor: '#2a2a2a',
+*     textColor: '#ffffff'
+*   }}
+*   statusStyles={{
+*     'completed': { backgroundColor: '#4CAF50' },
+*     'in-progress': { backgroundColor: '#2196F3' },
+*     'delayed': { backgroundColor: '#FF9800' }
+*   }}
+*   dataZoom={{ type: 'both' }}
+*   sortBy="priority"
+*   sortOrder="desc"
+*   onTaskClick={(task) => console.log('Task clicked:', task)}
+* />
+*/
+const GanttChart = forwardRef(({ width = "100%", height = 600, className, style, data, idField = "id", nameField = "name", categoryField = "category", startTimeField = "startTime", endTimeField = "endTime", colorField = "color", statusField = "status", priorityField = "priority", progressField = "progress", assigneeField = "assignee", tasks, categories, theme = "light", colorPalette, backgroundColor, title, subtitle, titlePosition = "center", categoryWidth = 120, taskHeight = .6, categorySpacing = 2, groupSpacing = 8, taskBarStyle, statusStyles, priorityStyles, categoryLabelStyle, showCategoryLabels = true, categoryColors, timelineStyle, timeRange, timeFormat, dataZoom = true, allowPan = true, allowZoom = true, initialZoomLevel, draggable = false, resizable = false, selectable = false, showTaskTooltips = true, showDependencies = false, showMilestones = false, milestoneStyle, todayMarker = false, showProgress = false, showTaskProgress = true, progressStyle, groupByCategory = false, groupByAssignee = false, filterByStatus, filterByPriority, sortBy, sortOrder = "asc", legend, tooltip, loading = false, disabled = false, animate = true, animationDuration, onChartReady, onDataPointClick, onDataPointHover, onTaskClick, onTaskDrag, onTaskResize, onCategoryClick, onTimeRangeChange, customOption, responsive = true,...restProps }, ref) => {
+	const chartOption = useMemo(() => {
+		return buildGanttChartOption({
+			data: data || void 0,
+			idField,
+			nameField,
+			categoryField,
+			startTimeField,
+			endTimeField,
+			colorField,
+			statusField,
+			priorityField,
+			progressField,
+			assigneeField,
+			tasks,
+			categories,
+			theme,
+			colorPalette,
+			backgroundColor,
+			title,
+			subtitle,
+			titlePosition,
+			categoryWidth,
+			taskHeight,
+			categorySpacing,
+			groupSpacing,
+			taskBarStyle,
+			statusStyles,
+			priorityStyles,
+			categoryLabelStyle,
+			showCategoryLabels,
+			categoryColors,
+			timelineStyle,
+			timeRange,
+			timeFormat,
+			dataZoom,
+			allowPan,
+			allowZoom,
+			initialZoomLevel,
+			draggable,
+			resizable,
+			selectable,
+			showTaskTooltips,
+			showDependencies,
+			showMilestones,
+			milestoneStyle,
+			todayMarker,
+			showProgress,
+			showTaskProgress,
+			progressStyle,
+			groupByCategory,
+			groupByAssignee,
+			filterByStatus,
+			filterByPriority,
+			sortBy,
+			sortOrder,
+			legend,
+			tooltip,
+			animate,
+			animationDuration,
+			customOption
+		});
+	}, [
+		data,
+		idField,
+		nameField,
+		categoryField,
+		startTimeField,
+		endTimeField,
+		colorField,
+		statusField,
+		priorityField,
+		progressField,
+		assigneeField,
+		tasks,
+		categories,
+		theme,
+		colorPalette,
+		backgroundColor,
+		title,
+		subtitle,
+		titlePosition,
+		categoryWidth,
+		taskHeight,
+		categorySpacing,
+		groupSpacing,
+		taskBarStyle,
+		statusStyles,
+		priorityStyles,
+		categoryLabelStyle,
+		showCategoryLabels,
+		categoryColors,
+		timelineStyle,
+		timeRange,
+		timeFormat,
+		dataZoom,
+		allowPan,
+		allowZoom,
+		initialZoomLevel,
+		draggable,
+		resizable,
+		selectable,
+		showTaskTooltips,
+		showDependencies,
+		showMilestones,
+		milestoneStyle,
+		todayMarker,
+		showProgress,
+		showTaskProgress,
+		progressStyle,
+		groupByCategory,
+		groupByAssignee,
+		filterByStatus,
+		filterByPriority,
+		sortBy,
+		sortOrder,
+		legend,
+		tooltip,
+		animate,
+		animationDuration,
+		customOption
+	]);
+	const chartEvents = useMemo(() => {
+		const events = {};
+		if (onDataPointClick || onTaskClick) events.click = (params, chart) => {
+			if (params.seriesIndex === 0) {
+				const [categoryIndex, startTime, endTime, taskName, taskId] = params.value;
+				const taskData = {
+					id: taskId,
+					name: taskName,
+					category: "",
+					startTime: new Date(startTime),
+					endTime: new Date(endTime)
+				};
+				onTaskClick?.(taskData, params);
+				onDataPointClick?.(params, {
+					chart,
+					event: params
+				});
+			} else if (params.seriesIndex === 1) {
+				const [categoryIndex, categoryName, categoryLabel] = params.value;
+				const categoryData = {
+					name: categoryName,
+					label: categoryLabel
+				};
+				onCategoryClick?.(categoryData, params);
+			}
+		};
+		if (onDataPointHover) events.mouseover = (params, chart) => {
+			onDataPointHover(params, {
+				chart,
+				event: params
+			});
+		};
+		return Object.keys(events).length > 0 ? events : void 0;
+	}, [
+		onDataPointClick,
+		onDataPointHover,
+		onTaskClick,
+		onCategoryClick
+	]);
+	const { containerRef, loading: chartLoading, error, getEChartsInstance, resize, showLoading, hideLoading } = useECharts({
+		option: chartOption,
+		theme,
+		loading,
+		events: chartEvents,
+		onChartReady
+	});
+	const exportImage = (format = "png") => {
+		const chart = getEChartsInstance();
+		if (!chart) return "";
+		return chart.getDataURL({
+			type: format,
+			pixelRatio: 2,
+			backgroundColor: backgroundColor || "#fff"
+		});
+	};
+	const highlight = (taskId) => {
+		const chart = getEChartsInstance();
+		if (!chart) return;
+		const option = chart.getOption();
+		const taskSeries = option.series?.[0];
+		if (!taskSeries?.data) return;
+		const taskIndex = taskSeries.data.findIndex((item) => item.value[4] === taskId);
+		if (taskIndex >= 0) chart.dispatchAction({
+			type: "highlight",
+			seriesIndex: 0,
+			dataIndex: taskIndex
+		});
+	};
+	const clearHighlight = () => {
+		const chart = getEChartsInstance();
+		if (!chart) return;
+		chart.dispatchAction({ type: "downplay" });
+	};
+	const zoomToRange = (startTime, endTime) => {
+		const chart = getEChartsInstance();
+		if (!chart) return;
+		const startMs = startTime.getTime();
+		const endMs = endTime.getTime();
+		chart.dispatchAction({
+			type: "dataZoom",
+			startValue: startMs,
+			endValue: endMs
+		});
+		onTimeRangeChange?.(startTime, endTime);
+	};
+	const focusTask = (taskId) => {
+		const chart = getEChartsInstance();
+		if (!chart) return;
+		const option = chart.getOption();
+		const taskSeries = option.series?.[0];
+		if (!taskSeries?.data) return;
+		const task = taskSeries.data.find((item) => item.value[4] === taskId);
+		if (task) {
+			const [, startTime, endTime] = task.value;
+			const buffer = (endTime - startTime) * .2;
+			zoomToRange(new Date(startTime - buffer), new Date(endTime + buffer));
+			highlight(taskId);
+		}
+	};
+	const updateData = (newData) => {
+		const chart = getEChartsInstance();
+		if (!chart) return;
+		const newOption = buildGanttChartOption({
+			data: newData,
+			idField,
+			nameField,
+			categoryField,
+			startTimeField,
+			endTimeField,
+			colorField,
+			statusField,
+			priorityField,
+			progressField,
+			assigneeField,
+			tasks,
+			categories,
+			theme,
+			colorPalette,
+			backgroundColor,
+			title,
+			subtitle,
+			titlePosition,
+			categoryWidth,
+			taskHeight,
+			categorySpacing,
+			groupSpacing,
+			taskBarStyle,
+			statusStyles,
+			priorityStyles,
+			categoryLabelStyle,
+			showCategoryLabels,
+			categoryColors,
+			timelineStyle,
+			timeRange,
+			timeFormat,
+			dataZoom,
+			allowPan,
+			allowZoom,
+			initialZoomLevel,
+			draggable,
+			resizable,
+			selectable,
+			showTaskTooltips,
+			showDependencies,
+			showMilestones,
+			milestoneStyle,
+			todayMarker,
+			showProgress,
+			showTaskProgress,
+			progressStyle,
+			groupByCategory,
+			groupByAssignee,
+			filterByStatus,
+			filterByPriority,
+			sortBy,
+			sortOrder,
+			legend,
+			tooltip,
+			animate,
+			animationDuration,
+			customOption
+		});
+		chart.setOption(newOption);
+	};
+	useImperativeHandle(ref, () => ({
+		getChart: getEChartsInstance,
+		exportImage,
+		resize,
+		showLoading: () => showLoading(),
+		hideLoading,
+		highlight: (dataIndex) => highlight(String(dataIndex)),
+		clearHighlight,
+		updateData,
+		focusTask,
+		zoomToRange,
+		highlightTask: highlight
+	}), [
+		getEChartsInstance,
+		exportImage,
+		resize,
+		showLoading,
+		hideLoading,
+		highlight,
+		clearHighlight,
+		updateData,
+		focusTask,
+		zoomToRange
+	]);
+	if (error) return /* @__PURE__ */ jsxs("div", {
+		className: `aqc-charts-error ${className || ""}`,
+		style: {
+			width,
+			height,
+			display: "flex",
+			alignItems: "center",
+			justifyContent: "center",
+			color: "#ff4d4f",
+			fontSize: "14px",
+			border: "1px dashed #ff4d4f",
+			borderRadius: "4px",
+			...style
+		},
+		children: ["Error: ", error.message || "Failed to render chart"]
+	});
+	const containerStyle = useMemo(() => ({
+		width,
+		height,
+		position: "relative",
+		...style
+	}), [
+		width,
+		height,
+		style
+	]);
+	return /* @__PURE__ */ jsxs("div", {
+		className: `aqc-charts-container ${className || ""}`,
+		style: containerStyle,
+		...restProps,
+		children: [/* @__PURE__ */ jsx("div", {
+			ref: containerRef,
+			style: {
+				width: "100%",
+				height: "100%"
+			}
+		}), (chartLoading || loading) && /* @__PURE__ */ jsxs("div", {
+			className: "aqc-charts-loading",
+			style: {
+				position: "absolute",
+				top: 0,
+				left: 0,
+				right: 0,
+				bottom: 0,
+				display: "flex",
+				alignItems: "center",
+				justifyContent: "center",
+				backgroundColor: "rgba(255, 255, 255, 0.8)",
+				fontSize: "14px",
+				color: "#666"
+			},
+			children: [/* @__PURE__ */ jsx("div", {
+				className: "aqc-charts-spinner",
+				style: {
+					width: "20px",
+					height: "20px",
+					border: "2px solid #f3f3f3",
+					borderTop: "2px solid #1890ff",
+					borderRadius: "50%",
+					animation: "spin 1s linear infinite",
+					marginRight: "8px"
+				}
+			}), "Loading..."]
+		})]
+	});
+});
+GanttChart.displayName = "GanttChart";
+
+//#endregion
+//#region src/components/RegressionChart.tsx
+/**
+* Ergonomic RegressionChart component with intuitive props
+* 
+* @example
+* // Simple regression chart with array data
+* <RegressionChart
+*   data={[
+*     [1, 2], [2, 4], [3, 6], [4, 8], [5, 10]
+*   ]}
+*   method="linear"
+*   title="Linear Regression"
+* />
+* 
+* @example
+* // Regression chart with object data
+* <RegressionChart
+*   data={[
+*     { x: 1, y: 2.1 },
+*     { x: 2, y: 3.9 },
+*     { x: 3, y: 6.2 },
+*     { x: 4, y: 7.8 },
+*     { x: 5, y: 10.1 }
+*   ]}
+*   xField="x"
+*   yField="y"
+*   method="linear"
+*   showEquation={true}
+*   equationPosition="top-left"
+* />
+* 
+* @example
+* // Polynomial regression with custom styling
+* <RegressionChart
+*   data={polynomialData}
+*   method="polynomial"
+*   order={3}
+*   pointSize={10}
+*   lineWidth={3}
+*   lineColor="#ff6b6b"
+*   showEquation={true}
+*   showRSquared={true}
+* />
+*/
+const RegressionChart = forwardRef(({ width = "100%", height = 400, className, style, data, xField = "x", yField = "y", method = "linear", order = 2, theme = "light", colorPalette, backgroundColor, title, subtitle, titlePosition = "center", pointSize = 8, pointShape = "circle", pointOpacity = .7, showPoints = true, lineWidth = 2, lineStyle = "solid", lineColor, lineOpacity = 1, showLine = true, showEquation = false, equationPosition = "top-right", showRSquared = true, equationFormatter, xAxis, yAxis, legend, tooltip, pointsLabel = "Data Points", regressionLabel = "Regression Line", loading = false, disabled = false, animate = true, animationDuration, onChartReady, onDataPointClick, onDataPointHover, customOption, responsive = true,...restProps }, ref) => {
+	const chartOption = useMemo(() => {
+		return buildRegressionChartOption({
+			data: data || [],
+			xField,
+			yField,
+			method,
+			order,
+			theme,
+			colorPalette,
+			backgroundColor,
+			title,
+			subtitle,
+			titlePosition,
+			pointSize,
+			pointShape,
+			pointOpacity,
+			showPoints,
+			lineWidth,
+			lineStyle,
+			lineColor,
+			lineOpacity,
+			showLine,
+			showEquation,
+			equationPosition,
+			showRSquared,
+			equationFormatter,
+			xAxis: xAxis || void 0,
+			yAxis: yAxis || void 0,
+			legend,
+			tooltip,
+			pointsLabel,
+			regressionLabel,
+			animate,
+			animationDuration,
+			customOption
+		});
+	}, [
+		data,
+		xField,
+		yField,
+		method,
+		order,
+		theme,
+		colorPalette,
+		backgroundColor,
+		title,
+		subtitle,
+		titlePosition,
+		pointSize,
+		pointShape,
+		pointOpacity,
+		showPoints,
+		lineWidth,
+		lineStyle,
+		lineColor,
+		lineOpacity,
+		showLine,
+		showEquation,
+		equationPosition,
+		showRSquared,
+		equationFormatter,
+		xAxis,
+		yAxis,
+		legend,
+		tooltip,
+		pointsLabel,
+		regressionLabel,
+		animate,
+		animationDuration,
+		customOption
+	]);
+	const chartEvents = useMemo(() => {
+		const events = {};
+		if (onDataPointClick) events.click = (params, chart) => {
+			onDataPointClick(params, {
+				chart,
+				event: params
+			});
+		};
+		if (onDataPointHover) events.mouseover = (params, chart) => {
+			onDataPointHover(params, {
+				chart,
+				event: params
+			});
+		};
+		return Object.keys(events).length > 0 ? events : void 0;
+	}, [onDataPointClick, onDataPointHover]);
+	const { containerRef, loading: chartLoading, error, getEChartsInstance, resize, showLoading, hideLoading } = useECharts({
+		option: chartOption,
+		theme,
+		loading,
+		events: chartEvents,
+		onChartReady
+	});
+	const exportImage = (format = "png") => {
+		const chart = getEChartsInstance();
+		if (!chart) return "";
+		return chart.getDataURL({
+			type: format,
+			pixelRatio: 2,
+			backgroundColor: backgroundColor || "#fff"
+		});
+	};
+	const highlight = (dataIndex, seriesIndex = 0) => {
+		const chart = getEChartsInstance();
+		if (!chart) return;
+		chart.dispatchAction({
+			type: "highlight",
+			seriesIndex,
+			dataIndex
+		});
+	};
+	const clearHighlight = () => {
+		const chart = getEChartsInstance();
+		if (!chart) return;
+		chart.dispatchAction({ type: "downplay" });
+	};
+	const updateData = (newData) => {
+		const chart = getEChartsInstance();
+		if (!chart) return;
+		const newOption = buildRegressionChartOption({
+			data: newData,
+			xField,
+			yField,
+			method,
+			order,
+			theme,
+			colorPalette,
+			backgroundColor,
+			title,
+			subtitle,
+			titlePosition,
+			pointSize,
+			pointShape,
+			pointOpacity,
+			showPoints,
+			lineWidth,
+			lineStyle,
+			lineColor,
+			lineOpacity,
+			showLine,
+			showEquation,
+			equationPosition,
+			showRSquared,
+			equationFormatter,
+			xAxis: xAxis || void 0,
+			yAxis: yAxis || void 0,
+			legend,
+			tooltip,
+			pointsLabel,
+			regressionLabel,
+			animate,
+			animationDuration,
+			customOption
+		});
+		chart.setOption(newOption);
+	};
+	useImperativeHandle(ref, () => ({
+		getChart: getEChartsInstance,
+		exportImage,
+		resize,
+		showLoading: () => showLoading(),
+		hideLoading,
+		highlight,
+		clearHighlight,
+		updateData
+	}), [
+		getEChartsInstance,
+		exportImage,
+		resize,
+		showLoading,
+		hideLoading,
+		highlight,
+		clearHighlight,
+		updateData
+	]);
+	if (error) return /* @__PURE__ */ jsxs("div", {
+		className: `aqc-charts-error ${className || ""}`,
+		style: {
+			width,
+			height,
+			display: "flex",
+			alignItems: "center",
+			justifyContent: "center",
+			color: "#ff4d4f",
+			fontSize: "14px",
+			border: "1px dashed #ff4d4f",
+			borderRadius: "4px",
+			...style
+		},
+		children: ["Error: ", error.message || "Failed to render chart"]
+	});
+	const containerStyle = useMemo(() => ({
+		width,
+		height,
+		position: "relative",
+		...style
+	}), [
+		width,
+		height,
+		style
+	]);
+	return /* @__PURE__ */ jsxs("div", {
+		className: `aqc-charts-container ${className || ""}`,
+		style: containerStyle,
+		...restProps,
+		children: [/* @__PURE__ */ jsx("div", {
+			ref: containerRef,
+			style: {
+				width: "100%",
+				height: "100%"
+			}
+		}), (chartLoading || loading) && /* @__PURE__ */ jsxs("div", {
+			className: "aqc-charts-loading",
+			style: {
+				position: "absolute",
+				top: 0,
+				left: 0,
+				right: 0,
+				bottom: 0,
+				display: "flex",
+				alignItems: "center",
+				justifyContent: "center",
+				backgroundColor: "rgba(255, 255, 255, 0.8)",
+				fontSize: "14px",
+				color: "#666"
+			},
+			children: [/* @__PURE__ */ jsx("div", {
+				className: "aqc-charts-spinner",
+				style: {
+					width: "20px",
+					height: "20px",
+					border: "2px solid #f3f3f3",
+					borderTop: "2px solid #1890ff",
+					borderRadius: "50%",
+					animation: "spin 1s linear infinite",
+					marginRight: "8px"
+				}
+			}), "Loading..."]
+		})]
+	});
+});
+RegressionChart.displayName = "RegressionChart";
+
+//#endregion
 //#region src/components/legacy/OldCalendarHeatmapChart.tsx
 const OldCalendarHeatmapChart = forwardRef(({ data, year, calendar = {}, visualMap = {}, tooltipFormatter, title,...props }, ref) => {
 	const chartOption = useMemo(() => {
@@ -4320,4 +6140,4 @@ if (typeof document !== "undefined" && !document.getElementById("aqc-charts-styl
 }
 
 //#endregion
-export { BarChart, BaseChart, CalendarHeatmapChart, ClusterChart, LineChart, OldBarChart, OldCalendarHeatmapChart, OldClusterChart, OldGanttChart, OldLineChart, OldPieChart, OldRegressionChart, OldSankeyChart, OldScatterChart, OldStackedBarChart, PieChart, ScatterChart, clusterPointsToScatterData, darkTheme, extractPoints, lightTheme, performKMeansClustering, useChartEvents, useChartInstance, useChartOptions, useChartResize, useECharts };
+export { BarChart, BaseChart, CalendarHeatmapChart, ClusterChart, GanttChart, LineChart, OldBarChart, OldCalendarHeatmapChart, OldClusterChart, OldGanttChart, OldLineChart, OldPieChart, OldRegressionChart, OldSankeyChart, OldScatterChart, OldStackedBarChart, PieChart, RegressionChart, SankeyChart, ScatterChart, clusterPointsToScatterData, darkTheme, extractPoints, lightTheme, performKMeansClustering, useChartEvents, useChartInstance, useChartOptions, useChartResize, useECharts };

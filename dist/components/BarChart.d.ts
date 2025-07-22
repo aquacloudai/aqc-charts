@@ -1,4 +1,4 @@
-import type { BarChartProps, ErgonomicChartRef } from '@/types/ergonomic';
+import type { BarChartProps, ErgonomicChartRef } from '@/types';
 /**
  * Ergonomic BarChart component with intuitive props
  *

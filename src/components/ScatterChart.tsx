@@ -1,6 +1,6 @@
 import { forwardRef, useMemo, useImperativeHandle } from 'react';
 import type { EChartsType } from 'echarts/core';
-import type { ScatterChartProps, ErgonomicChartRef } from '@/types/ergonomic';
+import type { ScatterChartProps, ErgonomicChartRef } from '@/types';
 import { useECharts } from '@/hooks/useECharts';
 import { buildScatterChartOption } from '@/utils/ergonomic';
 

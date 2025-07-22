@@ -1,4 +1,4 @@
-import type { CalendarHeatmapProps, ErgonomicChartRef } from '@/types/ergonomic';
+import type { CalendarHeatmapProps, ErgonomicChartRef } from '@/types';
 /**
  * Ergonomic CalendarHeatmapChart component with intuitive props
  *
