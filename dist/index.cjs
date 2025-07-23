@@ -1428,12 +1428,14 @@ function buildLineChartOption(props) {
 		symbolSize: props.pointSize || 4
 	}];
 	const xAxisType = props.data && isObjectData(props.data) && props.xField ? detectDataType(props.data.map((item) => item[props.xField])) : "categorical";
+	const xAxisOption = buildAxisOption(props.xAxis, xAxisType, props.theme, props.data, props.xField);
+	const finalAxisType = xAxisOption.type || "category";
 	return {
 		...baseOption,
 		grid: calculateGridSpacing(props.legend, !!props.title, !!props.subtitle, !!props.zoom),
 		xAxis: {
-			...buildAxisOption(props.xAxis, xAxisType, props.theme, props.data, props.xField),
-			data: xAxisType === "categorical" ? xAxisData : void 0
+			...xAxisOption,
+			data: finalAxisType === "category" ? xAxisData : void 0
 		},
 		yAxis: buildAxisOption(props.yAxis, "numeric", props.theme),
 		series,

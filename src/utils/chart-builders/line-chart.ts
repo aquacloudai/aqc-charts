@@ -130,12 +130,16 @@ export function buildLineChartOption(props: LineChartProps): EChartsOption {
     ? detectDataType(props.data.map((item: any) => item[props.xField as string]))
     : 'categorical';
   
+  // Build the x-axis option and determine the final axis type
+  const xAxisOption = buildAxisOption(props.xAxis, xAxisType, props.theme, props.data, props.xField);
+  const finalAxisType = xAxisOption.type || 'category';
+  
   return {
     ...baseOption,
     grid: calculateGridSpacing(props.legend, !!props.title, !!props.subtitle, !!props.zoom),
     xAxis: {
-      ...buildAxisOption(props.xAxis, xAxisType, props.theme, props.data, props.xField),
-      data: xAxisType === 'categorical' ? xAxisData : undefined,
+      ...xAxisOption,
+      data: finalAxisType === 'category' ? xAxisData : undefined,
     },
     yAxis: buildAxisOption(props.yAxis, 'numeric', props.theme),
     series,
