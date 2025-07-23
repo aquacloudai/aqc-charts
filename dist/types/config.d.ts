@@ -9,6 +9,7 @@ export interface AxisConfig {
     readonly tickInterval?: number;
     readonly rotate?: number;
     readonly boundaryGap?: boolean;
+    readonly parseDate?: boolean;
 }
 export interface LegendConfig {
     readonly show?: boolean;

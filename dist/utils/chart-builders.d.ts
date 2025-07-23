@@ -1,5 +1,5 @@
 export { COLOR_PALETTES } from './color-palettes';
-export { isObjectData, extractUniqueValues, groupDataByField, detectDataType, mapStrokeStyleToECharts, } from './data-processing';
+export { isObjectData, extractUniqueValues, extractUniqueValuesOrdered, groupDataByField, detectDataType, mapStrokeStyleToECharts, } from './data-processing';
 export { buildBaseOption, buildAxisOption, buildLegendOption, calculateGridSpacing, generateChartKey, buildTooltipOption, } from './base-options';
 export { buildLineChartOption } from './chart-builders/line-chart';
 export { buildBarChartOption } from './chart-builders/bar-chart';

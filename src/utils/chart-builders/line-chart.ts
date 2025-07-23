@@ -3,7 +3,7 @@ import type { LineChartProps } from '@/types';
 
 import {
   isObjectData,
-  extractUniqueValues,
+  extractUniqueValuesOrdered,
   groupDataByField,
   detectDataType,
   mapStrokeStyleToECharts,
@@ -66,7 +66,7 @@ export function buildLineChartOption(props: LineChartProps): EChartsOption {
           symbol: props.showPoints !== false ? (props.pointShape || 'circle') : 'none',
           symbolSize: props.pointSize || 4,
         }));
-        xAxisData = extractUniqueValues(props.data, props.xField as string) as any[];
+        xAxisData = extractUniqueValuesOrdered(props.data, props.xField as string) as any[];
       } else {
         // Single series
         if (Array.isArray(props.yField)) {

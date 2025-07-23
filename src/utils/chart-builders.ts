@@ -21,6 +21,7 @@ export { COLOR_PALETTES } from './color-palettes';
 export {
   isObjectData,
   extractUniqueValues,
+  extractUniqueValuesOrdered,
   groupDataByField,
   detectDataType,
   mapStrokeStyleToECharts,
