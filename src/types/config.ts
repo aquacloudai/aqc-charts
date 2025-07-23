@@ -10,6 +10,7 @@ export interface AxisConfig {
   readonly tickInterval?: number;
   readonly rotate?: number; // For rotated labels
   readonly boundaryGap?: boolean; // For line charts: false = start at axis, true = center on categories
+  readonly parseDate?: boolean; // Explicitly control date parsing (default: false for safety)
 }
 
 // Legend configuration

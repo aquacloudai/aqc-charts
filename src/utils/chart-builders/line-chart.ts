@@ -134,7 +134,7 @@ export function buildLineChartOption(props: LineChartProps): EChartsOption {
     ...baseOption,
     grid: calculateGridSpacing(props.legend, !!props.title, !!props.subtitle, !!props.zoom),
     xAxis: {
-      ...buildAxisOption(props.xAxis, xAxisType, props.theme),
+      ...buildAxisOption(props.xAxis, xAxisType, props.theme, props.data, props.xField),
       data: xAxisType === 'categorical' ? xAxisData : undefined,
     },
     yAxis: buildAxisOption(props.yAxis, 'numeric', props.theme),
