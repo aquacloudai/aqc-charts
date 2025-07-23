@@ -1266,19 +1266,23 @@ function buildLineChartOption(props) {
 		}));
 		xAxisData = extractUniqueValues(props.data, props.xField);
 	} else {
-		if (Array.isArray(props.yField)) series = props.yField.map((field) => ({
-			name: field,
-			type: "line",
-			data: props.data.map((item) => item[field]),
-			smooth: props.smooth,
-			lineStyle: {
-				width: props.strokeWidth,
-				type: mapStrokeStyleToECharts(props.strokeStyle)
-			},
-			areaStyle: props.showArea ? { opacity: props.areaOpacity || .3 } : void 0,
-			symbol: props.showPoints !== false ? props.pointShape || "circle" : "none",
-			symbolSize: props.pointSize || 4
-		}));
+		if (Array.isArray(props.yField)) series = props.yField.map((field) => {
+			const seriesSpecificConfig = props.seriesConfig?.[field] || {};
+			return {
+				name: field,
+				type: "line",
+				data: props.data.map((item) => item[field]),
+				smooth: seriesSpecificConfig.smooth ?? props.smooth,
+				lineStyle: {
+					width: seriesSpecificConfig.strokeWidth ?? props.strokeWidth,
+					type: mapStrokeStyleToECharts(seriesSpecificConfig.strokeStyle ?? props.strokeStyle)
+				},
+				itemStyle: seriesSpecificConfig.color ? { color: seriesSpecificConfig.color } : void 0,
+				areaStyle: seriesSpecificConfig.showArea ?? props.showArea ? { opacity: seriesSpecificConfig.areaOpacity ?? (props.areaOpacity || .3) } : void 0,
+				symbol: (seriesSpecificConfig.showPoints ?? props.showPoints) !== false ? seriesSpecificConfig.pointShape ?? props.pointShape ?? "circle" : "none",
+				symbolSize: seriesSpecificConfig.pointSize ?? props.pointSize ?? 4
+			};
+		});
 		else series = [{
 			type: "line",
 			data: props.data.map((item) => item[props.yField]),
@@ -2566,7 +2570,7 @@ function buildSankeyChartOption(props) {
 *   yField="value"
 * />
 */
-const LineChart = forwardRef(({ width = "100%", height = 400, className, style, data, xField = "x", yField = "y", seriesField, series, theme = "light", colorPalette, backgroundColor, title, subtitle, titlePosition = "center", smooth = false, strokeWidth = 2, strokeStyle = "solid", showPoints = true, pointSize = 4, pointShape = "circle", showArea = false, areaOpacity = .3, areaGradient = false, xAxis, yAxis, legend, tooltip, zoom = false, pan = false, brush = false, loading = false, disabled: _disabled = false, animate = true, animationDuration, onChartReady, onDataPointClick, onDataPointHover, customOption, responsive: _responsive = true,...restProps }, ref) => {
+const LineChart = forwardRef(({ width = "100%", height = 400, className, style, data, xField = "x", yField = "y", seriesField, series, seriesConfig, theme = "light", colorPalette, backgroundColor, title, subtitle, titlePosition = "center", smooth = false, strokeWidth = 2, strokeStyle = "solid", showPoints = true, pointSize = 4, pointShape = "circle", showArea = false, areaOpacity = .3, areaGradient = false, xAxis, yAxis, legend, tooltip, zoom = false, pan = false, brush = false, loading = false, disabled: _disabled = false, animate = true, animationDuration, onChartReady, onDataPointClick, onDataPointHover, customOption, responsive: _responsive = true,...restProps }, ref) => {
 	const chartOption = useMemo(() => {
 		return buildLineChartOption({
 			data: data || void 0,
@@ -2574,6 +2578,7 @@ const LineChart = forwardRef(({ width = "100%", height = 400, className, style, 
 			yField,
 			seriesField,
 			series,
+			seriesConfig,
 			theme,
 			colorPalette,
 			backgroundColor,
@@ -2606,6 +2611,7 @@ const LineChart = forwardRef(({ width = "100%", height = 400, className, style, 
 		yField,
 		seriesField,
 		series,
+		seriesConfig,
 		theme,
 		colorPalette,
 		backgroundColor,
@@ -2687,6 +2693,7 @@ const LineChart = forwardRef(({ width = "100%", height = 400, className, style, 
 			yField,
 			seriesField: seriesField || void 0,
 			series,
+			seriesConfig,
 			theme,
 			colorPalette,
 			backgroundColor,

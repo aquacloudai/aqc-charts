@@ -327,7 +327,75 @@ export function LineChartExample({ theme, colorPalette, onInteraction }: LineCha
         />
       </div>
 
-      {/* Example 5: Advanced Styling and Animation */}
+      {/* Example 5: Individual Series Styling with seriesConfig */}
+      <div style={{ marginBottom: '40px' }}>
+        <h4 style={{
+          color: theme === 'dark' ? '#fff' : '#333',
+          marginBottom: '20px',
+          fontSize: '18px',
+          fontWeight: '600'
+        }}>
+          🎨 Individual Series Styling (seriesConfig)
+        </h4>
+        <p style={{
+          color: theme === 'dark' ? '#ccc' : '#666',
+          marginBottom: '20px',
+          fontSize: '14px',
+          lineHeight: 1.5
+        }}>
+          Demonstrates the new seriesConfig prop for styling each line individually. Each series can have unique colors, stroke styles, point shapes, and area settings.
+        </p>
+        <LineChart
+          data={salesData}
+          xField="month"
+          yField={['sales', 'profit', 'expenses']}
+          title="Business Metrics with Individual Series Styling"
+          subtitle="Each line has unique styling via seriesConfig"
+          height={400}
+          theme={theme}
+          seriesConfig={{
+            'sales': {
+              color: '#ff6b6b',
+              strokeStyle: 'solid',
+              strokeWidth: 3,
+              pointShape: 'circle',
+              pointSize: 6,
+              showArea: true,
+              areaOpacity: 0.2,
+            },
+            'profit': {
+              color: '#4ecdc4',
+              strokeStyle: 'dashed',
+              strokeWidth: 2,
+              pointShape: 'diamond',
+              pointSize: 8,
+              showArea: false,
+            },
+            'expenses': {
+              color: '#45b7d1',
+              strokeStyle: 'dotted',
+              strokeWidth: 2,
+              pointShape: 'square',
+              pointSize: 5,
+              showArea: true,
+              areaOpacity: 0.1,
+            }
+          }}
+          smooth
+          legend={{ show: true, position: 'right', align: 'center' }}
+          tooltip={{
+            show: true,
+            trigger: 'axis'
+          }}
+          onDataPointClick={(data) => {
+            onInteraction?.(`Clicked on ${data.name} at ${data.axisValue}: ${data.value}`);
+          }}
+          zoom
+          responsive
+        />
+      </div>
+
+      {/* Example 6: Advanced Styling and Animation */}
       <div>
         <h4 style={{
           color: theme === 'dark' ? '#fff' : '#333',

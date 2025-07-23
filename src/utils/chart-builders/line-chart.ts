@@ -71,19 +71,26 @@ export function buildLineChartOption(props: LineChartProps): EChartsOption {
         // Single series
         if (Array.isArray(props.yField)) {
           // Multiple y fields = multiple series
-          series = props.yField.map(field => ({
-            name: field,
-            type: 'line',
-            data: props.data!.map((item: any) => item[field]),
-            smooth: props.smooth,
-            lineStyle: { 
-              width: props.strokeWidth,
-              type: mapStrokeStyleToECharts(props.strokeStyle)
-            },
-            areaStyle: props.showArea ? { opacity: props.areaOpacity || 0.3 } : undefined,
-            symbol: props.showPoints !== false ? (props.pointShape || 'circle') : 'none',
-            symbolSize: props.pointSize || 4,
-          }));
+          series = props.yField.map(field => {
+            const seriesSpecificConfig = props.seriesConfig?.[field] || {};
+            return {
+              name: field,
+              type: 'line',
+              data: props.data!.map((item: any) => item[field]),
+              smooth: seriesSpecificConfig.smooth ?? props.smooth,
+              lineStyle: { 
+                width: seriesSpecificConfig.strokeWidth ?? props.strokeWidth,
+                type: mapStrokeStyleToECharts(seriesSpecificConfig.strokeStyle ?? props.strokeStyle)
+              },
+              itemStyle: seriesSpecificConfig.color ? { color: seriesSpecificConfig.color } : undefined,
+              areaStyle: (seriesSpecificConfig.showArea ?? props.showArea) ? { 
+                opacity: seriesSpecificConfig.areaOpacity ?? (props.areaOpacity || 0.3)
+              } : undefined,
+              symbol: (seriesSpecificConfig.showPoints ?? props.showPoints) !== false ? 
+                (seriesSpecificConfig.pointShape ?? props.pointShape ?? 'circle') : 'none',
+              symbolSize: seriesSpecificConfig.pointSize ?? props.pointSize ?? 4,
+            };
+          });
         } else {
           series = [{
             type: 'line',

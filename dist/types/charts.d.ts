@@ -14,6 +14,17 @@ export interface LineChartProps extends BaseErgonomicChartProps {
     readonly showArea?: boolean;
     readonly areaOpacity?: number;
     readonly areaGradient?: boolean;
+    readonly seriesConfig?: Record<string, {
+        readonly color?: string;
+        readonly smooth?: boolean;
+        readonly showArea?: boolean;
+        readonly strokeStyle?: 'solid' | 'dashed' | 'dotted';
+        readonly strokeWidth?: number;
+        readonly pointSize?: number;
+        readonly pointShape?: 'circle' | 'square' | 'triangle' | 'diamond';
+        readonly showPoints?: boolean;
+        readonly areaOpacity?: number;
+    }> | undefined;
     readonly series?: readonly {
         readonly name: string;
         readonly data: readonly DataPoint[];

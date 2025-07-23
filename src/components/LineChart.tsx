@@ -54,6 +54,7 @@ const LineChart = forwardRef<ErgonomicChartRef, LineChartProps>(({
   yField = 'y',
   seriesField,
   series,
+  seriesConfig,
   
   // Styling
   theme = 'light',
@@ -115,6 +116,7 @@ const LineChart = forwardRef<ErgonomicChartRef, LineChartProps>(({
       yField,
       seriesField,
       series,
+      seriesConfig,
       theme,
       colorPalette,
       backgroundColor,
@@ -142,7 +144,7 @@ const LineChart = forwardRef<ErgonomicChartRef, LineChartProps>(({
       customOption,
     });
   }, [
-    data, xField, yField, seriesField, series,
+    data, xField, yField, seriesField, series, seriesConfig,
     theme, colorPalette, backgroundColor,
     title, subtitle, titlePosition,
     smooth, strokeWidth, strokeStyle, showPoints, pointSize, pointShape,
@@ -232,6 +234,7 @@ const LineChart = forwardRef<ErgonomicChartRef, LineChartProps>(({
       yField,
       seriesField: seriesField || undefined,
       series,
+      seriesConfig,
       theme,
       colorPalette,
       backgroundColor,
