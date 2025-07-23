@@ -2,7 +2,7 @@ import { forwardRef, useMemo, useImperativeHandle } from 'react';
 import type { EChartsType } from 'echarts/core';
 import type { ClusterChartProps, ErgonomicChartRef } from '@/types';
 import { useECharts } from '@/hooks/useECharts';
-import { buildClusterChartOption } from '@/utils/ergonomic';
+import { buildClusterChartOption } from '@/utils/chart-builders';
 
 /**
  * Ergonomic ClusterChart component with intuitive props
@@ -84,7 +84,7 @@ const ClusterChart = forwardRef<ErgonomicChartRef, ClusterChartProps>(({
   
   // States
   loading = false,
-  disabled = false,
+  disabled: _disabled = false,
   animate = true,
   animationDuration,
   
@@ -95,7 +95,7 @@ const ClusterChart = forwardRef<ErgonomicChartRef, ClusterChartProps>(({
   
   // Advanced
   customOption,
-  responsive = true,
+  responsive: _responsive = true,
   
   ...restProps
 }, ref) => {

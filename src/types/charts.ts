@@ -31,6 +31,11 @@ export interface LineChartProps extends BaseErgonomicChartProps {
     readonly color?: string;
     readonly smooth?: boolean;
     readonly showArea?: boolean;
+    readonly strokeStyle?: 'solid' | 'dashed' | 'dotted';
+    readonly strokeWidth?: number;
+    readonly pointSize?: number;
+    readonly pointShape?: 'circle' | 'square' | 'triangle' | 'diamond';
+    readonly showPoints?: boolean;
   }[] | undefined;
   
   // Axes
@@ -66,6 +71,11 @@ export interface BarChartProps extends BaseErgonomicChartProps {
   readonly stack?: boolean;
   readonly stackType?: 'normal' | 'percent';
   readonly showPercentage?: boolean; // Display values as percentages of stack total
+  
+  // Label visibility
+  readonly showLabels?: boolean; // Show/hide data labels on bars
+  readonly showAbsoluteValues?: boolean; // Show absolute values on bars
+  readonly showPercentageLabels?: boolean; // Show percentage labels on bars (for stacked charts)
   
   // Multiple series
   readonly series?: readonly {

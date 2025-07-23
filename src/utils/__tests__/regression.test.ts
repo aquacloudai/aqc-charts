@@ -3,7 +3,7 @@ import {
     extractPoints,
     performKMeansClustering,
     clusterPointsToScatterData
-} from '../regression';
+} from '../legacy/regression';
 import type { ScatterDataPoint, ClusterPoint } from '@/types';
 
 describe('extractPoints', () => {

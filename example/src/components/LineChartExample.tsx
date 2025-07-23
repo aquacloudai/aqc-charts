@@ -112,7 +112,7 @@ export function LineChartExample({ theme, colorPalette, onInteraction }: LineCha
         />
       </div>
 
-      {/* Example 2: Weather Time Series */}
+      {/* Example 2: Line Styles Demo */}
       <div style={{ marginBottom: '40px' }}>
         <h4 style={{
           color: theme === 'dark' ? '#fff' : '#333',
@@ -120,7 +120,7 @@ export function LineChartExample({ theme, colorPalette, onInteraction }: LineCha
           fontSize: '18px',
           fontWeight: '600'
         }}>
-          🌡️ Weather Data Visualization
+          🎨 Line Style Demonstration
         </h4>
         <p style={{
           color: theme === 'dark' ? '#ccc' : '#666',
@@ -128,44 +128,75 @@ export function LineChartExample({ theme, colorPalette, onInteraction }: LineCha
           fontSize: '14px',
           lineHeight: 1.5
         }}>
-          Time-based data with multiple series configuration. Demonstrates smooth curves, different styling per series, and time axis handling.
+          Simple demo showing solid, dashed, and dotted line styles working correctly with different colors and widths.
         </p>
         <LineChart
-          data={temperatureData}
+          data={[
+            { x: 'Jan', solid: 10, dashed: 15, dotted: 8 },
+            { x: 'Feb', solid: 22, dashed: 18, dotted: 15 },
+            { x: 'Mar', solid: 28, dashed: 32, dotted: 20 },
+            { x: 'Apr', solid: 23, dashed: 28, dotted: 18 },
+            { x: 'May', solid: 19, dashed: 25, dotted: 22 },
+            { x: 'Jun', solid: 25, dashed: 30, dotted: 16 },
+          ]}
           series={[
             {
-              name: 'Temperature (°C)',
-              data: temperatureData,
-              color: colorPalette[0],
-              smooth: true,
-              showArea: true,
+              name: 'Solid Line',
+              data: [
+                { x: 'Jan', y: 10 },
+                { x: 'Feb', y: 22 },
+                { x: 'Mar', y: 28 },
+                { x: 'Apr', y: 23 },
+                { x: 'May', y: 19 },
+                { x: 'Jun', y: 25 },
+              ],
+              color: '#ff6b6b',
+              strokeStyle: 'solid',
+              strokeWidth: 3,
+              smooth: false,
+              showPoints: true,
             },
             {
-              name: 'Humidity (%)',
-              data: temperatureData,
-              color: colorPalette[1],
+              name: 'Dashed Line',
+              data: [
+                { x: 'Jan', y: 15 },
+                { x: 'Feb', y: 18 },
+                { x: 'Mar', y: 32 },
+                { x: 'Apr', y: 28 },
+                { x: 'May', y: 25 },
+                { x: 'Jun', y: 30 },
+              ],
+              color: '#4ecdc4',
+              strokeStyle: 'dashed',
+              strokeWidth: 3,
               smooth: false,
-              showArea: false,
+              showPoints: true,
+            },
+            {
+              name: 'Dotted Line',
+              data: [
+                { x: 'Jan', y: 8 },
+                { x: 'Feb', y: 15 },
+                { x: 'Mar', y: 20 },
+                { x: 'Apr', y: 18 },
+                { x: 'May', y: 22 },
+                { x: 'Jun', y: 16 },
+              ],
+              color: '#45b7d1',
+              strokeStyle: 'dotted',
+              strokeWidth: 3,
+              smooth: false,
+              showPoints: true,
+              pointShape: 'diamond',
+              pointSize: 8,
             },
           ]}
-          xField="date"
-          yField="temperature" // Used for first series, others use their own field mapping
-          title="Daily Weather Conditions"
+          xField="x"
+          yField="y"
+          title="Line Style Test - Solid, Dashed, Dotted"
           height={350}
           theme={theme}
           legend={{ show: true, position: 'bottom' }}
-          xAxis={{
-            type: 'time',
-            label: 'Date',
-            grid: true,
-            gridColor: theme === 'dark' ? '#333' : '#f0f0f0',
-            boundaryGap: false // Line starts exactly at the axis
-          }}
-          yAxis={{
-            label: 'Value',
-            grid: true,
-            gridColor: theme === 'dark' ? '#333' : '#f0f0f0'
-          }}
           tooltip={{
             show: true,
             trigger: 'axis'

@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import type { EChartsType } from 'echarts/core';
+import { createChartError, ChartErrorCode } from '@/utils/errors';
 
 // Simple deep comparison for options stability
 function deepEqual(a: any, b: any): boolean {
@@ -62,7 +63,21 @@ export function useChartOptions({
           lazyUpdate 
         });
       } catch (error) {
-        console.error('Failed to set chart options:', error);
+        const chartError = createChartError(
+          error,
+          ChartErrorCode.CHART_UPDATE_FAILED,
+          { 
+            isNewChartInstance,
+            notMerge: isNewChartInstance ? true : notMerge,
+            lazyUpdate,
+            optionKeys: typeof option === 'object' && option !== null 
+              ? Object.keys(option as any)
+              : 'not-object'
+          }
+        );
+        console.error('Failed to set chart options:', chartError.toDetailedString());
+        // Re-throw to allow error boundary to catch it
+        throw chartError;
       }
     }
   }, [chartInstance, option, notMerge, lazyUpdate]);
@@ -81,7 +96,16 @@ export function useChartOptions({
           chartInstance.setOption(themedOption as any, { notMerge: true });
         }
       } catch (error) {
-        console.error('Failed to apply theme:', error);
+        const chartError = createChartError(
+          error,
+          ChartErrorCode.INVALID_THEME,
+          { 
+            themeType: typeof theme,
+            themeKeys: typeof theme === 'object' ? Object.keys(theme as any) : 'not-object'
+          }
+        );
+        console.error('Failed to apply theme:', chartError.toDetailedString());
+        // Don't re-throw theme errors as they're not critical
       }
     }
   }, [chartInstance, theme]);

@@ -1,7 +1,7 @@
 import React, { forwardRef, useMemo } from 'react';
 import type { BaseChartProps, ChartRef, EChartsOption } from '@/types';
 import { BaseChart } from '../BaseChart';
-import { createSankeyChartOption, mergeOptions } from '@/utils/chartHelpers';
+import { createSankeyChartOption, mergeOptions } from '@/utils/legacy/chartHelpers';
 
 export interface SankeyNode {
     readonly name: string;

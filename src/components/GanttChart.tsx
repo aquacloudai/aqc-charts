@@ -2,7 +2,7 @@ import { forwardRef, useMemo, useImperativeHandle } from 'react';
 import type { EChartsType } from 'echarts/core';
 import type { GanttChartProps, ErgonomicChartRef, GanttTask, GanttCategory } from '@/types';
 import { useECharts } from '@/hooks/useECharts';
-import { buildGanttChartOption } from '@/utils/ergonomic';
+import { buildGanttChartOption } from '@/utils/chart-builders';
 
 /**
  * Ergonomic GanttChart component with extensive customization options
@@ -163,7 +163,7 @@ const GanttChart = forwardRef<ErgonomicChartRef, GanttChartProps>(({
   
   // States
   loading = false,
-  disabled = false,
+  disabled: _disabled = false,
   animate = true,
   animationDuration,
   
@@ -172,14 +172,14 @@ const GanttChart = forwardRef<ErgonomicChartRef, GanttChartProps>(({
   onDataPointClick,
   onDataPointHover,
   onTaskClick,
-  onTaskDrag,
-  onTaskResize,
+  onTaskDrag: _onTaskDrag,
+  onTaskResize: _onTaskResize,
   onCategoryClick,
   onTimeRangeChange,
   
   // Advanced
   customOption,
-  responsive = true,
+  responsive: _responsive = true,
   
   ...restProps
 }, ref) => {
@@ -268,7 +268,7 @@ const GanttChart = forwardRef<ErgonomicChartRef, GanttChartProps>(({
     if (onDataPointClick || onTaskClick) {
       events.click = (params: any, chart: EChartsType) => {
         if (params.seriesIndex === 0) { // Task series
-          const [categoryIndex, startTime, endTime, taskName, taskId] = params.value;
+          const [_categoryIndex, startTime, endTime, taskName, taskId] = params.value;
           const taskData: GanttTask = {
             id: taskId,
             name: taskName,
@@ -280,7 +280,7 @@ const GanttChart = forwardRef<ErgonomicChartRef, GanttChartProps>(({
           onTaskClick?.(taskData, params);
           onDataPointClick?.(params, { chart, event: params });
         } else if (params.seriesIndex === 1) { // Category series
-          const [categoryIndex, categoryName, categoryLabel] = params.value;
+          const [_categoryIndex, categoryName, categoryLabel] = params.value;
           const categoryData: GanttCategory = {
             name: categoryName,
             label: categoryLabel,

@@ -2,7 +2,7 @@ import { forwardRef, useMemo, useImperativeHandle } from 'react';
 import type { EChartsType } from 'echarts/core';
 import type { PieChartProps, ErgonomicChartRef } from '@/types';
 import { useECharts } from '@/hooks/useECharts';
-import { buildPieChartOption } from '@/utils/ergonomic';
+import { buildPieChartOption } from '@/utils/chart-builders';
 
 /**
  * Ergonomic PieChart component with intuitive props
@@ -87,7 +87,7 @@ const PieChart = forwardRef<ErgonomicChartRef, PieChartProps>(({
   
   // States
   loading = false,
-  disabled = false,
+  disabled: _disabled = false,
   animate = true,
   animationDuration,
   
@@ -98,7 +98,7 @@ const PieChart = forwardRef<ErgonomicChartRef, PieChartProps>(({
   
   // Advanced
   customOption,
-  responsive = true,
+  responsive: _responsive = true,
   
   ...restProps
 }, ref) => {

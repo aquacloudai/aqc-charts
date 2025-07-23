@@ -1,7 +1,7 @@
 import React, { forwardRef, useMemo } from 'react';
 import type { BaseChartProps, ChartRef, EChartsOption, LineSeriesOption } from '@/types';
 import { BaseChart } from '../BaseChart';
-import { createLineChartOption, mergeOptions } from '@/utils/chartHelpers';
+import { createLineChartOption, mergeOptions } from '@/utils/legacy/chartHelpers';
 
 export interface OldLineChartProps extends Omit<BaseChartProps, 'option'> {
     readonly data: {
@@ -49,7 +49,7 @@ export const OldLineChart = forwardRef<ChartRef, OldLineChartProps>(({
                 yAxis: { type: 'value' as const },
                 series: customSeries,
                 ...(title && { title: { text: title, left: 'center' } }),
-                ...(customOption && customOption),
+                ...customOption,
             } as EChartsOption;
         }
         

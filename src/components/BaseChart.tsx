@@ -1,6 +1,8 @@
 import { forwardRef, useEffect, useImperativeHandle, useMemo } from 'react';
 import type { BaseChartProps, ChartRef } from '@/types';
 import { useECharts } from '@/hooks/useECharts';
+import { validateDimensions, validateTheme, assertValidation } from '@/utils/validation';
+import { isChartError } from '@/utils/errors';
 
 export const BaseChart = forwardRef<ChartRef, BaseChartProps>(({
     title,
@@ -20,10 +22,40 @@ export const BaseChart = forwardRef<ChartRef, BaseChartProps>(({
     className = '',
     style = {},
     option,
-    renderer = 'canvas',
-    locale = 'en',
+    renderer: _renderer = 'canvas',
+    locale: _locale = 'en',
     ...restProps
 }, ref) => {
+
+    // Validate props in development mode
+    useMemo(() => {
+        if (process.env.NODE_ENV === 'development') {
+            try {
+                // Validate basic props
+                const dimensionResult = validateDimensions(width, height);
+                if (dimensionResult.warnings.length > 0) {
+                    console.warn('AQC Charts BaseChart validation warnings:', dimensionResult.warnings);
+                }
+                assertValidation(dimensionResult, { component: 'BaseChart', width, height });
+
+                const themeResult = validateTheme(theme);
+                if (themeResult.warnings.length > 0) {
+                    console.warn('AQC Charts BaseChart theme warnings:', themeResult.warnings);
+                }
+                assertValidation(themeResult, { component: 'BaseChart', theme });
+
+                // Validate chart option
+                if (option && typeof option === 'object') {
+                  const optionKeys = Object.keys(option as any);
+                  if (optionKeys.length === 0) {
+                    console.warn('AQC Charts: Empty chart option provided');
+                  }
+                }
+            } catch (error) {
+                console.error('AQC Charts BaseChart validation failed:', error);
+            }
+        }
+    }, [width, height, theme, option]);
 
     // Simple title override if provided as string prop
     const chartOption = useMemo(() => {
@@ -156,6 +188,9 @@ export const BaseChart = forwardRef<ChartRef, BaseChartProps>(({
     }), [width, height, style]);
 
     if (error) {
+        const errorMessage = isChartError(error) ? error.toUserMessage() : (error?.message || 'Unknown error');
+        const isRecoverable = isChartError(error) && error.recoverable;
+        
         return (
             <div
                 className={`aqc-charts-error ${className}`}
@@ -163,13 +198,30 @@ export const BaseChart = forwardRef<ChartRef, BaseChartProps>(({
             >
                 <div style={{
                     display: 'flex',
+                    flexDirection: 'column',
                     alignItems: 'center',
                     justifyContent: 'center',
                     height: '100%',
                     color: '#ff4d4f',
                     fontSize: '14px',
+                    padding: '20px',
+                    textAlign: 'center',
                 }}>
-                    Error: {error?.message || 'Unknown error'}
+                    <div style={{ marginBottom: '8px', fontSize: '16px' }}>
+                        {isRecoverable ? '⚠️' : '❌'}
+                    </div>
+                    <div style={{ marginBottom: isRecoverable ? '12px' : '0' }}>
+                        {errorMessage}
+                    </div>
+                    {isRecoverable && (
+                        <div style={{ 
+                            fontSize: '12px', 
+                            color: '#ff7875',
+                            fontStyle: 'italic'
+                        }}>
+                            This error is recoverable. Try refreshing the component.
+                        </div>
+                    )}
                 </div>
             </div>
         );

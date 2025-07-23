@@ -1,56 +1,317 @@
-import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
+import React, { Component, forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
 import { jsx, jsxs } from "react/jsx-runtime";
 
+//#region src/utils/errors.ts
+/**
+* Custom error types for AQC Charts library
+* Provides specific error classes with helpful context for debugging
+*/
+let ChartErrorCode = /* @__PURE__ */ function(ChartErrorCode$1) {
+	ChartErrorCode$1["ECHARTS_LOAD_FAILED"] = "ECHARTS_LOAD_FAILED";
+	ChartErrorCode$1["CHART_INIT_FAILED"] = "CHART_INIT_FAILED";
+	ChartErrorCode$1["CONTAINER_NOT_FOUND"] = "CONTAINER_NOT_FOUND";
+	ChartErrorCode$1["INVALID_DATA_FORMAT"] = "INVALID_DATA_FORMAT";
+	ChartErrorCode$1["EMPTY_DATA"] = "EMPTY_DATA";
+	ChartErrorCode$1["MISSING_REQUIRED_FIELD"] = "MISSING_REQUIRED_FIELD";
+	ChartErrorCode$1["INVALID_CHART_OPTION"] = "INVALID_CHART_OPTION";
+	ChartErrorCode$1["INVALID_THEME"] = "INVALID_THEME";
+	ChartErrorCode$1["UNSUPPORTED_CHART_TYPE"] = "UNSUPPORTED_CHART_TYPE";
+	ChartErrorCode$1["CHART_RENDER_FAILED"] = "CHART_RENDER_FAILED";
+	ChartErrorCode$1["CHART_UPDATE_FAILED"] = "CHART_UPDATE_FAILED";
+	ChartErrorCode$1["CHART_RESIZE_FAILED"] = "CHART_RESIZE_FAILED";
+	ChartErrorCode$1["ECSTAT_TRANSFORM_FAILED"] = "ECSTAT_TRANSFORM_FAILED";
+	ChartErrorCode$1["DATA_TRANSFORM_FAILED"] = "DATA_TRANSFORM_FAILED";
+	ChartErrorCode$1["UNKNOWN_ERROR"] = "UNKNOWN_ERROR";
+	return ChartErrorCode$1;
+}({});
+/**
+* Base class for all chart-related errors
+*/
+var ChartError = class ChartError extends Error {
+	code;
+	context;
+	cause;
+	recoverable;
+	suggestions;
+	constructor(details) {
+		super(details.message);
+		this.name = "ChartError";
+		this.code = details.code;
+		this.context = details.context ?? {};
+		this.cause = details.cause;
+		this.recoverable = details.recoverable ?? false;
+		this.suggestions = details.suggestions ?? [];
+		if (Error.captureStackTrace) Error.captureStackTrace(this, ChartError);
+	}
+	/**
+	* Convert error to a user-friendly format
+	*/
+	toUserMessage() {
+		const baseMessage = this.message;
+		const suggestions = this.suggestions.length > 0 ? `\n\nSuggestions:\n${this.suggestions.map((s) => `• ${s}`).join("\n")}` : "";
+		return `${baseMessage}${suggestions}`;
+	}
+	/**
+	* Convert error to detailed format for debugging
+	*/
+	toDetailedString() {
+		const details = [`ChartError [${this.code}]: ${this.message}`, `Recoverable: ${this.recoverable}`];
+		if (Object.keys(this.context).length > 0) details.push(`Context: ${JSON.stringify(this.context, null, 2)}`);
+		if (this.suggestions.length > 0) details.push(`Suggestions:\n${this.suggestions.map((s) => `  • ${s}`).join("\n")}`);
+		if (this.cause) details.push(`Caused by: ${this.cause.message}`);
+		return details.join("\n");
+	}
+};
+/**
+* Specific error class for ECharts loading failures
+*/
+var EChartsLoadError = class extends ChartError {
+	constructor(cause, context) {
+		super({
+			code: ChartErrorCode.ECHARTS_LOAD_FAILED,
+			message: "Failed to load ECharts library from CDN",
+			context,
+			cause,
+			recoverable: true,
+			suggestions: [
+				"Check your internet connection",
+				"Verify that CDN is accessible",
+				"Try refreshing the page",
+				"Consider using a local ECharts build"
+			]
+		});
+		this.name = "EChartsLoadError";
+	}
+};
+/**
+* Specific error class for chart initialization failures
+*/
+var ChartInitError = class extends ChartError {
+	constructor(cause, context) {
+		super({
+			code: ChartErrorCode.CHART_INIT_FAILED,
+			message: "Failed to initialize chart instance",
+			context,
+			cause,
+			recoverable: true,
+			suggestions: [
+				"Ensure the container element exists",
+				"Verify container has non-zero dimensions",
+				"Check if ECharts is properly loaded"
+			]
+		});
+		this.name = "ChartInitError";
+	}
+};
+/**
+* Specific error class for data validation failures
+*/
+var DataValidationError = class extends ChartError {
+	constructor(message, context, suggestions) {
+		super({
+			code: ChartErrorCode.INVALID_DATA_FORMAT,
+			message: `Data validation failed: ${message}`,
+			context,
+			recoverable: true,
+			suggestions: suggestions || [
+				"Check the data format matches the expected structure",
+				"Ensure required fields are present",
+				"Verify data types are correct"
+			]
+		});
+		this.name = "DataValidationError";
+	}
+};
+/**
+* Specific error class for chart rendering failures
+*/
+var ChartRenderError = class extends ChartError {
+	constructor(cause, context) {
+		super({
+			code: ChartErrorCode.CHART_RENDER_FAILED,
+			message: "Failed to render chart",
+			context,
+			cause,
+			recoverable: true,
+			suggestions: [
+				"Check if the chart options are valid",
+				"Verify the data format is correct",
+				"Ensure the container is properly sized"
+			]
+		});
+		this.name = "ChartRenderError";
+	}
+};
+/**
+* Specific error class for transform failures
+*/
+var TransformError = class extends ChartError {
+	constructor(transformType, cause, context) {
+		super({
+			code: ChartErrorCode.DATA_TRANSFORM_FAILED,
+			message: `Failed to apply ${transformType} transform`,
+			context,
+			cause,
+			recoverable: true,
+			suggestions: [
+				"Check if the data is compatible with the transform",
+				"Verify transform parameters are correct",
+				"Ensure ecStat is properly loaded"
+			]
+		});
+		this.name = "TransformError";
+	}
+};
+/**
+* Utility function to create ChartError from unknown error
+*/
+function createChartError(error, code = ChartErrorCode.UNKNOWN_ERROR, context) {
+	if (error instanceof ChartError) return error;
+	if (error instanceof Error) return new ChartError({
+		code,
+		message: error.message,
+		context,
+		cause: error,
+		recoverable: true
+	});
+	return new ChartError({
+		code,
+		message: String(error) || "An unknown error occurred",
+		context,
+		recoverable: false
+	});
+}
+/**
+* Utility function to safely handle async operations with proper error wrapping
+*/
+async function safeAsync(operation, errorCode, context) {
+	try {
+		return await operation();
+	} catch (error) {
+		throw createChartError(error, errorCode, context);
+	}
+}
+/**
+* Utility function to safely handle sync operations with proper error wrapping
+*/
+function safeSync(operation, errorCode, context) {
+	try {
+		return operation();
+	} catch (error) {
+		throw createChartError(error, errorCode, context);
+	}
+}
+/**
+* Type guard to check if an error is a ChartError
+*/
+function isChartError(error) {
+	return error instanceof ChartError;
+}
+/**
+* Type guard to check if an error is recoverable
+*/
+function isRecoverableError(error) {
+	return isChartError(error) && error.recoverable;
+}
+
+//#endregion
 //#region src/utils/EChartsLoader.ts
 let loadingPromise = null;
 let isLoaded = false;
+let loadAttempts = 0;
 /**
-* Load ECharts dynamically from CDN
+* Wait for a specified amount of time
+*/
+function delay(ms) {
+	return new Promise((resolve) => setTimeout(resolve, ms));
+}
+/**
+* Load a script with timeout and retry logic
+*/
+function loadScript(src, name, timeout = 3e4) {
+	return new Promise((resolve, reject) => {
+		const script = document.createElement("script");
+		script.src = src;
+		script.async = true;
+		let timeoutId;
+		let isResolved = false;
+		const cleanup = () => {
+			if (timeoutId) clearTimeout(timeoutId);
+			script.onload = null;
+			script.onerror = null;
+		};
+		script.onload = () => {
+			if (!isResolved) {
+				isResolved = true;
+				cleanup();
+				resolve();
+			}
+		};
+		script.onerror = () => {
+			if (!isResolved) {
+				isResolved = true;
+				cleanup();
+				reject(new Error(`Failed to load ${name} from ${src}`));
+			}
+		};
+		timeoutId = setTimeout(() => {
+			if (!isResolved) {
+				isResolved = true;
+				cleanup();
+				reject(new Error(`Timeout loading ${name} from ${src}`));
+			}
+		}, timeout);
+		document.head.appendChild(script);
+	});
+}
+/**
+* Load ECharts dynamically from CDN with enhanced error handling
 */
 async function loadECharts(options = {}) {
 	if (isLoaded && window.echarts && window.ecStat) return window.echarts;
 	if (loadingPromise) return loadingPromise;
-	const { version = "5.6.0" } = options;
-	loadingPromise = new Promise((resolve, reject) => {
+	const { version = "5.6.0", retryAttempts = 3, retryDelay = 1e3, timeout = 3e4 } = options;
+	loadingPromise = safeAsync(async () => {
 		if (window.echarts && window.ecStat) {
 			isLoaded = true;
-			resolve(window.echarts);
-			return;
+			return window.echarts;
 		}
-		let scriptsLoaded = 0;
-		const totalScripts = 2;
-		let hasError = false;
-		const onScriptLoad = () => {
-			scriptsLoaded++;
-			if (scriptsLoaded === totalScripts && !hasError) if (window.echarts && window.ecStat) try {
-				window.echarts.registerTransform(window.ecStat.transform.clustering);
-				window.echarts.registerTransform(window.ecStat.transform.regression);
-				window.echarts.registerTransform(window.ecStat.transform.histogram);
-				isLoaded = true;
-				resolve(window.echarts);
-			} catch (error) {
-				reject(new Error("Failed to register ecStat transforms"));
+		let lastError = null;
+		for (let attempt = 0; attempt < retryAttempts; attempt++) try {
+			loadAttempts++;
+			await Promise.all([loadScript(`https://cdn.jsdelivr.net/npm/echarts@${version}/dist/echarts.min.js`, "ECharts", timeout), loadScript("https://cdn.jsdelivr.net/npm/echarts-stat@1.2.0/dist/ecStat.min.js", "ecStat", timeout)]);
+			if (!window.echarts) throw new Error("ECharts library not available after loading");
+			if (!window.ecStat) throw new Error("ecStat library not available after loading");
+			try {
+				if (window.ecStat.transform.clustering) window.echarts.registerTransform(window.ecStat.transform.clustering);
+				if (window.ecStat.transform.regression) window.echarts.registerTransform(window.ecStat.transform.regression);
+				if (window.ecStat.transform.histogram) window.echarts.registerTransform(window.ecStat.transform.histogram);
+			} catch (transformError) {
+				throw new TransformError("ecStat registration", transformError, {
+					echartsVersion: version,
+					attempt: attempt + 1,
+					availableTransforms: Object.keys(window.ecStat?.transform || {})
+				});
 			}
-			else reject(new Error("ECharts or ecStat failed to load properly"));
-		};
-		const onScriptError = (scriptName) => {
-			if (!hasError) {
-				hasError = true;
-				reject(new Error(`Failed to load ${scriptName} from CDN`));
+			isLoaded = true;
+			return window.echarts;
+		} catch (error) {
+			lastError = error;
+			if (attempt < retryAttempts - 1) {
+				console.warn(`ECharts loading attempt ${attempt + 1} failed, retrying in ${retryDelay}ms...`, error);
+				await delay(retryDelay * (attempt + 1));
 			}
-		};
-		const echartsScript = document.createElement("script");
-		echartsScript.src = `https://cdn.jsdelivr.net/npm/echarts@${version}/dist/echarts.min.js`;
-		echartsScript.async = true;
-		echartsScript.onload = onScriptLoad;
-		echartsScript.onerror = () => onScriptError("ECharts");
-		document.head.appendChild(echartsScript);
-		const ecStatScript = document.createElement("script");
-		ecStatScript.src = "https://cdn.jsdelivr.net/npm/echarts-stat@1.2.0/dist/ecStat.min.js";
-		ecStatScript.async = true;
-		ecStatScript.onload = onScriptLoad;
-		ecStatScript.onerror = () => onScriptError("ecStat");
-		document.head.appendChild(ecStatScript);
+		}
+		throw new EChartsLoadError(lastError || new Error("Unknown loading error"), {
+			version,
+			attempts: retryAttempts,
+			totalLoadAttempts: loadAttempts,
+			userAgent: typeof navigator !== "undefined" ? navigator.userAgent : "unknown",
+			online: typeof navigator !== "undefined" ? navigator.onLine : true
+		});
+	}, ChartErrorCode.ECHARTS_LOAD_FAILED, {
+		version,
+		retryAttempts
 	});
 	return loadingPromise;
 }
@@ -69,20 +330,43 @@ function useChartInstance({ containerRef, onChartReady }) {
 		}
 	}, []);
 	const initChart = useCallback(async () => {
-		if (!containerRef.current) return;
+		if (!containerRef.current) {
+			const error$1 = createChartError(new Error("Container element not found"), ChartErrorCode.CONTAINER_NOT_FOUND, { containerRef: !!containerRef.current });
+			setError(error$1);
+			return;
+		}
 		try {
 			const echarts = await loadECharts();
 			disposeChart();
+			if (!containerRef.current) throw new ChartInitError(new Error("Container element was removed during initialization"), { phase: "post-load" });
+			const rect = containerRef.current.getBoundingClientRect();
+			if (rect.width === 0 || rect.height === 0) console.warn("AQC Charts: Container has zero dimensions, chart may not render properly", {
+				width: rect.width,
+				height: rect.height
+			});
 			const chart = echarts.init(containerRef.current, void 0, {
 				renderer: "canvas",
 				useDirtyRect: true
+			});
+			if (!chart) throw new ChartInitError(new Error("ECharts.init returned null or undefined"), {
+				containerDimensions: {
+					width: rect.width,
+					height: rect.height
+				},
+				containerElement: containerRef.current.tagName
 			});
 			chartRef.current = chart;
 			setIsInitialized(true);
 			setError(null);
 			onChartReady?.(chart);
 		} catch (err) {
-			const error$1 = err instanceof Error ? err : new Error("Failed to initialize chart");
+			const error$1 = err instanceof ChartInitError ? err : createChartError(err, ChartErrorCode.CHART_INIT_FAILED, {
+				containerExists: !!containerRef.current,
+				containerDimensions: containerRef.current ? {
+					width: containerRef.current.getBoundingClientRect().width,
+					height: containerRef.current.getBoundingClientRect().height
+				} : null
+			});
 			setError(error$1);
 			setIsInitialized(false);
 			console.error("Failed to initialize ECharts:", error$1);
@@ -171,7 +455,14 @@ function useChartOptions({ chartInstance, option, theme, notMerge = true, lazyUp
 					lazyUpdate
 				});
 			} catch (error) {
-				console.error("Failed to set chart options:", error);
+				const chartError = createChartError(error, ChartErrorCode.CHART_UPDATE_FAILED, {
+					isNewChartInstance,
+					notMerge: isNewChartInstance ? true : notMerge,
+					lazyUpdate,
+					optionKeys: typeof option === "object" && option !== null ? Object.keys(option) : "not-object"
+				});
+				console.error("Failed to set chart options:", chartError.toDetailedString());
+				throw chartError;
 			}
 		}
 	}, [
@@ -192,7 +483,11 @@ function useChartOptions({ chartInstance, option, theme, notMerge = true, lazyUp
 				chartInstance.setOption(themedOption, { notMerge: true });
 			}
 		} catch (error) {
-			console.error("Failed to apply theme:", error);
+			const chartError = createChartError(error, ChartErrorCode.INVALID_THEME, {
+				themeType: typeof theme,
+				themeKeys: typeof theme === "object" ? Object.keys(theme) : "not-object"
+			});
+			console.error("Failed to apply theme:", chartError.toDetailedString());
 		}
 	}, [chartInstance, theme]);
 }
@@ -297,8 +592,166 @@ function useECharts({ option, theme, loading: externalLoading = false, notMerge 
 }
 
 //#endregion
+//#region src/utils/validation.ts
+/**
+* Create a validation result
+*/
+function createValidationResult(isValid = true, errors = [], warnings = []) {
+	return {
+		isValid,
+		errors,
+		warnings
+	};
+}
+/**
+* Combine multiple validation results
+*/
+function combineValidationResults(...results) {
+	const errors = [];
+	const warnings = [];
+	let isValid = true;
+	for (const result of results) {
+		if (!result.isValid) isValid = false;
+		errors.push(...result.errors);
+		warnings.push(...result.warnings);
+	}
+	return {
+		isValid,
+		errors,
+		warnings
+	};
+}
+/**
+* Validate that a value is not null or undefined
+*/
+function validateRequired(value, fieldName) {
+	if (value === null || value === void 0) return createValidationResult(false, [`${fieldName} is required`]);
+	return createValidationResult();
+}
+/**
+* Validate chart data for basic requirements
+*/
+function validateChartData(data) {
+	const result = validateRequired(data, "data");
+	if (!result.isValid) return result;
+	if (!Array.isArray(data)) return createValidationResult(false, ["data must be an array"]);
+	if (data.length === 0) return createValidationResult(false, ["data cannot be empty"]);
+	const warnings = [];
+	if (data.length > 1e4) warnings.push("Large dataset detected (>10k items), consider data aggregation for better performance");
+	const firstItem = data[0];
+	const firstItemType = typeof firstItem;
+	for (let i = 1; i < Math.min(data.length, 100); i++) if (typeof data[i] !== firstItemType) {
+		warnings.push("Inconsistent data types detected in dataset");
+		break;
+	}
+	return createValidationResult(true, [], warnings);
+}
+/**
+* Validate field mapping for ergonomic charts
+*/
+function validateFieldMapping(data, fieldName, fieldValue) {
+	if (!fieldValue) return createValidationResult();
+	const errors = [];
+	const fields = Array.isArray(fieldValue) ? fieldValue : [fieldValue];
+	if (data.length > 0 && typeof data[0] === "object" && data[0] !== null) {
+		const sampleObject = data[0];
+		for (const field of fields) if (!(field in sampleObject)) errors.push(`Field '${field}' not found in data objects. Available fields: ${Object.keys(sampleObject).join(", ")}`);
+	}
+	return createValidationResult(errors.length === 0, errors);
+}
+/**
+* Validate dimensions (width/height)
+*/
+function validateDimensions(width, height) {
+	const errors = [];
+	const warnings = [];
+	if (width !== void 0) {
+		if (typeof width === "number" && width <= 0) errors.push("Width must be a positive number");
+		else if (typeof width === "string" && width !== "100%" && !width.match(/^\d+(?:px|%|em|rem|vw|vh)$/)) warnings.push("Width should be a valid CSS dimension (e.g., \"100%\", \"400px\")");
+	}
+	if (height !== void 0) {
+		if (typeof height === "number" && height <= 0) errors.push("Height must be a positive number");
+		else if (typeof height === "string" && !height.match(/^\d+(?:px|%|em|rem|vw|vh)$/)) warnings.push("Height should be a valid CSS dimension (e.g., \"400px\", \"50vh\")");
+	}
+	return createValidationResult(errors.length === 0, errors, warnings);
+}
+/**
+* Validate theme value
+*/
+function validateTheme(theme) {
+	if (theme === void 0 || theme === null) return createValidationResult();
+	if (typeof theme === "string") {
+		const validThemes = ["light", "dark"];
+		if (!validThemes.includes(theme)) return createValidationResult(false, [`Invalid theme '${theme}'. Valid themes: ${validThemes.join(", ")}`]);
+	} else if (typeof theme === "object") {
+		const themeObj = theme;
+		const warnings = [];
+		if (!themeObj.backgroundColor) warnings.push("Custom theme is missing backgroundColor property");
+		if (!themeObj.color) warnings.push("Custom theme is missing color palette");
+		return createValidationResult(true, [], warnings);
+	} else return createValidationResult(false, ["Theme must be a string or object"]);
+	return createValidationResult();
+}
+/**
+* Main validation function for chart props
+*/
+function validateChartProps(props) {
+	const results = [];
+	if ("data" in props) results.push(validateChartData(props.data));
+	if ("width" in props || "height" in props) results.push(validateDimensions(props.width, props.height));
+	if ("theme" in props) results.push(validateTheme(props.theme));
+	return combineValidationResults(...results);
+}
+/**
+* Utility function to throw DataValidationError if validation fails
+*/
+function assertValidation(result, context) {
+	if (!result.isValid) throw new DataValidationError(result.errors.join("; "), context, ["Check the data format and required fields", "Refer to the documentation for examples"]);
+	if (result.warnings.length > 0) console.warn("AQC Charts validation warnings:", result.warnings);
+}
+/**
+* Development mode validator that logs detailed information
+*/
+function validateInDevelopment(value, validator, context = "component") {
+	{
+		const result = validator(value);
+		if (!result.isValid) console.error(`AQC Charts validation failed in ${context}:`, result.errors);
+		if (result.warnings.length > 0) console.warn(`AQC Charts validation warnings in ${context}:`, result.warnings);
+	}
+	return value;
+}
+
+//#endregion
 //#region src/components/BaseChart.tsx
-const BaseChart = forwardRef(({ title, width = "100%", height = 400, theme = "light", loading: externalLoading = false, notMerge = false, lazyUpdate = true, onChartReady, onClick, onDoubleClick, onMouseOver, onMouseOut, onDataZoom, onBrush, className = "", style = {}, option, renderer = "canvas", locale = "en",...restProps }, ref) => {
+const BaseChart = forwardRef(({ title, width = "100%", height = 400, theme = "light", loading: externalLoading = false, notMerge = false, lazyUpdate = true, onChartReady, onClick, onDoubleClick, onMouseOver, onMouseOut, onDataZoom, onBrush, className = "", style = {}, option, renderer: _renderer = "canvas", locale: _locale = "en",...restProps }, ref) => {
+	useMemo(() => {
+		try {
+			const dimensionResult = validateDimensions(width, height);
+			if (dimensionResult.warnings.length > 0) console.warn("AQC Charts BaseChart validation warnings:", dimensionResult.warnings);
+			assertValidation(dimensionResult, {
+				component: "BaseChart",
+				width,
+				height
+			});
+			const themeResult = validateTheme(theme);
+			if (themeResult.warnings.length > 0) console.warn("AQC Charts BaseChart theme warnings:", themeResult.warnings);
+			assertValidation(themeResult, {
+				component: "BaseChart",
+				theme
+			});
+			if (option && typeof option === "object") {
+				const optionKeys = Object.keys(option);
+				if (optionKeys.length === 0) console.warn("AQC Charts: Empty chart option provided");
+			}
+		} catch (error$1) {
+			console.error("AQC Charts BaseChart validation failed:", error$1);
+		}
+	}, [
+		width,
+		height,
+		theme,
+		option
+	]);
 	const chartOption = useMemo(() => {
 		if (title && typeof title === "string") return {
 			...option,
@@ -408,21 +861,48 @@ const BaseChart = forwardRef(({ title, width = "100%", height = 400, theme = "li
 		height,
 		style
 	]);
-	if (error) return /* @__PURE__ */ jsx("div", {
-		className: `aqc-charts-error ${className}`,
-		style: containerStyle,
-		children: /* @__PURE__ */ jsxs("div", {
-			style: {
-				display: "flex",
-				alignItems: "center",
-				justifyContent: "center",
-				height: "100%",
-				color: "#ff4d4f",
-				fontSize: "14px"
-			},
-			children: ["Error: ", error?.message || "Unknown error"]
-		})
-	});
+	if (error) {
+		const errorMessage = isChartError(error) ? error.toUserMessage() : error?.message || "Unknown error";
+		const isRecoverable = isChartError(error) && error.recoverable;
+		return /* @__PURE__ */ jsx("div", {
+			className: `aqc-charts-error ${className}`,
+			style: containerStyle,
+			children: /* @__PURE__ */ jsxs("div", {
+				style: {
+					display: "flex",
+					flexDirection: "column",
+					alignItems: "center",
+					justifyContent: "center",
+					height: "100%",
+					color: "#ff4d4f",
+					fontSize: "14px",
+					padding: "20px",
+					textAlign: "center"
+				},
+				children: [
+					/* @__PURE__ */ jsx("div", {
+						style: {
+							marginBottom: "8px",
+							fontSize: "16px"
+						},
+						children: isRecoverable ? "⚠️" : "❌"
+					}),
+					/* @__PURE__ */ jsx("div", {
+						style: { marginBottom: isRecoverable ? "12px" : "0" },
+						children: errorMessage
+					}),
+					isRecoverable && /* @__PURE__ */ jsx("div", {
+						style: {
+							fontSize: "12px",
+							color: "#ff7875",
+							fontStyle: "italic"
+						},
+						children: "This error is recoverable. Try refreshing the component."
+					})
+				]
+			})
+		});
+	}
 	return /* @__PURE__ */ jsxs("div", {
 		className: `aqc-charts-container ${className}`,
 		style: containerStyle,
@@ -464,7 +944,7 @@ const BaseChart = forwardRef(({ title, width = "100%", height = 400, theme = "li
 BaseChart.displayName = "BaseChart";
 
 //#endregion
-//#region src/utils/ergonomic.ts
+//#region src/utils/color-palettes.ts
 const COLOR_PALETTES = {
 	default: [
 		"#5470c6",
@@ -522,6 +1002,9 @@ const COLOR_PALETTES = {
 		"#9ACD32"
 	]
 };
+
+//#endregion
+//#region src/utils/data-processing.ts
 function isObjectData(data) {
 	return data.length > 0 && typeof data[0] === "object" && !Array.isArray(data[0]);
 }
@@ -543,6 +1026,17 @@ function detectDataType(values) {
 	if (nonNullValues.some((v) => v instanceof Date || typeof v === "string" && !isNaN(Date.parse(v)))) return "time";
 	return "categorical";
 }
+function mapStrokeStyleToECharts(strokeStyle) {
+	switch (strokeStyle) {
+		case "dashed": return "dashed";
+		case "dotted": return "dotted";
+		case "solid":
+		default: return "solid";
+	}
+}
+
+//#endregion
+//#region src/utils/base-options.ts
 function buildBaseOption(props) {
 	const option = {};
 	const isDark = props.theme === "dark";
@@ -732,6 +1226,9 @@ function buildTooltipOption(config, theme) {
 		textStyle: config.textColor ? { color: config.textColor } : { color: isDark ? "#ffffff" : "#333333" }
 	};
 }
+
+//#endregion
+//#region src/utils/chart-builders/line-chart.ts
 function buildLineChartOption(props) {
 	const baseOption = buildBaseOption(props);
 	let series = [];
@@ -742,11 +1239,14 @@ function buildLineChartOption(props) {
 			type: "line",
 			data: isObjectData(s.data) && props.yField ? s.data.map((item) => item[props.yField]) : s.data,
 			smooth: s.smooth ?? props.smooth,
-			lineStyle: { width: props.strokeWidth },
+			lineStyle: {
+				width: s.strokeWidth ?? props.strokeWidth,
+				type: mapStrokeStyleToECharts(s.strokeStyle ?? props.strokeStyle)
+			},
 			itemStyle: { color: s.color },
 			areaStyle: s.showArea ?? props.showArea ? { opacity: props.areaOpacity || .3 } : void 0,
-			symbol: props.showPoints !== false ? props.pointShape || "circle" : "none",
-			symbolSize: props.pointSize || 4
+			symbol: (s.showPoints ?? props.showPoints) !== false ? s.pointShape ?? props.pointShape ?? "circle" : "none",
+			symbolSize: s.pointSize ?? props.pointSize ?? 4
 		}));
 		if (props.series && props.series[0] && isObjectData(props.series[0].data) && props.xField) xAxisData = props.series[0].data.map((item) => item[props.xField]);
 	} else if (props.data) if (isObjectData(props.data)) if (props.seriesField) {
@@ -756,7 +1256,10 @@ function buildLineChartOption(props) {
 			type: "line",
 			data: groupData.map((item) => item[props.yField]),
 			smooth: props.smooth,
-			lineStyle: { width: props.strokeWidth },
+			lineStyle: {
+				width: props.strokeWidth,
+				type: mapStrokeStyleToECharts(props.strokeStyle)
+			},
 			areaStyle: props.showArea ? { opacity: props.areaOpacity || .3 } : void 0,
 			symbol: props.showPoints !== false ? props.pointShape || "circle" : "none",
 			symbolSize: props.pointSize || 4
@@ -768,7 +1271,10 @@ function buildLineChartOption(props) {
 			type: "line",
 			data: props.data.map((item) => item[field]),
 			smooth: props.smooth,
-			lineStyle: { width: props.strokeWidth },
+			lineStyle: {
+				width: props.strokeWidth,
+				type: mapStrokeStyleToECharts(props.strokeStyle)
+			},
 			areaStyle: props.showArea ? { opacity: props.areaOpacity || .3 } : void 0,
 			symbol: props.showPoints !== false ? props.pointShape || "circle" : "none",
 			symbolSize: props.pointSize || 4
@@ -777,7 +1283,10 @@ function buildLineChartOption(props) {
 			type: "line",
 			data: props.data.map((item) => item[props.yField]),
 			smooth: props.smooth,
-			lineStyle: { width: props.strokeWidth },
+			lineStyle: {
+				width: props.strokeWidth,
+				type: mapStrokeStyleToECharts(props.strokeStyle)
+			},
 			areaStyle: props.showArea ? { opacity: props.areaOpacity || .3 } : void 0,
 			symbol: props.showPoints !== false ? props.pointShape || "circle" : "none",
 			symbolSize: props.pointSize || 4
@@ -788,7 +1297,10 @@ function buildLineChartOption(props) {
 		type: "line",
 		data: props.data,
 		smooth: props.smooth,
-		lineStyle: { width: props.strokeWidth },
+		lineStyle: {
+			width: props.strokeWidth,
+			type: mapStrokeStyleToECharts(props.strokeStyle)
+		},
 		areaStyle: props.showArea ? { opacity: props.areaOpacity || .3 } : void 0,
 		symbol: props.showPoints !== false ? props.pointShape || "circle" : "none",
 		symbolSize: props.pointSize || 4
@@ -810,82 +1322,143 @@ function buildLineChartOption(props) {
 		...props.customOption
 	};
 }
+
+//#endregion
+//#region src/utils/chart-builders/bar-chart.ts
 function buildBarChartOption(props) {
 	const baseOption = buildBaseOption(props);
 	let series = [];
 	let categoryData = [];
+	const createLabelConfig = (seriesData, allSeriesData$1, seriesIndex) => {
+		if (!props.showLabels && !props.showAbsoluteValues && !props.showPercentageLabels) return { show: false };
+		return {
+			show: true,
+			position: props.orientation === "horizontal" ? "right" : "top",
+			formatter: (params) => {
+				const showAbsolute = props.showAbsoluteValues || props.showLabels;
+				const showPercent = props.showPercentageLabels;
+				if (props.stack && showPercent && allSeriesData$1 && typeof seriesIndex === "number") {
+					const dataIndex = params.dataIndex;
+					let total = 0;
+					for (let i = 0; i < allSeriesData$1.length; i++) total += allSeriesData$1[i][dataIndex] || 0;
+					const currentValue = params.value;
+					const percentage = total > 0 ? Math.round(currentValue / total * 100) : 0;
+					if (showAbsolute && showPercent) return `${currentValue} (${percentage}%)`;
+					else if (showPercent) return `${percentage}%`;
+				}
+				if (showAbsolute) return params.value;
+				return params.value;
+			}
+		};
+	};
+	let allSeriesData = [];
 	if (props.series) {
-		series = props.series.map((s) => ({
-			name: s.name,
-			type: "bar",
-			data: isObjectData(s.data) && props.valueField ? s.data.map((item) => item[props.valueField]) : s.data,
-			itemStyle: {
-				color: s.color,
-				borderRadius: props.borderRadius
-			},
-			stack: s.stack || (props.stack ? "defaultStack" : void 0),
-			barWidth: props.barWidth,
-			barGap: props.barGap
-		}));
+		const extractedSeriesData = props.series.map((s) => isObjectData(s.data) && props.valueField ? s.data.map((item) => item[props.valueField]) : s.data);
+		allSeriesData = extractedSeriesData;
+		series = props.series.map((s, index) => {
+			const seriesData = extractedSeriesData[index];
+			return {
+				name: s.name,
+				type: "bar",
+				data: seriesData,
+				itemStyle: {
+					color: s.color,
+					borderRadius: props.borderRadius
+				},
+				stack: s.stack || (props.stack ? "defaultStack" : void 0),
+				barWidth: props.barWidth,
+				barGap: props.barGap,
+				label: createLabelConfig(seriesData, allSeriesData, index)
+			};
+		});
 		if (props.series && props.series[0] && isObjectData(props.series[0].data) && props.categoryField) categoryData = props.series[0].data.map((item) => item[props.categoryField]);
 	} else if (props.data) if (isObjectData(props.data)) if (props.seriesField) {
 		const groups = groupDataByField(props.data, props.seriesField);
-		series = Object.entries(groups).map(([name, groupData]) => ({
-			name,
-			type: "bar",
-			data: groupData.map((item) => item[props.valueField]),
-			stack: props.stack ? "defaultStack" : void 0,
-			barWidth: props.barWidth,
-			barGap: props.barGap,
-			itemStyle: { borderRadius: props.borderRadius }
-		}));
+		const groupEntries = Object.entries(groups);
+		allSeriesData = groupEntries.map(([, groupData]) => groupData.map((item) => item[props.valueField]));
+		series = groupEntries.map(([name, groupData], index) => {
+			const seriesData = groupData.map((item) => item[props.valueField]);
+			return {
+				name,
+				type: "bar",
+				data: seriesData,
+				stack: props.stack ? "defaultStack" : void 0,
+				barWidth: props.barWidth,
+				barGap: props.barGap,
+				itemStyle: { borderRadius: props.borderRadius },
+				label: createLabelConfig(seriesData, allSeriesData, index)
+			};
+		});
 		categoryData = extractUniqueValues(props.data, props.categoryField);
 	} else {
-		if (Array.isArray(props.valueField)) series = props.valueField.map((field) => ({
-			name: field,
-			type: "bar",
-			data: props.data.map((item) => item[field]),
-			stack: props.stack ? "defaultStack" : void 0,
-			barWidth: props.barWidth,
-			barGap: props.barGap,
-			itemStyle: { borderRadius: props.borderRadius }
-		}));
-		else series = [{
-			type: "bar",
-			data: props.data.map((item) => item[props.valueField]),
-			stack: props.stack ? "defaultStack" : void 0,
-			barWidth: props.barWidth,
-			barGap: props.barGap,
-			itemStyle: { borderRadius: props.borderRadius }
-		}];
+		if (Array.isArray(props.valueField)) {
+			allSeriesData = props.valueField.map((field) => props.data.map((item) => item[field]));
+			series = props.valueField.map((field, index) => {
+				const seriesData = props.data.map((item) => item[field]);
+				return {
+					name: field,
+					type: "bar",
+					data: seriesData,
+					stack: props.stack ? "defaultStack" : void 0,
+					barWidth: props.barWidth,
+					barGap: props.barGap,
+					itemStyle: { borderRadius: props.borderRadius },
+					label: createLabelConfig(seriesData, allSeriesData, index)
+				};
+			});
+		} else {
+			const seriesData = props.data.map((item) => item[props.valueField]);
+			allSeriesData = [seriesData];
+			series = [{
+				type: "bar",
+				data: seriesData,
+				stack: props.stack ? "defaultStack" : void 0,
+				barWidth: props.barWidth,
+				barGap: props.barGap,
+				itemStyle: { borderRadius: props.borderRadius },
+				label: createLabelConfig(seriesData, allSeriesData, 0)
+			}];
+		}
 		if (props.data) categoryData = props.data.map((item) => item[props.categoryField]);
 	}
-	else series = [{
-		type: "bar",
-		data: props.data,
-		stack: props.stack ? "defaultStack" : void 0,
-		barWidth: props.barWidth,
-		barGap: props.barGap,
-		itemStyle: { borderRadius: props.borderRadius }
-	}];
+	else {
+		allSeriesData = [props.data];
+		series = [{
+			type: "bar",
+			data: props.data,
+			stack: props.stack ? "defaultStack" : void 0,
+			barWidth: props.barWidth,
+			barGap: props.barGap,
+			itemStyle: { borderRadius: props.borderRadius },
+			label: createLabelConfig(props.data, allSeriesData, 0)
+		}];
+	}
 	if (props.showPercentage && props.stack && series.length > 1) {
 		const totalsByCategory = [];
 		const categoryCount = Math.max(...series.map((s) => s.data.length));
+		const originalData = series.map((s) => [...s.data]);
 		for (let i = 0; i < categoryCount; i++) {
 			let sum = 0;
 			for (const seriesItem of series) sum += seriesItem.data[i] || 0;
 			totalsByCategory.push(sum);
 		}
-		series = series.map((seriesItem) => ({
+		series = series.map((seriesItem, seriesIndex) => ({
 			...seriesItem,
 			data: seriesItem.data.map((value, index) => {
 				const total = totalsByCategory[index];
 				return total === void 0 || total <= 0 ? 0 : value / total;
 			}),
 			label: {
-				show: true,
+				show: props.showLabels || props.showAbsoluteValues || props.showPercentageLabels,
 				position: props.orientation === "horizontal" ? "right" : "top",
-				formatter: (params) => `${Math.round(params.value * 1e3) / 10}%`
+				formatter: (params) => {
+					const originalValue = originalData[seriesIndex]?.[params.dataIndex];
+					const percentageValue = Math.round(params.value * 100);
+					if (props.showAbsoluteValues && props.showPercentageLabels) return `${originalValue} (${percentageValue}%)`;
+					else if (props.showPercentageLabels) return `${percentageValue}%`;
+					else if (props.showAbsoluteValues || props.showLabels) return originalValue;
+					return `${percentageValue}%`;
+				}
 			}
 		}));
 	}
@@ -974,6 +1547,9 @@ function buildBarChartOption(props) {
 		...props.customOption
 	};
 }
+
+//#endregion
+//#region src/utils/chart-builders/pie-chart.ts
 function buildPieChartOption(props) {
 	const baseOption = buildBaseOption(props);
 	let data = [];
@@ -1014,6 +1590,9 @@ function buildPieChartOption(props) {
 		...props.customOption
 	};
 }
+
+//#endregion
+//#region src/utils/chart-builders/scatter-chart.ts
 function buildScatterChartOption(props) {
 	const baseOption = buildBaseOption(props);
 	let series = [];
@@ -1085,353 +1664,9 @@ function buildScatterChartOption(props) {
 		...props.customOption
 	};
 }
-function buildClusterChartOption(props) {
-	const baseOption = buildBaseOption(props);
-	const DEFAULT_CLUSTER_COLORS = [
-		"#37A2DA",
-		"#e06343",
-		"#37a354",
-		"#b55dba",
-		"#b5bd48",
-		"#8378EA",
-		"#96BFFF"
-	];
-	const clusterCount = props.clusterCount || 6;
-	const clusterColors = props.clusterColors || props.colorPalette || DEFAULT_CLUSTER_COLORS;
-	const visualMapPosition = props.visualMapPosition || "left";
-	if (!props.data || props.data.length === 0) return {
-		...baseOption,
-		series: []
-	};
-	let sourceData;
-	if (isObjectData(props.data)) {
-		const xField = props.xField || "x";
-		const yField = props.yField || "y";
-		sourceData = props.data.map((item) => [Number(item[xField]) || 0, Number(item[yField]) || 0]);
-	} else sourceData = props.data.map((point) => {
-		if (Array.isArray(point)) return [Number(point[0]) || 0, Number(point[1]) || 0];
-		return [0, 0];
-	});
-	const outputClusterIndexDimension = 2;
-	const gridLeft = visualMapPosition === "left" ? 120 : 60;
-	console.log("ClusterChart sourceData sample:", sourceData.slice(0, 3));
-	console.log("ClusterChart config:", {
-		clusterCount,
-		outputClusterIndexDimension
-	});
-	const pieces = Array.from({ length: clusterCount }, (_, i) => ({
-		value: i,
-		label: `cluster ${i}`,
-		color: clusterColors[i % clusterColors.length] || clusterColors[0] || DEFAULT_CLUSTER_COLORS[0]
-	}));
-	const chartOption = {
-		...baseOption,
-		dataset: [{ source: sourceData }, { transform: {
-			type: "ecStat:clustering",
-			print: true,
-			config: {
-				clusterCount,
-				outputType: "single",
-				outputClusterIndexDimension
-			}
-		} }],
-		tooltip: props.tooltip ? buildTooltipOption(props.tooltip, props.theme) : {
-			position: "top",
-			formatter: (params) => {
-				const [x, y, cluster] = params.value;
-				const name = params.name || "";
-				return `${name ? name + "<br/>" : ""}X: ${x}<br/>Y: ${y}<br/>Cluster: ${cluster}`;
-			}
-		},
-		visualMap: {
-			type: "piecewise",
-			top: visualMapPosition === "top" ? 10 : visualMapPosition === "bottom" ? "bottom" : "middle",
-			...visualMapPosition === "left" && { left: 10 },
-			...visualMapPosition === "right" && {
-				left: "right",
-				right: 10
-			},
-			...visualMapPosition === "bottom" && { bottom: 10 },
-			min: 0,
-			max: clusterCount,
-			splitNumber: clusterCount,
-			dimension: outputClusterIndexDimension,
-			pieces
-		},
-		grid: { left: gridLeft },
-		xAxis: {
-			...buildAxisOption(props.xAxis, "numeric", props.theme),
-			type: "value",
-			scale: true
-		},
-		yAxis: {
-			...buildAxisOption(props.yAxis, "numeric", props.theme),
-			type: "value",
-			scale: true
-		},
-		series: {
-			type: "scatter",
-			encode: {
-				tooltip: [
-					0,
-					1,
-					2
-				],
-				x: 0,
-				y: 1
-			},
-			symbolSize: props.pointSize || 15,
-			itemStyle: props.itemStyle || { borderColor: "#555" },
-			datasetIndex: 1
-		},
-		...props.customOption
-	};
-	return chartOption;
-}
-function buildCalendarHeatmapOption(props) {
-	const baseOption = buildBaseOption(props);
-	let calendarData = [];
-	if (props.data && props.data.length > 0) if (isObjectData(props.data)) {
-		const dateField = props.dateField || "date";
-		const valueField = props.valueField || "value";
-		calendarData = props.data.map((item) => {
-			const dateValue = item[dateField];
-			const formattedDate = typeof dateValue === "string" ? dateValue : dateValue ? new Date(dateValue).toISOString().split("T")[0] : new Date().toISOString().split("T")[0];
-			return [formattedDate, Number(item[valueField]) || 0];
-		});
-	} else calendarData = props.data.map((item) => {
-		const dateValue = item.date || item[0];
-		const valueValue = item.value || item[1];
-		const formattedDate = typeof dateValue === "string" ? dateValue : dateValue ? new Date(dateValue).toISOString().split("T")[0] : new Date().toISOString().split("T")[0];
-		return [formattedDate, Number(valueValue) || 0];
-	});
-	let years = [];
-	if (props.year) years = Array.isArray(props.year) ? [...props.year] : [props.year];
-	else if (props.range) {
-		const startYear = new Date(props.range[0]).getFullYear();
-		const endYear = new Date(props.range[1]).getFullYear();
-		for (let y = startYear; y <= endYear; y++) years.push(y);
-	} else if (calendarData.length > 0) {
-		const dataYears = new Set(calendarData.map(([date]) => new Date(date).getFullYear()));
-		years = Array.from(dataYears).sort();
-	} else years = [new Date().getFullYear()];
-	const colorScale = props.colorScale || [
-		"#ebedf0",
-		"#c6e48b",
-		"#7bc96f",
-		"#239a3b",
-		"#196127"
-	];
-	const defaultCellSize = props.orient === "vertical" ? [15, 15] : [20, 20];
-	const cellSize = Array.isArray(props.cellSize) ? [props.cellSize[0] || 20, props.cellSize[1] || 20] : props.cellSize ? [props.cellSize, props.cellSize] : defaultCellSize;
-	const values = calendarData.map(([, value]) => value);
-	const minValue = Math.min(...values, 0);
-	const maxValue = Math.max(...values, 1);
-	const hasTitle = !!props.title;
-	const isVertical = props.orient === "vertical";
-	const visualMapLegendConfig = {
-		show: true,
-		position: isVertical ? "right" : "bottom",
-		orientation: isVertical ? "vertical" : "horizontal"
-	};
-	const gridSpacing = calculateGridSpacing(visualMapLegendConfig, hasTitle, false, false);
-	const calendars = years.map((year, index) => {
-		const calendarConfig = {
-			orient: props.orient || "horizontal",
-			range: props.range || year.toString(),
-			cellSize,
-			dayLabel: {
-				show: props.showWeekLabel !== false,
-				firstDay: props.startOfWeek === "monday" ? 1 : 0
-			},
-			monthLabel: { show: props.showMonthLabel !== false },
-			yearLabel: { show: props.showYearLabel !== false },
-			splitLine: {
-				show: true,
-				lineStyle: {
-					color: props.cellBorderColor || "#eee",
-					width: props.cellBorderWidth || 1,
-					type: "solid"
-				}
-			},
-			itemStyle: {
-				borderColor: props.cellBorderColor || "#eee",
-				borderWidth: props.cellBorderWidth || 1
-			}
-		};
-		if (isVertical) {
-			calendarConfig.left = gridSpacing.left;
-			calendarConfig.top = gridSpacing.top;
-			calendarConfig.bottom = gridSpacing.bottom;
-			calendarConfig.right = gridSpacing.right;
-		} else if (years.length > 1) {
-			const availableHeight = 100 - parseInt(gridSpacing.top) - parseInt(gridSpacing.bottom);
-			calendarConfig.top = `${parseInt(gridSpacing.top) + index * (availableHeight / years.length)}%`;
-			calendarConfig.height = `${Math.floor(availableHeight / years.length * .8)}%`;
-			calendarConfig.left = gridSpacing.left;
-			calendarConfig.right = gridSpacing.right;
-		} else {
-			calendarConfig.top = gridSpacing.top;
-			calendarConfig.left = gridSpacing.left;
-			calendarConfig.right = gridSpacing.right;
-			calendarConfig.bottom = gridSpacing.bottom;
-		}
-		return calendarConfig;
-	});
-	const series = years.map((year, index) => ({
-		type: "heatmap",
-		coordinateSystem: "calendar",
-		calendarIndex: index,
-		data: calendarData.filter(([date]) => new Date(date).getFullYear() === year),
-		...props.showValues && { label: {
-			show: true,
-			formatter: props.valueFormat && typeof props.valueFormat === "function" ? (params) => props.valueFormat(params.value[1]) : props.valueFormat && typeof props.valueFormat === "string" ? (params) => {
-				const value = params.value[1];
-				if (props.valueFormat === "{value}") return value.toString();
-				if (props.valueFormat === "{value:,.0f}") return value.toLocaleString();
-				return value.toString();
-			} : void 0
-		} }
-	}));
-	const isDark = props.theme === "dark";
-	return {
-		...baseOption,
-		calendar: calendars,
-		series,
-		visualMap: (() => {
-			return {
-				type: "piecewise",
-				orient: isVertical ? "vertical" : "horizontal",
-				...isVertical ? {
-					right: "5%",
-					top: hasTitle ? gridSpacing.top : "center",
-					itemGap: 5
-				} : {
-					left: "center",
-					bottom: years.length > 1 ? "3%" : "5%"
-				},
-				min: minValue,
-				max: maxValue,
-				splitNumber: props.splitNumber || colorScale.length - 1,
-				inRange: { color: colorScale },
-				textStyle: {
-					color: isDark ? "#cccccc" : "#666666",
-					fontSize: isVertical ? 11 : 12
-				},
-				itemSymbol: "rect",
-				itemWidth: isVertical ? 15 : 20,
-				itemHeight: isVertical ? 12 : 14
-			};
-		})(),
-		tooltip: props.tooltip ? buildTooltipOption(props.tooltip, props.theme) : {
-			trigger: "item",
-			formatter: (params) => {
-				const [date, value] = params.value;
-				const formattedDate = new Date(date).toLocaleDateString();
-				const formattedValue = props.valueFormat && typeof props.valueFormat === "function" ? props.valueFormat(value) : value;
-				return `${formattedDate}<br/>Value: ${formattedValue}`;
-			},
-			textStyle: { color: isDark ? "#ffffff" : "#333333" },
-			backgroundColor: isDark ? "#333333" : "rgba(255, 255, 255, 0.95)",
-			borderColor: isDark ? "#555555" : "#dddddd"
-		},
-		...props.customOption
-	};
-}
-function buildSankeyChartOption(props) {
-	const baseOption = buildBaseOption(props);
-	let nodes = [];
-	let links = [];
-	if (props.nodes && props.links) {
-		nodes = [...props.nodes];
-		links = [...props.links];
-	} else if (props.data) if (Array.isArray(props.data) && isObjectData(props.data)) {
-		const flatData = props.data;
-		const sourceField = props.sourceField || "source";
-		const targetField = props.targetField || "target";
-		const valueField = props.valueField || "value";
-		const nodeSet = new Set();
-		flatData.forEach((item) => {
-			const source = String(item[sourceField] || "");
-			const target = String(item[targetField] || "");
-			if (source) nodeSet.add(source);
-			if (target) nodeSet.add(target);
-		});
-		nodes = Array.from(nodeSet).map((name) => ({ name }));
-		links = flatData.map((item) => ({
-			source: String(item[sourceField] || ""),
-			target: String(item[targetField] || ""),
-			value: Number(item[valueField]) || 0
-		}));
-	} else {
-		const structuredData = props.data;
-		nodes = structuredData.nodes && Array.isArray(structuredData.nodes) ? [...structuredData.nodes] : [];
-		links = structuredData.links && Array.isArray(structuredData.links) ? [...structuredData.links] : [];
-	}
-	const processedNodes = nodes.map((node, index) => {
-		const processedNode = { ...node };
-		if (props.nodeColors && props.nodeColors[index]) processedNode.itemStyle = {
-			...processedNode.itemStyle,
-			color: props.nodeColors[index]
-		};
-		if (props.nodeLabels !== false) processedNode.label = {
-			show: true,
-			position: props.nodeLabelPosition || (props.orient === "vertical" ? "bottom" : "right"),
-			formatter: props.showNodeValues ? `{b}: {c}` : `{b}`,
-			...processedNode.label
-		};
-		else processedNode.label = { show: false };
-		return processedNode;
-	});
-	const processedLinks = links.map((link, index) => {
-		const processedLink = { ...link };
-		processedLink.lineStyle = {
-			opacity: props.linkOpacity || .6,
-			curveness: props.linkCurveness || .5,
-			...processedLink.lineStyle
-		};
-		if (props.linkColors && props.linkColors[index]) processedLink.lineStyle.color = props.linkColors[index];
-		if (props.showLinkLabels) processedLink.label = {
-			show: true,
-			formatter: "{c}",
-			...processedLink.label
-		};
-		return processedLink;
-	});
-	const series = {
-		type: "sankey",
-		layout: props.layout || "none",
-		orient: props.orient || "horizontal",
-		nodeAlign: props.nodeAlign || "justify",
-		nodeGap: props.nodeGap || 8,
-		nodeWidth: props.nodeWidth || 20,
-		layoutIterations: props.iterations || 32,
-		data: processedNodes,
-		links: processedLinks,
-		emphasis: {
-			focus: props.focusMode || "adjacency",
-			...props.blurScope && { blurScope: props.blurScope }
-		},
-		left: "5%",
-		top: props.title ? "15%" : "5%",
-		right: "5%",
-		bottom: "5%"
-	};
-	return {
-		...baseOption,
-		series: [series],
-		legend: props.legend ? buildLegendOption(props.legend, !!props.title, !!props.subtitle, false, props.theme) : void 0,
-		tooltip: props.tooltip ? buildTooltipOption(props.tooltip, props.theme) : {
-			trigger: "item",
-			triggerOn: "mousemove",
-			formatter: (params) => {
-				if (params.dataType === "edge") return `${params.data.source} → ${params.data.target}<br/>Value: ${params.data.value}`;
-				else return `${params.data.name}<br/>Value: ${params.data.value || "N/A"}`;
-			}
-		},
-		...props.customOption
-	};
-}
+
+//#endregion
+//#region src/utils/chart-builders/gantt-chart.ts
 function buildGanttChartOption(props) {
 	const baseOption = buildBaseOption(props);
 	const isDark = props.theme === "dark";
@@ -1670,38 +1905,19 @@ function buildGanttChartOption(props) {
 			} }
 		};
 	});
-	const processedCategories = categories.map((category, index) => ({
-		name: category.name,
-		value: [
-			index,
-			category.name,
-			category.label || category.name
-		],
-		itemStyle: {
-			color: category.color || categoryLabelStyle.backgroundColor,
-			borderColor: category.style?.borderColor || categoryLabelStyle.borderColor,
-			borderWidth: category.style?.borderWidth || categoryLabelStyle.borderWidth
-		},
-		textStyle: {
-			color: category.style?.textColor || categoryLabelStyle.textColor,
-			fontSize: category.style?.fontSize || categoryLabelStyle.fontSize,
-			fontWeight: category.style?.fontWeight || categoryLabelStyle.fontWeight
-		}
-	}));
 	const renderTaskItem = (params, api) => {
 		const categoryIndex = api.value(0);
 		const startTime = api.value(1);
 		const endTime = api.value(2);
-		const taskName = api.value(3);
-		const progress = api.value(6);
+		const _taskName = api.value(3);
+		const _progress = api.value(6);
 		const timeStart = api.coord([startTime, categoryIndex]);
 		const timeEnd = api.coord([endTime, categoryIndex]);
 		const barLength = Math.max(timeEnd[0] - timeStart[0], 2);
 		const barHeight = api.size([0, 1])[1] * (typeof taskBarStyle.height === "number" ? taskBarStyle.height : .6);
 		const x = timeStart[0];
 		const y = timeStart[1] - barHeight / 2;
-		const showText = barLength > taskName.length * 6 + 20;
-		const children = [{
+		return {
 			type: "rect",
 			shape: {
 				x,
@@ -1714,131 +1930,19 @@ function buildGanttChartOption(props) {
 				stroke: api.style().stroke,
 				lineWidth: api.style().lineWidth
 			}
-		}];
-		if (taskBarStyle.showProgress && progress > 0) {
-			const progressWidth = barLength * progress / 100;
-			children.push({
-				type: "rect",
-				shape: {
-					x,
-					y,
-					width: progressWidth,
-					height: barHeight
-				},
-				style: {
-					fill: taskBarStyle.progressStyle?.backgroundColor || "rgba(255, 255, 255, 0.3)",
-					opacity: taskBarStyle.progressStyle?.opacity || .7
-				}
-			});
-		}
-		if (showText && taskBarStyle.textStyle?.position !== "outside") children.push({
-			type: "text",
-			style: {
-				text: taskName,
-				x: x + barLength / 2,
-				y: y + barHeight / 2,
-				textAlign: "center",
-				textVerticalAlign: "middle",
-				fill: taskBarStyle.textStyle?.color || "#ffffff",
-				fontSize: taskBarStyle.textStyle?.fontSize || 12,
-				fontWeight: taskBarStyle.textStyle?.fontWeight || "normal"
-			}
-		});
-		return {
-			type: "group",
-			children
-		};
-	};
-	const renderCategoryLabelItem = (params, api) => {
-		if (!props.showCategoryLabels) return null;
-		const categoryIndex = api.value(0);
-		const categoryName = api.value(1);
-		const categoryLabel = api.value(2);
-		const y = api.coord([0, categoryIndex])[1];
-		const labelWidth = categoryLabelStyle.width;
-		const labelHeight = api.size([0, 1])[1] * .8;
-		const x = categoryLabelStyle.position === "right" ? params.coordSys.x + params.coordSys.width + 10 : 10;
-		if (y < params.coordSys.y - labelHeight || y > params.coordSys.y + params.coordSys.height) return null;
-		const children = [];
-		if (categoryLabelStyle.shape === "rounded" || categoryLabelStyle.shape === "pill") children.push({
-			type: "rect",
-			shape: {
-				x: x - labelWidth / 2,
-				y: y - labelHeight / 2,
-				width: labelWidth,
-				height: labelHeight,
-				r: categoryLabelStyle.shape === "pill" ? labelHeight / 2 : categoryLabelStyle.borderRadius || 4
-			},
-			style: {
-				fill: api.style().fill,
-				stroke: api.style().stroke,
-				lineWidth: api.style().lineWidth
-			}
-		});
-		else children.push({
-			type: "rect",
-			shape: {
-				x: x - labelWidth / 2,
-				y: y - labelHeight / 2,
-				width: labelWidth,
-				height: labelHeight
-			},
-			style: {
-				fill: api.style().fill,
-				stroke: api.style().stroke,
-				lineWidth: api.style().lineWidth
-			}
-		});
-		children.push({
-			type: "text",
-			style: {
-				text: categoryLabel,
-				x,
-				y,
-				textAlign: "center",
-				textVerticalAlign: "middle",
-				fill: categoryLabelStyle.textColor,
-				fontSize: categoryLabelStyle.fontSize,
-				fontWeight: categoryLabelStyle.fontWeight
-			}
-		});
-		return {
-			type: "group",
-			children
 		};
 	};
 	const dataZoomConfig = [];
 	if (props.dataZoom !== false) {
 		const zoomConfig = typeof props.dataZoom === "boolean" ? {} : props.dataZoom || {};
 		const showSlider = zoomConfig.type === "slider" || zoomConfig.type === "both" || zoomConfig.show !== false;
-		const showInside = zoomConfig.type === "inside" || zoomConfig.type === "both";
 		if (showSlider) dataZoomConfig.push({
 			type: "slider",
 			xAxisIndex: 0,
 			height: zoomConfig.height || 20,
 			bottom: 0,
 			start: 0,
-			end: 50,
-			backgroundColor: zoomConfig.backgroundColor || (isDark ? "#2a2a2a" : "#f5f5f5"),
-			borderColor: zoomConfig.borderColor || (isDark ? "#404040" : "#e0e0e0"),
-			handleStyle: {
-				color: zoomConfig.handleStyle?.color || (isDark ? "#666666" : "#cccccc"),
-				borderColor: zoomConfig.handleStyle?.borderColor || (isDark ? "#888888" : "#999999"),
-				...zoomConfig.handleStyle
-			}
-		});
-		if (showInside) dataZoomConfig.push({
-			type: "inside",
-			xAxisIndex: 0,
-			zoomOnMouseWheel: props.allowZoom !== false,
-			moveOnMouseMove: props.allowPan !== false
-		});
-		if (categories.length > 10) dataZoomConfig.push({
-			type: "inside",
-			yAxisIndex: 0,
-			zoomOnMouseWheel: false,
-			moveOnMouseMove: true,
-			moveOnMouseWheel: true
+			end: 50
 		});
 	}
 	const todayMarkerSeries = [];
@@ -1882,26 +1986,6 @@ function buildGanttChartOption(props) {
 					opacity: timelineStyle.gridStyle?.opacity || .8
 				}
 			},
-			axisTick: {
-				show: true,
-				lineStyle: {
-					color: timelineStyle.tickStyle?.color || (isDark ? "#666666" : "#999999"),
-					width: timelineStyle.tickStyle?.width || 1
-				},
-				length: timelineStyle.tickStyle?.length || 5
-			},
-			axisLine: {
-				show: true,
-				lineStyle: { color: timelineStyle.tickStyle?.color || (isDark ? "#666666" : "#999999") }
-			},
-			axisLabel: {
-				rotate: timelineStyle.labelStyle?.rotate || 0,
-				...timelineStyle.labelStyle?.color && { color: timelineStyle.labelStyle.color },
-				...timelineStyle.labelStyle?.fontSize && { fontSize: timelineStyle.labelStyle.fontSize },
-				...timelineStyle.labelStyle?.fontWeight && { fontWeight: timelineStyle.labelStyle.fontWeight },
-				...timelineStyle.labelStyle?.format && typeof timelineStyle.labelStyle.format === "string" && { formatter: timelineStyle.labelStyle.format },
-				...timelineStyle.labelStyle?.format && typeof timelineStyle.labelStyle.format === "function" && { formatter: (value) => timelineStyle.labelStyle.format(new Date(value)) }
-			},
 			...props.timeRange && {
 				min: new Date(props.timeRange[0]).getTime(),
 				max: new Date(props.timeRange[1]).getTime()
@@ -1917,41 +2001,28 @@ function buildGanttChartOption(props) {
 			inverse: true
 		},
 		...dataZoomConfig.length > 0 && { dataZoom: dataZoomConfig },
-		series: [
-			{
-				type: "custom",
-				renderItem: renderTaskItem,
-				encode: {
-					x: [1, 2],
-					y: 0,
-					tooltip: [
-						0,
-						1,
-						2,
-						3,
-						4
-					]
-				},
-				data: processedTasks,
-				z: 10
+		series: [{
+			type: "custom",
+			renderItem: renderTaskItem,
+			encode: {
+				x: [1, 2],
+				y: 0,
+				tooltip: [
+					0,
+					1,
+					2,
+					3,
+					4
+				]
 			},
-			{
-				type: "custom",
-				renderItem: renderCategoryLabelItem,
-				encode: {
-					x: -1,
-					y: 0
-				},
-				data: processedCategories,
-				z: 5
-			},
-			...todayMarkerSeries
-		],
+			data: processedTasks,
+			z: 10
+		}, ...todayMarkerSeries],
 		tooltip: props.tooltip ? buildTooltipOption(props.tooltip, props.theme) : {
 			trigger: "item",
 			formatter: (params) => {
 				if (params.seriesIndex === 0) {
-					const [categoryIndex, startTime, endTime, taskName, taskId] = params.value;
+					const [categoryIndex, startTime, endTime, taskName, _taskId] = params.value;
 					const start = new Date(startTime).toLocaleString();
 					const end = new Date(endTime).toLocaleString();
 					const duration = Math.round((endTime - startTime) / (1e3 * 60 * 60 * 24 * 10)) / 100;
@@ -1965,15 +2036,274 @@ function buildGanttChartOption(props) {
           `;
 				}
 				return "";
-			},
-			backgroundColor: isDark ? "rgba(50, 50, 50, 0.95)" : "rgba(255, 255, 255, 0.95)",
-			borderColor: isDark ? "#666" : "#ddd",
-			textStyle: { color: isDark ? "#fff" : "#333" }
+			}
 		},
 		legend: props.legend ? buildLegendOption(props.legend, !!props.title, !!props.subtitle, false, props.theme) : void 0,
 		...props.customOption
 	};
 }
+
+//#endregion
+//#region src/utils/chart-builders/cluster-chart.ts
+function buildClusterChartOption(props) {
+	const baseOption = buildBaseOption(props);
+	const DEFAULT_CLUSTER_COLORS = [
+		"#37A2DA",
+		"#e06343",
+		"#37a354",
+		"#b55dba",
+		"#b5bd48",
+		"#8378EA",
+		"#96BFFF"
+	];
+	const clusterCount = props.clusterCount || 6;
+	const clusterColors = props.clusterColors || props.colorPalette || DEFAULT_CLUSTER_COLORS;
+	const visualMapPosition = props.visualMapPosition || "left";
+	if (!props.data || props.data.length === 0) return {
+		...baseOption,
+		series: []
+	};
+	let sourceData;
+	if (isObjectData(props.data)) {
+		const xField = props.xField || "x";
+		const yField = props.yField || "y";
+		sourceData = props.data.map((item) => [Number(item[xField]) || 0, Number(item[yField]) || 0]);
+	} else sourceData = props.data.map((point) => {
+		if (Array.isArray(point)) return [Number(point[0]) || 0, Number(point[1]) || 0];
+		return [0, 0];
+	});
+	const outputClusterIndexDimension = 2;
+	const gridLeft = visualMapPosition === "left" ? 120 : 60;
+	console.log("ClusterChart sourceData sample:", sourceData.slice(0, 3));
+	console.log("ClusterChart config:", {
+		clusterCount,
+		outputClusterIndexDimension
+	});
+	const pieces = Array.from({ length: clusterCount }, (_, i) => ({
+		value: i,
+		label: `cluster ${i}`,
+		color: clusterColors[i % clusterColors.length] || clusterColors[0] || DEFAULT_CLUSTER_COLORS[0]
+	}));
+	const chartOption = {
+		...baseOption,
+		dataset: [{ source: sourceData }, { transform: {
+			type: "ecStat:clustering",
+			print: true,
+			config: {
+				clusterCount,
+				outputType: "single",
+				outputClusterIndexDimension
+			}
+		} }],
+		tooltip: props.tooltip ? buildTooltipOption(props.tooltip, props.theme) : {
+			position: "top",
+			formatter: (params) => {
+				const [x, y, cluster] = params.value;
+				const name = params.name || "";
+				return `${name ? name + "<br/>" : ""}X: ${x}<br/>Y: ${y}<br/>Cluster: ${cluster}`;
+			}
+		},
+		visualMap: {
+			type: "piecewise",
+			top: visualMapPosition === "top" ? 10 : visualMapPosition === "bottom" ? "bottom" : "middle",
+			...visualMapPosition === "left" && { left: 10 },
+			...visualMapPosition === "right" && {
+				left: "right",
+				right: 10
+			},
+			...visualMapPosition === "bottom" && { bottom: 10 },
+			min: 0,
+			max: clusterCount,
+			splitNumber: clusterCount,
+			dimension: outputClusterIndexDimension,
+			pieces
+		},
+		grid: { left: gridLeft },
+		xAxis: {
+			...buildAxisOption(props.xAxis, "numeric", props.theme),
+			type: "value",
+			scale: true
+		},
+		yAxis: {
+			...buildAxisOption(props.yAxis, "numeric", props.theme),
+			type: "value",
+			scale: true
+		},
+		series: {
+			type: "scatter",
+			encode: {
+				tooltip: [
+					0,
+					1,
+					2
+				],
+				x: 0,
+				y: 1
+			},
+			symbolSize: props.pointSize || 15,
+			itemStyle: props.itemStyle || { borderColor: "#555" },
+			datasetIndex: 1
+		},
+		...props.customOption
+	};
+	return chartOption;
+}
+
+//#endregion
+//#region src/utils/chart-builders/calendar-heatmap-chart.ts
+function buildCalendarHeatmapOption(props) {
+	const baseOption = buildBaseOption(props);
+	let calendarData = [];
+	if (props.data && props.data.length > 0) if (isObjectData(props.data)) {
+		const dateField = props.dateField || "date";
+		const valueField = props.valueField || "value";
+		calendarData = props.data.map((item) => {
+			const dateValue = item[dateField];
+			const formattedDate = typeof dateValue === "string" ? dateValue : dateValue ? new Date(dateValue).toISOString().split("T")[0] : new Date().toISOString().split("T")[0];
+			return [formattedDate, Number(item[valueField]) || 0];
+		});
+	} else calendarData = props.data.map((item) => {
+		const dateValue = item.date || item[0];
+		const valueValue = item.value || item[1];
+		const formattedDate = typeof dateValue === "string" ? dateValue : dateValue ? new Date(dateValue).toISOString().split("T")[0] : new Date().toISOString().split("T")[0];
+		return [formattedDate, Number(valueValue) || 0];
+	});
+	let years = [];
+	if (props.year) years = Array.isArray(props.year) ? [...props.year] : [props.year];
+	else if (props.range) {
+		const startYear = new Date(props.range[0]).getFullYear();
+		const endYear = new Date(props.range[1]).getFullYear();
+		for (let y = startYear; y <= endYear; y++) years.push(y);
+	} else if (calendarData.length > 0) {
+		const dataYears = new Set(calendarData.map(([date]) => new Date(date).getFullYear()));
+		years = Array.from(dataYears).sort();
+	} else years = [new Date().getFullYear()];
+	const colorScale = props.colorScale || [
+		"#ebedf0",
+		"#c6e48b",
+		"#7bc96f",
+		"#239a3b",
+		"#196127"
+	];
+	const defaultCellSize = props.orient === "vertical" ? [15, 15] : [20, 20];
+	const cellSize = Array.isArray(props.cellSize) ? [props.cellSize[0] || 20, props.cellSize[1] || 20] : props.cellSize ? [props.cellSize, props.cellSize] : defaultCellSize;
+	const values = calendarData.map(([, value]) => value);
+	const minValue = Math.min(...values, 0);
+	const maxValue = Math.max(...values, 1);
+	const hasTitle = !!props.title;
+	const isVertical = props.orient === "vertical";
+	const visualMapLegendConfig = {
+		show: true,
+		position: isVertical ? "right" : "bottom",
+		orientation: isVertical ? "vertical" : "horizontal"
+	};
+	const gridSpacing = calculateGridSpacing(visualMapLegendConfig, hasTitle, false, false);
+	const calendars = years.map((year, index) => {
+		const calendarConfig = {
+			orient: props.orient || "horizontal",
+			range: props.range || year.toString(),
+			cellSize,
+			dayLabel: {
+				show: props.showWeekLabel !== false,
+				firstDay: props.startOfWeek === "monday" ? 1 : 0
+			},
+			monthLabel: { show: props.showMonthLabel !== false },
+			yearLabel: { show: props.showYearLabel !== false },
+			splitLine: {
+				show: true,
+				lineStyle: {
+					color: props.cellBorderColor || "#eee",
+					width: props.cellBorderWidth || 1,
+					type: "solid"
+				}
+			},
+			itemStyle: {
+				borderColor: props.cellBorderColor || "#eee",
+				borderWidth: props.cellBorderWidth || 1
+			}
+		};
+		if (isVertical) {
+			calendarConfig.left = gridSpacing.left;
+			calendarConfig.top = gridSpacing.top;
+			calendarConfig.bottom = gridSpacing.bottom;
+			calendarConfig.right = gridSpacing.right;
+		} else if (years.length > 1) {
+			const availableHeight = 100 - parseInt(gridSpacing.top) - parseInt(gridSpacing.bottom);
+			calendarConfig.top = `${parseInt(gridSpacing.top) + index * (availableHeight / years.length)}%`;
+			calendarConfig.height = `${Math.floor(availableHeight / years.length * .8)}%`;
+			calendarConfig.left = gridSpacing.left;
+			calendarConfig.right = gridSpacing.right;
+		} else {
+			calendarConfig.top = gridSpacing.top;
+			calendarConfig.left = gridSpacing.left;
+			calendarConfig.right = gridSpacing.right;
+			calendarConfig.bottom = gridSpacing.bottom;
+		}
+		return calendarConfig;
+	});
+	const series = years.map((year, index) => ({
+		type: "heatmap",
+		coordinateSystem: "calendar",
+		calendarIndex: index,
+		data: calendarData.filter(([date]) => new Date(date).getFullYear() === year),
+		...props.showValues && { label: {
+			show: true,
+			formatter: props.valueFormat && typeof props.valueFormat === "function" ? (params) => props.valueFormat(params.value[1]) : props.valueFormat && typeof props.valueFormat === "string" ? (params) => {
+				const value = params.value[1];
+				if (props.valueFormat === "{value}") return value.toString();
+				if (props.valueFormat === "{value:,.0f}") return value.toLocaleString();
+				return value.toString();
+			} : void 0
+		} }
+	}));
+	const isDark = props.theme === "dark";
+	return {
+		...baseOption,
+		calendar: calendars,
+		series,
+		visualMap: (() => {
+			return {
+				type: "piecewise",
+				orient: isVertical ? "vertical" : "horizontal",
+				...isVertical ? {
+					right: "5%",
+					top: hasTitle ? gridSpacing.top : "center",
+					itemGap: 5
+				} : {
+					left: "center",
+					bottom: years.length > 1 ? "3%" : "5%"
+				},
+				min: minValue,
+				max: maxValue,
+				splitNumber: props.splitNumber || colorScale.length - 1,
+				inRange: { color: colorScale },
+				textStyle: {
+					color: isDark ? "#cccccc" : "#666666",
+					fontSize: isVertical ? 11 : 12
+				},
+				itemSymbol: "rect",
+				itemWidth: isVertical ? 15 : 20,
+				itemHeight: isVertical ? 12 : 14
+			};
+		})(),
+		tooltip: props.tooltip ? buildTooltipOption(props.tooltip, props.theme) : {
+			trigger: "item",
+			formatter: (params) => {
+				const [date, value] = params.value;
+				const formattedDate = new Date(date).toLocaleDateString();
+				const formattedValue = props.valueFormat && typeof props.valueFormat === "function" ? props.valueFormat(value) : value;
+				return `${formattedDate}<br/>Value: ${formattedValue}`;
+			},
+			textStyle: { color: isDark ? "#ffffff" : "#333333" },
+			backgroundColor: isDark ? "#333333" : "rgba(255, 255, 255, 0.95)",
+			borderColor: isDark ? "#555555" : "#dddddd"
+		},
+		...props.customOption
+	};
+}
+
+//#endregion
+//#region src/utils/chart-builders/regression-chart.ts
 function buildRegressionChartOption(props) {
 	const baseOption = buildBaseOption(props);
 	if (!props.data || props.data.length === 0) return {
@@ -1994,7 +2324,7 @@ function buildRegressionChartOption(props) {
 	const showPoints = props.showPoints !== false;
 	const showLine = props.showLine !== false;
 	const showEquation = props.showEquation !== false;
-	const showRSquared = props.showRSquared !== false;
+	const _showRSquared = props.showRSquared !== false;
 	const pointSize = props.pointSize || 8;
 	const pointShape = props.pointShape || "circle";
 	const pointOpacity = props.pointOpacity || .7;
@@ -2101,6 +2431,103 @@ function buildRegressionChartOption(props) {
 }
 
 //#endregion
+//#region src/utils/chart-builders/sankey-chart.ts
+function buildSankeyChartOption(props) {
+	const baseOption = buildBaseOption(props);
+	let nodes = [];
+	let links = [];
+	if (props.nodes && props.links) {
+		nodes = [...props.nodes];
+		links = [...props.links];
+	} else if (props.data) if (Array.isArray(props.data) && isObjectData(props.data)) {
+		const flatData = props.data;
+		const sourceField = props.sourceField || "source";
+		const targetField = props.targetField || "target";
+		const valueField = props.valueField || "value";
+		const nodeSet = new Set();
+		flatData.forEach((item) => {
+			const source = String(item[sourceField] || "");
+			const target = String(item[targetField] || "");
+			if (source) nodeSet.add(source);
+			if (target) nodeSet.add(target);
+		});
+		nodes = Array.from(nodeSet).map((name) => ({ name }));
+		links = flatData.map((item) => ({
+			source: String(item[sourceField] || ""),
+			target: String(item[targetField] || ""),
+			value: Number(item[valueField]) || 0
+		}));
+	} else {
+		const structuredData = props.data;
+		nodes = structuredData.nodes && Array.isArray(structuredData.nodes) ? [...structuredData.nodes] : [];
+		links = structuredData.links && Array.isArray(structuredData.links) ? [...structuredData.links] : [];
+	}
+	const processedNodes = nodes.map((node, index) => {
+		const processedNode = { ...node };
+		if (props.nodeColors && props.nodeColors[index]) processedNode.itemStyle = {
+			...processedNode.itemStyle,
+			color: props.nodeColors[index]
+		};
+		if (props.nodeLabels !== false) processedNode.label = {
+			show: true,
+			position: props.nodeLabelPosition || (props.orient === "vertical" ? "bottom" : "right"),
+			formatter: props.showNodeValues ? `{b}: {c}` : `{b}`,
+			...processedNode.label
+		};
+		else processedNode.label = { show: false };
+		return processedNode;
+	});
+	const processedLinks = links.map((link, index) => {
+		const processedLink = { ...link };
+		processedLink.lineStyle = {
+			opacity: props.linkOpacity || .6,
+			curveness: props.linkCurveness || .5,
+			...processedLink.lineStyle
+		};
+		if (props.linkColors && props.linkColors[index]) processedLink.lineStyle.color = props.linkColors[index];
+		if (props.showLinkLabels) processedLink.label = {
+			show: true,
+			formatter: "{c}",
+			...processedLink.label
+		};
+		return processedLink;
+	});
+	const series = {
+		type: "sankey",
+		layout: props.layout || "none",
+		orient: props.orient || "horizontal",
+		nodeAlign: props.nodeAlign || "justify",
+		nodeGap: props.nodeGap || 8,
+		nodeWidth: props.nodeWidth || 20,
+		layoutIterations: props.iterations || 32,
+		data: processedNodes,
+		links: processedLinks,
+		emphasis: {
+			focus: props.focusMode || "adjacency",
+			...props.blurScope && { blurScope: props.blurScope }
+		},
+		left: "5%",
+		top: props.title ? "15%" : "5%",
+		right: "5%",
+		bottom: "5%"
+	};
+	return {
+		...baseOption,
+		series: [series],
+		legend: props.legend ? buildLegendOption(props.legend, !!props.title, !!props.subtitle, false, props.theme) : void 0,
+		tooltip: props.tooltip ? buildTooltipOption(props.tooltip, props.theme) : {
+			trigger: "item",
+			triggerOn: "mousemove",
+			formatter: (params) => {
+				if (params.dataType === "edge") return `${params.data.source} → ${params.data.target}<br/>Value: ${params.data.value}`;
+				else return `${params.data.name}<br/>Value: ${params.data.value || "N/A"}`;
+			}
+		},
+		...props.customOption
+	};
+}
+
+//#endregion
 //#region src/components/LineChart.tsx
 /**
 * Ergonomic LineChart component with intuitive props
@@ -2139,7 +2566,7 @@ function buildRegressionChartOption(props) {
 *   yField="value"
 * />
 */
-const LineChart = forwardRef(({ width = "100%", height = 400, className, style, data, xField = "x", yField = "y", seriesField, series, theme = "light", colorPalette, backgroundColor, title, subtitle, titlePosition = "center", smooth = false, strokeWidth = 2, strokeStyle = "solid", showPoints = true, pointSize = 4, pointShape = "circle", showArea = false, areaOpacity = .3, areaGradient = false, xAxis, yAxis, legend, tooltip, zoom = false, pan = false, brush = false, loading = false, disabled = false, animate = true, animationDuration, onChartReady, onDataPointClick, onDataPointHover, customOption, responsive = true,...restProps }, ref) => {
+const LineChart = forwardRef(({ width = "100%", height = 400, className, style, data, xField = "x", yField = "y", seriesField, series, theme = "light", colorPalette, backgroundColor, title, subtitle, titlePosition = "center", smooth = false, strokeWidth = 2, strokeStyle = "solid", showPoints = true, pointSize = 4, pointShape = "circle", showArea = false, areaOpacity = .3, areaGradient = false, xAxis, yAxis, legend, tooltip, zoom = false, pan = false, brush = false, loading = false, disabled: _disabled = false, animate = true, animationDuration, onChartReady, onDataPointClick, onDataPointHover, customOption, responsive: _responsive = true,...restProps }, ref) => {
 	const chartOption = useMemo(() => {
 		return buildLineChartOption({
 			data: data || void 0,
@@ -2424,7 +2851,7 @@ LineChart.displayName = "LineChart";
 *   valueField="value"
 * />
 */
-const BarChart = forwardRef(({ width = "100%", height = 400, className, style, data, categoryField = "category", valueField = "value", seriesField, series, theme = "light", colorPalette, backgroundColor, title, subtitle, titlePosition = "center", orientation = "vertical", barWidth, barGap, borderRadius = 0, stack = false, stackType = "normal", showPercentage = false, xAxis, yAxis, legend, tooltip, sortBy = "none", sortOrder = "asc", loading = false, disabled = false, animate = true, animationDuration, onChartReady, onDataPointClick, onDataPointHover, customOption, responsive = true,...restProps }, ref) => {
+const BarChart = forwardRef(({ width = "100%", height = 400, className, style, data, categoryField = "category", valueField = "value", seriesField, series, theme = "light", colorPalette, backgroundColor, title, subtitle, titlePosition = "center", orientation = "vertical", barWidth, barGap, borderRadius = 0, stack = false, stackType = "normal", showPercentage = false, showLabels = false, showAbsoluteValues = false, showPercentageLabels = false, xAxis, yAxis, legend, tooltip, sortBy = "none", sortOrder = "asc", loading = false, disabled: _disabled = false, animate = true, animationDuration, onChartReady, onDataPointClick, onDataPointHover, customOption, responsive: _responsive = true,...restProps }, ref) => {
 	const chartOption = useMemo(() => {
 		return buildBarChartOption({
 			data: data || void 0,
@@ -2445,6 +2872,9 @@ const BarChart = forwardRef(({ width = "100%", height = 400, className, style, d
 			stack,
 			stackType,
 			showPercentage,
+			showLabels,
+			showAbsoluteValues,
+			showPercentageLabels,
 			xAxis: xAxis || void 0,
 			yAxis: yAxis || void 0,
 			legend,
@@ -2474,6 +2904,9 @@ const BarChart = forwardRef(({ width = "100%", height = 400, className, style, d
 		stack,
 		stackType,
 		showPercentage,
+		showLabels,
+		showAbsoluteValues,
+		showPercentageLabels,
 		xAxis,
 		yAxis,
 		legend,
@@ -2552,6 +2985,9 @@ const BarChart = forwardRef(({ width = "100%", height = 400, className, style, d
 			stack,
 			stackType,
 			showPercentage,
+			showLabels,
+			showAbsoluteValues,
+			showPercentageLabels,
 			xAxis: xAxis || void 0,
 			yAxis: yAxis || void 0,
 			legend,
@@ -2692,7 +3128,7 @@ BarChart.displayName = "BarChart";
 *   showLabels
 * />
 */
-const PieChart = forwardRef(({ width = "100%", height = 400, className, style, data, nameField = "name", valueField = "value", theme = "light", colorPalette, backgroundColor, title, subtitle, titlePosition = "center", radius = 75, startAngle = 90, roseType = false, showLabels = true, labelPosition = "outside", showValues = false, showPercentages = true, labelFormat, legend, tooltip, selectedMode = false, emphasis = true, loading = false, disabled = false, animate = true, animationDuration, onChartReady, onDataPointClick, onDataPointHover, customOption, responsive = true,...restProps }, ref) => {
+const PieChart = forwardRef(({ width = "100%", height = 400, className, style, data, nameField = "name", valueField = "value", theme = "light", colorPalette, backgroundColor, title, subtitle, titlePosition = "center", radius = 75, startAngle = 90, roseType = false, showLabels = true, labelPosition = "outside", showValues = false, showPercentages = true, labelFormat, legend, tooltip, selectedMode = false, emphasis = true, loading = false, disabled: _disabled = false, animate = true, animationDuration, onChartReady, onDataPointClick, onDataPointHover, customOption, responsive: _responsive = true,...restProps }, ref) => {
 	const chartOption = useMemo(() => {
 		return buildPieChartOption({
 			data,
@@ -2985,7 +3421,7 @@ PieChart.displayName = "PieChart";
 *   yField="y"
 * />
 */
-const ScatterChart = forwardRef(({ width = "100%", height = 400, className, style, data, xField = "x", yField = "y", sizeField, colorField, seriesField, series, theme = "light", colorPalette, backgroundColor, title, subtitle, titlePosition = "center", pointSize = 10, pointShape = "circle", pointOpacity = .8, xAxis, yAxis, legend, tooltip, showTrendline = false, trendlineType = "linear", loading = false, disabled = false, animate = true, animationDuration, onChartReady, onDataPointClick, onDataPointHover, customOption, responsive = true,...restProps }, ref) => {
+const ScatterChart = forwardRef(({ width = "100%", height = 400, className, style, data, xField = "x", yField = "y", sizeField, colorField, seriesField, series, theme = "light", colorPalette, backgroundColor, title, subtitle, titlePosition = "center", pointSize = 10, pointShape = "circle", pointOpacity = .8, xAxis, yAxis, legend, tooltip, showTrendline = false, trendlineType = "linear", loading = false, disabled: _disabled = false, animate = true, animationDuration, onChartReady, onDataPointClick, onDataPointHover, customOption, responsive: _responsive = true,...restProps }, ref) => {
 	const chartOption = useMemo(() => {
 		const optionProps = {
 			data: data || [],
@@ -3243,7 +3679,7 @@ ScatterChart.displayName = "ScatterChart";
 *   visualMapPosition="right"
 * />
 */
-const ClusterChart = forwardRef(({ width = "100%", height = 400, className, style, data, xField = "x", yField = "y", nameField, clusterCount = 6, clusterMethod = "kmeans", theme = "light", colorPalette, backgroundColor, title, subtitle, titlePosition = "center", pointSize = 15, pointOpacity = .8, showClusterCenters = false, centerSymbol = "diamond", centerSize = 20, clusterColors, showVisualMap = true, visualMapPosition = "left", xAxis, yAxis, legend, tooltip, loading = false, disabled = false, animate = true, animationDuration, onChartReady, onDataPointClick, onDataPointHover, customOption, responsive = true,...restProps }, ref) => {
+const ClusterChart = forwardRef(({ width = "100%", height = 400, className, style, data, xField = "x", yField = "y", nameField, clusterCount = 6, clusterMethod = "kmeans", theme = "light", colorPalette, backgroundColor, title, subtitle, titlePosition = "center", pointSize = 15, pointOpacity = .8, showClusterCenters = false, centerSymbol = "diamond", centerSize = 20, clusterColors, showVisualMap = true, visualMapPosition = "left", xAxis, yAxis, legend, tooltip, loading = false, disabled: _disabled = false, animate = true, animationDuration, onChartReady, onDataPointClick, onDataPointHover, customOption, responsive: _responsive = true,...restProps }, ref) => {
 	const dataKey = useMemo(() => JSON.stringify(data), [data]);
 	const chartOption = useMemo(() => {
 		const optionProps = {
@@ -3510,7 +3946,7 @@ ClusterChart.displayName = "ClusterChart";
 *   showWeekLabel={false}
 * />
 */
-const CalendarHeatmapChart = forwardRef(({ width = "100%", height = 400, className, style, data, dateField = "date", valueField = "value", theme = "light", colorPalette, backgroundColor, title, subtitle, titlePosition = "center", year, range, startOfWeek = "sunday", cellSize, colorScale, showWeekLabel = true, showMonthLabel = true, showYearLabel = true, valueFormat, showValues = false, cellBorderColor, cellBorderWidth, splitNumber, orient = "horizontal", monthGap, yearGap, legend, tooltip, loading = false, disabled = false, animate = true, animationDuration, onChartReady, onDataPointClick, onDataPointHover, customOption, responsive = true,...restProps }, ref) => {
+const CalendarHeatmapChart = forwardRef(({ width = "100%", height = 400, className, style, data, dateField = "date", valueField = "value", theme = "light", colorPalette, backgroundColor, title, subtitle, titlePosition = "center", year, range, startOfWeek = "sunday", cellSize, colorScale, showWeekLabel = true, showMonthLabel = true, showYearLabel = true, valueFormat, showValues = false, cellBorderColor, cellBorderWidth, splitNumber, orient = "horizontal", monthGap, yearGap, legend, tooltip, loading = false, disabled: _disabled = false, animate = true, animationDuration, onChartReady, onDataPointClick, onDataPointHover, customOption, responsive: _responsive = true,...restProps }, ref) => {
 	const chartOption = useMemo(() => {
 		return buildCalendarHeatmapOption({
 			data: data || [],
@@ -3803,7 +4239,7 @@ CalendarHeatmapChart.displayName = "CalendarHeatmapChart";
 *   showLinkLabels
 * />
 */
-const SankeyChart = forwardRef(({ width = "100%", height = 400, className, style, data, sourceField = "source", targetField = "target", valueField = "value", nodeNameField, nodes, links, theme = "light", colorPalette, backgroundColor, title, subtitle, titlePosition = "center", layout = "none", orient = "horizontal", nodeAlign = "justify", nodeGap = 8, nodeWidth = 20, iterations = 32, nodeColors, showNodeValues = false, nodeLabels = true, nodeLabelPosition, linkColors, linkOpacity = .6, linkCurveness = .5, showLinkLabels = false, focusMode = "adjacency", blurScope, legend, tooltip, loading = false, disabled = false, animate = true, animationDuration, onChartReady, onDataPointClick, onDataPointHover, customOption, responsive = true,...restProps }, ref) => {
+const SankeyChart = forwardRef(({ width = "100%", height = 400, className, style, data, sourceField = "source", targetField = "target", valueField = "value", nodeNameField, nodes, links, theme = "light", colorPalette, backgroundColor, title, subtitle, titlePosition = "center", layout = "none", orient = "horizontal", nodeAlign = "justify", nodeGap = 8, nodeWidth = 20, iterations = 32, nodeColors, showNodeValues = false, nodeLabels = true, nodeLabelPosition, linkColors, linkOpacity = .6, linkCurveness = .5, showLinkLabels = false, focusMode = "adjacency", blurScope, legend, tooltip, loading = false, disabled: _disabled = false, animate = true, animationDuration, onChartReady, onDataPointClick, onDataPointHover, customOption, responsive: _responsive = true,...restProps }, ref) => {
 	const chartOption = useMemo(() => {
 		return buildSankeyChartOption({
 			data: data || void 0,
@@ -4137,7 +4573,7 @@ SankeyChart.displayName = "SankeyChart";
 *   onTaskClick={(task) => console.log('Task clicked:', task)}
 * />
 */
-const GanttChart = forwardRef(({ width = "100%", height = 600, className, style, data, idField = "id", nameField = "name", categoryField = "category", startTimeField = "startTime", endTimeField = "endTime", colorField = "color", statusField = "status", priorityField = "priority", progressField = "progress", assigneeField = "assignee", tasks, categories, theme = "light", colorPalette, backgroundColor, title, subtitle, titlePosition = "center", categoryWidth = 120, taskHeight = .6, categorySpacing = 2, groupSpacing = 8, taskBarStyle, statusStyles, priorityStyles, categoryLabelStyle, showCategoryLabels = true, categoryColors, timelineStyle, timeRange, timeFormat, dataZoom = true, allowPan = true, allowZoom = true, initialZoomLevel, draggable = false, resizable = false, selectable = false, showTaskTooltips = true, showDependencies = false, showMilestones = false, milestoneStyle, todayMarker = false, showProgress = false, showTaskProgress = true, progressStyle, groupByCategory = false, groupByAssignee = false, filterByStatus, filterByPriority, sortBy, sortOrder = "asc", legend, tooltip, loading = false, disabled = false, animate = true, animationDuration, onChartReady, onDataPointClick, onDataPointHover, onTaskClick, onTaskDrag, onTaskResize, onCategoryClick, onTimeRangeChange, customOption, responsive = true,...restProps }, ref) => {
+const GanttChart = forwardRef(({ width = "100%", height = 600, className, style, data, idField = "id", nameField = "name", categoryField = "category", startTimeField = "startTime", endTimeField = "endTime", colorField = "color", statusField = "status", priorityField = "priority", progressField = "progress", assigneeField = "assignee", tasks, categories, theme = "light", colorPalette, backgroundColor, title, subtitle, titlePosition = "center", categoryWidth = 120, taskHeight = .6, categorySpacing = 2, groupSpacing = 8, taskBarStyle, statusStyles, priorityStyles, categoryLabelStyle, showCategoryLabels = true, categoryColors, timelineStyle, timeRange, timeFormat, dataZoom = true, allowPan = true, allowZoom = true, initialZoomLevel, draggable = false, resizable = false, selectable = false, showTaskTooltips = true, showDependencies = false, showMilestones = false, milestoneStyle, todayMarker = false, showProgress = false, showTaskProgress = true, progressStyle, groupByCategory = false, groupByAssignee = false, filterByStatus, filterByPriority, sortBy, sortOrder = "asc", legend, tooltip, loading = false, disabled: _disabled = false, animate = true, animationDuration, onChartReady, onDataPointClick, onDataPointHover, onTaskClick, onTaskDrag: _onTaskDrag, onTaskResize: _onTaskResize, onCategoryClick, onTimeRangeChange, customOption, responsive: _responsive = true,...restProps }, ref) => {
 	const chartOption = useMemo(() => {
 		return buildGanttChartOption({
 			data: data || void 0,
@@ -4263,7 +4699,7 @@ const GanttChart = forwardRef(({ width = "100%", height = 600, className, style,
 		const events = {};
 		if (onDataPointClick || onTaskClick) events.click = (params, chart) => {
 			if (params.seriesIndex === 0) {
-				const [categoryIndex, startTime, endTime, taskName, taskId] = params.value;
+				const [_categoryIndex, startTime, endTime, taskName, taskId] = params.value;
 				const taskData = {
 					id: taskId,
 					name: taskName,
@@ -4277,7 +4713,7 @@ const GanttChart = forwardRef(({ width = "100%", height = 600, className, style,
 					event: params
 				});
 			} else if (params.seriesIndex === 1) {
-				const [categoryIndex, categoryName, categoryLabel] = params.value;
+				const [_categoryIndex, categoryName, categoryLabel] = params.value;
 				const categoryData = {
 					name: categoryName,
 					label: categoryLabel
@@ -4560,7 +4996,7 @@ GanttChart.displayName = "GanttChart";
 *   showRSquared={true}
 * />
 */
-const RegressionChart = forwardRef(({ width = "100%", height = 400, className, style, data, xField = "x", yField = "y", method = "linear", order = 2, theme = "light", colorPalette, backgroundColor, title, subtitle, titlePosition = "center", pointSize = 8, pointShape = "circle", pointOpacity = .7, showPoints = true, lineWidth = 2, lineStyle = "solid", lineColor, lineOpacity = 1, showLine = true, showEquation = false, equationPosition = "top-right", showRSquared = true, equationFormatter, xAxis, yAxis, legend, tooltip, pointsLabel = "Data Points", regressionLabel = "Regression Line", loading = false, disabled = false, animate = true, animationDuration, onChartReady, onDataPointClick, onDataPointHover, customOption, responsive = true,...restProps }, ref) => {
+const RegressionChart = forwardRef(({ width = "100%", height = 400, className, style, data, xField = "x", yField = "y", method = "linear", order = 2, theme = "light", colorPalette, backgroundColor, title, subtitle, titlePosition = "center", pointSize = 8, pointShape = "circle", pointOpacity = .7, showPoints = true, lineWidth = 2, lineStyle = "solid", lineColor, lineOpacity = 1, showLine = true, showEquation = false, equationPosition = "top-right", showRSquared = true, equationFormatter, xAxis, yAxis, legend, tooltip, pointsLabel = "Data Points", regressionLabel = "Regression Line", loading = false, disabled: _disabled = false, animate = true, animationDuration, onChartReady, onDataPointClick, onDataPointHover, customOption, responsive: _responsive = true,...restProps }, ref) => {
 	const chartOption = useMemo(() => {
 		return buildRegressionChartOption({
 			data: data || [],
@@ -5001,7 +5437,7 @@ const OldStackedBarChart = forwardRef(({ data, horizontal = false, showPercentag
 OldStackedBarChart.displayName = "OldStackedBarChart";
 
 //#endregion
-//#region src/utils/chartHelpers.ts
+//#region src/utils/legacy/chartHelpers.ts
 /**
 * Create a basic line chart option
 */
@@ -5175,7 +5611,7 @@ const OldScatterChart = forwardRef(({ data, symbolSize = 10, symbol = "circle", 
 				text: title,
 				left: "center"
 			} },
-			...customOption && customOption
+			...customOption
 		};
 		if (!data?.series || !Array.isArray(data.series)) return { series: [] };
 		const baseOption = {
@@ -5777,7 +6213,7 @@ const OldLineChart = forwardRef(({ data, smooth = false, area = false, stack = f
 				text: title,
 				left: "center"
 			} },
-			...customOption && customOption
+			...customOption
 		};
 		if (!data?.series || !Array.isArray(data.series)) return { series: [] };
 		const baseOption = createLineChartOption({
@@ -6005,7 +6441,7 @@ const darkTheme = {
 };
 
 //#endregion
-//#region src/utils/regression.ts
+//#region src/utils/legacy/regression.ts
 /**
 * Extract coordinate points from scatter data
 */
@@ -6104,6 +6540,222 @@ function clusterPointsToScatterData(clusterResult, colors = [
 }
 
 //#endregion
+//#region src/components/ChartErrorBoundary.tsx
+/**
+* Default fallback component for chart errors
+*/
+const DefaultErrorFallback = ({ error, retry, showDetails, className = "", style = {} }) => {
+	const [showDetailedError, setShowDetailedError] = React.useState(false);
+	const containerStyle = {
+		display: "flex",
+		flexDirection: "column",
+		alignItems: "center",
+		justifyContent: "center",
+		minHeight: "200px",
+		padding: "20px",
+		border: "2px dashed #ff4d4f",
+		borderRadius: "8px",
+		backgroundColor: "#fff2f0",
+		color: "#a8071a",
+		fontFamily: "system-ui, -apple-system, sans-serif",
+		...style
+	};
+	const iconStyle = {
+		fontSize: "48px",
+		marginBottom: "16px",
+		opacity: .7
+	};
+	const titleStyle = {
+		fontSize: "18px",
+		fontWeight: "bold",
+		marginBottom: "8px",
+		textAlign: "center"
+	};
+	const messageStyle = {
+		fontSize: "14px",
+		marginBottom: "16px",
+		textAlign: "center",
+		lineHeight: 1.5,
+		maxWidth: "400px"
+	};
+	const buttonStyle = {
+		padding: "8px 16px",
+		marginRight: "8px",
+		backgroundColor: "#ff4d4f",
+		color: "white",
+		border: "none",
+		borderRadius: "4px",
+		cursor: "pointer",
+		fontSize: "14px",
+		fontWeight: "500"
+	};
+	const secondaryButtonStyle = {
+		...buttonStyle,
+		backgroundColor: "transparent",
+		color: "#ff4d4f",
+		border: "1px solid #ff4d4f"
+	};
+	const detailsStyle = {
+		marginTop: "16px",
+		padding: "12px",
+		backgroundColor: "#ffeaea",
+		border: "1px solid #ffccc7",
+		borderRadius: "4px",
+		fontFamily: "monospace",
+		fontSize: "12px",
+		maxWidth: "600px",
+		overflow: "auto",
+		whiteSpace: "pre-wrap"
+	};
+	const getErrorIcon = () => {
+		switch (error.code) {
+			case ChartErrorCode.ECHARTS_LOAD_FAILED: return "🌐";
+			case ChartErrorCode.INVALID_DATA_FORMAT:
+			case ChartErrorCode.EMPTY_DATA: return "📊";
+			case ChartErrorCode.CHART_RENDER_FAILED: return "🎨";
+			default: return "⚠️";
+		}
+	};
+	const getErrorTitle = () => {
+		if (error.recoverable) return "Chart Loading Failed";
+		return "Chart Error";
+	};
+	return /* @__PURE__ */ jsxs("div", {
+		className: `aqc-charts-error-boundary ${className}`,
+		style: containerStyle,
+		children: [
+			/* @__PURE__ */ jsx("div", {
+				style: iconStyle,
+				children: getErrorIcon()
+			}),
+			/* @__PURE__ */ jsx("div", {
+				style: titleStyle,
+				children: getErrorTitle()
+			}),
+			/* @__PURE__ */ jsx("div", {
+				style: messageStyle,
+				children: error.toUserMessage()
+			}),
+			/* @__PURE__ */ jsxs("div", { children: [error.recoverable && /* @__PURE__ */ jsx("button", {
+				style: buttonStyle,
+				onClick: retry,
+				onMouseOver: (e) => e.currentTarget.style.backgroundColor = "#d9363e",
+				onMouseOut: (e) => e.currentTarget.style.backgroundColor = "#ff4d4f",
+				children: "Try Again"
+			}), showDetails && /* @__PURE__ */ jsx("button", {
+				style: secondaryButtonStyle,
+				onClick: () => setShowDetailedError(!showDetailedError),
+				onMouseOver: (e) => e.currentTarget.style.backgroundColor = "#fff2f0",
+				onMouseOut: (e) => e.currentTarget.style.backgroundColor = "transparent",
+				children: showDetailedError ? "Hide Details" : "Show Details"
+			})] }),
+			showDetailedError && /* @__PURE__ */ jsx("div", {
+				style: detailsStyle,
+				children: error.toDetailedString()
+			})
+		]
+	});
+};
+/**
+* Chart Error Boundary Component
+*/
+var ChartErrorBoundary = class extends Component {
+	retryTimeoutId = null;
+	constructor(props) {
+		super(props);
+		this.state = {
+			hasError: false,
+			error: null,
+			errorId: ""
+		};
+	}
+	static getDerivedStateFromError(error) {
+		const chartError = isChartError(error) ? error : createChartError(error, ChartErrorCode.UNKNOWN_ERROR);
+		return {
+			hasError: true,
+			error: chartError,
+			errorId: `error_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`
+		};
+	}
+	componentDidCatch(error, errorInfo) {
+		const chartError = this.state.error;
+		console.error("Chart Error Boundary caught an error:", {
+			error: chartError.toDetailedString(),
+			errorInfo,
+			stack: error.stack
+		});
+		this.props.onError?.(chartError, errorInfo);
+		this.reportError(chartError, errorInfo);
+	}
+	componentWillUnmount() {
+		if (this.retryTimeoutId) clearTimeout(this.retryTimeoutId);
+	}
+	reportError = (error, errorInfo) => {
+		if (typeof window !== "undefined" && window.reportError) window.reportError({
+			error: error.toDetailedString(),
+			errorInfo,
+			timestamp: new Date().toISOString(),
+			userAgent: navigator.userAgent,
+			url: window.location.href
+		});
+	};
+	handleRetry = () => {
+		if (this.retryTimeoutId) clearTimeout(this.retryTimeoutId);
+		this.retryTimeoutId = setTimeout(() => {
+			this.setState({
+				hasError: false,
+				error: null,
+				errorId: ""
+			});
+		}, 100);
+	};
+	render() {
+		if (this.state.hasError && this.state.error) {
+			if (this.props.fallback) return this.props.fallback(this.state.error, this.handleRetry);
+			return /* @__PURE__ */ jsx(DefaultErrorFallback, {
+				error: this.state.error,
+				retry: this.handleRetry,
+				showDetails: this.props.showErrorDetails ?? true,
+				className: this.props.className,
+				style: this.props.style
+			});
+		}
+		return this.props.children;
+	}
+};
+/**
+* HOC to wrap components with error boundary
+*/
+function withChartErrorBoundary(Component$1, errorBoundaryProps) {
+	const WrappedComponent = (props) => /* @__PURE__ */ jsx(ChartErrorBoundary, {
+		...errorBoundaryProps,
+		children: /* @__PURE__ */ jsx(Component$1, { ...props })
+	});
+	WrappedComponent.displayName = `withChartErrorBoundary(${Component$1.displayName || Component$1.name})`;
+	return WrappedComponent;
+}
+/**
+* Hook to manually trigger error boundary (for functional components)
+*/
+function useChartErrorHandler() {
+	const [error, setError] = React.useState(null);
+	React.useEffect(() => {
+		if (error) throw error;
+	}, [error]);
+	const throwError = React.useCallback((error$1) => {
+		const chartError = isChartError(error$1) ? error$1 : createChartError(error$1, ChartErrorCode.UNKNOWN_ERROR);
+		setError(chartError);
+	}, []);
+	const clearError = React.useCallback(() => {
+		setError(null);
+	}, []);
+	return {
+		throwError,
+		clearError
+	};
+}
+
+//#endregion
 //#region src/index.ts
 if (typeof document !== "undefined" && !document.getElementById("aqc-charts-styles")) {
 	const style = document.createElement("style");
@@ -6140,4 +6792,4 @@ if (typeof document !== "undefined" && !document.getElementById("aqc-charts-styl
 }
 
 //#endregion
-export { BarChart, BaseChart, CalendarHeatmapChart, ClusterChart, GanttChart, LineChart, OldBarChart, OldCalendarHeatmapChart, OldClusterChart, OldGanttChart, OldLineChart, OldPieChart, OldRegressionChart, OldSankeyChart, OldScatterChart, OldStackedBarChart, PieChart, RegressionChart, SankeyChart, ScatterChart, clusterPointsToScatterData, darkTheme, extractPoints, lightTheme, performKMeansClustering, useChartEvents, useChartInstance, useChartOptions, useChartResize, useECharts };
+export { BarChart, BaseChart, CalendarHeatmapChart, ChartError, ChartErrorBoundary, ChartErrorCode, ChartInitError, ChartRenderError, ClusterChart, DataValidationError, EChartsLoadError, GanttChart, LineChart, OldBarChart, OldCalendarHeatmapChart, OldClusterChart, OldGanttChart, OldLineChart, OldPieChart, OldRegressionChart, OldSankeyChart, OldScatterChart, OldStackedBarChart, PieChart, RegressionChart, SankeyChart, ScatterChart, TransformError, assertValidation, clusterPointsToScatterData, createChartError, darkTheme, extractPoints, isChartError, isRecoverableError, lightTheme, performKMeansClustering, safeAsync, safeSync, useChartErrorHandler, useChartEvents, useChartInstance, useChartOptions, useChartResize, useECharts, validateChartData, validateChartProps, validateDimensions, validateFieldMapping, validateInDevelopment, validateTheme, withChartErrorBoundary };

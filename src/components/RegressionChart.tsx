@@ -2,7 +2,7 @@ import { forwardRef, useMemo, useImperativeHandle } from 'react';
 import type { EChartsType } from 'echarts/core';
 import type { RegressionChartProps, ErgonomicChartRef } from '@/types';
 import { useECharts } from '@/hooks/useECharts';
-import { buildRegressionChartOption } from '@/utils/ergonomic';
+import { buildRegressionChartOption } from '@/utils/chart-builders';
 
 /**
  * Ergonomic RegressionChart component with intuitive props
@@ -104,7 +104,7 @@ const RegressionChart = forwardRef<ErgonomicChartRef, RegressionChartProps>(({
   
   // States
   loading = false,
-  disabled = false,
+  disabled: _disabled = false,
   animate = true,
   animationDuration,
   
@@ -115,7 +115,7 @@ const RegressionChart = forwardRef<ErgonomicChartRef, RegressionChartProps>(({
   
   // Advanced
   customOption,
-  responsive = true,
+  responsive: _responsive = true,
   
   ...restProps
 }, ref) => {

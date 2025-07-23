@@ -2,7 +2,7 @@ import { forwardRef, useMemo, useImperativeHandle } from 'react';
 import type { EChartsType } from 'echarts/core';
 import type { BarChartProps, ErgonomicChartRef } from '@/types';
 import { useECharts } from '@/hooks/useECharts';
-import { buildBarChartOption } from '@/utils/ergonomic';
+import { buildBarChartOption } from '@/utils/chart-builders';
 
 /**
  * Ergonomic BarChart component with intuitive props
@@ -86,6 +86,11 @@ const BarChart = forwardRef<ErgonomicChartRef, BarChartProps>(({
   stackType = 'normal',
   showPercentage = false,
   
+  // Label visibility
+  showLabels = false,
+  showAbsoluteValues = false,
+  showPercentageLabels = false,
+  
   // Configuration
   xAxis,
   yAxis,
@@ -98,7 +103,7 @@ const BarChart = forwardRef<ErgonomicChartRef, BarChartProps>(({
   
   // States
   loading = false,
-  disabled = false,
+  disabled: _disabled = false,
   animate = true,
   animationDuration,
   
@@ -109,7 +114,7 @@ const BarChart = forwardRef<ErgonomicChartRef, BarChartProps>(({
   
   // Advanced
   customOption,
-  responsive = true,
+  responsive: _responsive = true,
   
   ...restProps
 }, ref) => {
@@ -135,6 +140,9 @@ const BarChart = forwardRef<ErgonomicChartRef, BarChartProps>(({
       stack,
       stackType,
       showPercentage,
+      showLabels,
+      showAbsoluteValues,
+      showPercentageLabels,
       xAxis: xAxis || undefined,
       yAxis: yAxis || undefined,
       legend,
@@ -150,7 +158,7 @@ const BarChart = forwardRef<ErgonomicChartRef, BarChartProps>(({
     theme, colorPalette, backgroundColor,
     title, subtitle, titlePosition,
     orientation, barWidth, barGap, borderRadius,
-    stack, stackType, showPercentage,
+    stack, stackType, showPercentage, showLabels, showAbsoluteValues, showPercentageLabels,
     xAxis, yAxis, legend, tooltip,
     sortBy, sortOrder, animate, animationDuration,
     customOption
@@ -249,6 +257,9 @@ const BarChart = forwardRef<ErgonomicChartRef, BarChartProps>(({
       stack,
       stackType,
       showPercentage,
+      showLabels,
+      showAbsoluteValues,
+      showPercentageLabels,
       xAxis: xAxis || undefined,
       yAxis: yAxis || undefined,
       legend,

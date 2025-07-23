@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import type { RefObject } from 'react';
 import type { EChartsType } from 'echarts/core';
 import { loadECharts } from '@/utils/EChartsLoader';
+import { ChartInitError, ChartErrorCode, createChartError } from '@/utils/errors';
 
 interface UseChartInstanceProps {
   containerRef: RefObject<HTMLDivElement | null>;
@@ -33,7 +34,15 @@ export function useChartInstance({
   }, []);
 
   const initChart = useCallback(async () => {
-    if (!containerRef.current) return;
+    if (!containerRef.current) {
+      const error = createChartError(
+        new Error('Container element not found'),
+        ChartErrorCode.CONTAINER_NOT_FOUND,
+        { containerRef: !!containerRef.current }
+      );
+      setError(error);
+      return;
+    }
 
     try {
       // Load ECharts dynamically
@@ -41,6 +50,23 @@ export function useChartInstance({
 
       // Dispose existing instance
       disposeChart();
+
+      // Verify container still exists after async operation
+      if (!containerRef.current) {
+        throw new ChartInitError(
+          new Error('Container element was removed during initialization'),
+          { phase: 'post-load' }
+        );
+      }
+
+      // Check container dimensions
+      const rect = containerRef.current.getBoundingClientRect();
+      if (rect.width === 0 || rect.height === 0) {
+        console.warn('AQC Charts: Container has zero dimensions, chart may not render properly', {
+          width: rect.width,
+          height: rect.height
+        });
+      }
 
       // Create new instance without built-in theme
       // We handle theming through our comprehensive option-based approach
@@ -52,12 +78,33 @@ export function useChartInstance({
           useDirtyRect: true,
         }
       );
+
+      if (!chart) {
+        throw new ChartInitError(
+          new Error('ECharts.init returned null or undefined'),
+          { 
+            containerDimensions: { width: rect.width, height: rect.height },
+            containerElement: containerRef.current.tagName
+          }
+        );
+      }
+
       chartRef.current = chart;
       setIsInitialized(true);
       setError(null);
       onChartReady?.(chart);
     } catch (err) {
-      const error = err instanceof Error ? err : new Error('Failed to initialize chart');
+      const error = err instanceof ChartInitError ? err : createChartError(
+        err,
+        ChartErrorCode.CHART_INIT_FAILED,
+        { 
+          containerExists: !!containerRef.current,
+          containerDimensions: containerRef.current ? {
+            width: containerRef.current.getBoundingClientRect().width,
+            height: containerRef.current.getBoundingClientRect().height
+          } : null
+        }
+      );
       setError(error);
       setIsInitialized(false);
       console.error('Failed to initialize ECharts:', error);

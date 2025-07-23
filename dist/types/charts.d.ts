@@ -20,6 +20,11 @@ export interface LineChartProps extends BaseErgonomicChartProps {
         readonly color?: string;
         readonly smooth?: boolean;
         readonly showArea?: boolean;
+        readonly strokeStyle?: 'solid' | 'dashed' | 'dotted';
+        readonly strokeWidth?: number;
+        readonly pointSize?: number;
+        readonly pointShape?: 'circle' | 'square' | 'triangle' | 'diamond';
+        readonly showPoints?: boolean;
     }[] | undefined;
     readonly xAxis?: AxisConfig | undefined;
     readonly yAxis?: AxisConfig | undefined;
@@ -41,6 +46,9 @@ export interface BarChartProps extends BaseErgonomicChartProps {
     readonly stack?: boolean;
     readonly stackType?: 'normal' | 'percent';
     readonly showPercentage?: boolean;
+    readonly showLabels?: boolean;
+    readonly showAbsoluteValues?: boolean;
+    readonly showPercentageLabels?: boolean;
     readonly series?: readonly {
         readonly name: string;
         readonly data: readonly DataPoint[];

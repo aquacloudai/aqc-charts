@@ -85,8 +85,8 @@ export interface ChartSeries {
 import type {
     XAXisOption as ImportedXAXisOption,
     YAXisOption as ImportedYAXisOption,
-    LegendComponentOption as ImportedLegendComponentOption,
-    TooltipOption as ImportedTooltipOption,
+    // LegendComponentOption as ImportedLegendComponentOption,
+    // TooltipOption as ImportedTooltipOption,
     VisualMapComponentOption as ImportedVisualMapComponentOption,
     CalendarOption as ImportedCalendarOption,
 } from 'echarts/types/dist/shared';

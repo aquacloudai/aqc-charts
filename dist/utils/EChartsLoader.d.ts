@@ -6,6 +6,9 @@ export interface EChartsLoadingOptions {
     version?: string;
     theme?: string;
     locale?: string;
+    retryAttempts?: number;
+    retryDelay?: number;
+    timeout?: number;
 }
 interface EChartsGlobal {
     init: (dom: HTMLElement, theme?: string | object, opts?: any) => any;
@@ -28,7 +31,7 @@ declare global {
     }
 }
 /**
- * Load ECharts dynamically from CDN
+ * Load ECharts dynamically from CDN with enhanced error handling
  */
 export declare function loadECharts(options?: EChartsLoadingOptions): Promise<EChartsGlobal>;
 /**

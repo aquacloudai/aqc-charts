@@ -2,7 +2,7 @@ import { forwardRef, useMemo, useImperativeHandle } from 'react';
 import type { EChartsType } from 'echarts/core';
 import type { SankeyChartProps, ErgonomicChartRef } from '@/types';
 import { useECharts } from '@/hooks/useECharts';
-import { buildSankeyChartOption } from '@/utils/ergonomic';
+import { buildSankeyChartOption } from '@/utils/chart-builders';
 
 /**
  * Ergonomic SankeyChart component with intuitive props
@@ -115,7 +115,7 @@ const SankeyChart = forwardRef<ErgonomicChartRef, SankeyChartProps>(({
   
   // States
   loading = false,
-  disabled = false,
+  disabled: _disabled = false,
   animate = true,
   animationDuration,
   
@@ -126,7 +126,7 @@ const SankeyChart = forwardRef<ErgonomicChartRef, SankeyChartProps>(({
   
   // Advanced
   customOption,
-  responsive = true,
+  responsive: _responsive = true,
   
   ...restProps
 }, ref) => {

@@ -1,5 +1,5 @@
 import React, { forwardRef, useMemo } from 'react';
-import type { BaseChartProps, ChartRef, EChartsOption, ClusterChartData, ClusterVisualMapPiece, EcStatClusteringTransformOption } from '@/types';
+import type { BaseChartProps, ChartRef, EChartsOption, ClusterChartData, ClusterVisualMapPiece } from '@/types';
 import { BaseChart } from '../BaseChart';
 
 export interface OldClusterChartProps extends Omit<BaseChartProps, 'option'> {

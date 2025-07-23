@@ -2,7 +2,7 @@ import { forwardRef, useMemo, useImperativeHandle } from 'react';
 import type { EChartsType } from 'echarts/core';
 import type { LineChartProps, ErgonomicChartRef } from '@/types';
 import { useECharts } from '@/hooks/useECharts';
-import { buildLineChartOption } from '@/utils/ergonomic';
+import { buildLineChartOption } from '@/utils/chart-builders';
 
 /**
  * Ergonomic LineChart component with intuitive props
@@ -91,7 +91,7 @@ const LineChart = forwardRef<ErgonomicChartRef, LineChartProps>(({
   
   // States
   loading = false,
-  disabled = false,
+  disabled: _disabled = false,
   animate = true,
   animationDuration,
   
@@ -102,7 +102,7 @@ const LineChart = forwardRef<ErgonomicChartRef, LineChartProps>(({
   
   // Advanced
   customOption,
-  responsive = true,
+  responsive: _responsive = true,
   
   ...restProps
 }, ref) => {

@@ -2,7 +2,7 @@ import { forwardRef, useMemo, useImperativeHandle } from 'react';
 import type { EChartsType } from 'echarts/core';
 import type { CalendarHeatmapProps, ErgonomicChartRef } from '@/types';
 import { useECharts } from '@/hooks/useECharts';
-import { buildCalendarHeatmapOption } from '@/utils/ergonomic';
+import { buildCalendarHeatmapOption } from '@/utils/chart-builders';
 
 /**
  * Ergonomic CalendarHeatmapChart component with intuitive props
@@ -95,7 +95,7 @@ const CalendarHeatmapChart = forwardRef<ErgonomicChartRef, CalendarHeatmapProps>
   
   // States
   loading = false,
-  disabled = false,
+  disabled: _disabled = false,
   animate = true,
   animationDuration,
   
@@ -106,7 +106,7 @@ const CalendarHeatmapChart = forwardRef<ErgonomicChartRef, CalendarHeatmapProps>
   
   // Advanced
   customOption,
-  responsive = true,
+  responsive: _responsive = true,
   
   ...restProps
 }, ref) => {

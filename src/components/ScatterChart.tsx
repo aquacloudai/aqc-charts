@@ -2,7 +2,7 @@ import { forwardRef, useMemo, useImperativeHandle } from 'react';
 import type { EChartsType } from 'echarts/core';
 import type { ScatterChartProps, ErgonomicChartRef } from '@/types';
 import { useECharts } from '@/hooks/useECharts';
-import { buildScatterChartOption } from '@/utils/ergonomic';
+import { buildScatterChartOption } from '@/utils/chart-builders';
 
 /**
  * Ergonomic ScatterChart component with intuitive props
@@ -98,7 +98,7 @@ const ScatterChart = forwardRef<ErgonomicChartRef, ScatterChartProps>(({
   
   // States
   loading = false,
-  disabled = false,
+  disabled: _disabled = false,
   animate = true,
   animationDuration,
   
@@ -109,7 +109,7 @@ const ScatterChart = forwardRef<ErgonomicChartRef, ScatterChartProps>(({
   
   // Advanced
   customOption,
-  responsive = true,
+  responsive: _responsive = true,
   
   ...restProps
 }, ref) => {

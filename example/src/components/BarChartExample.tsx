@@ -172,6 +172,107 @@ export function BarChartExample({ theme, colorPalette, onInteraction }: BarChart
         </div>
       </div>
 
+      {/* Label Visibility Examples */}
+      <div style={{ marginBottom: '25px' }}>
+        <h5 style={{
+          color: theme === 'dark' ? '#fff' : '#333',
+          marginBottom: '15px',
+          fontSize: '16px',
+          fontWeight: '600'
+        }}>
+          🏷️ Label Visibility Controls - Sales Data with Different Label Options
+        </h5>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '25px' }}>
+          {/* Absolute Values Only */}
+          <div>
+            <h6 style={{ color: theme === 'dark' ? '#ccc' : '#666', fontSize: '14px', marginBottom: '10px' }}>
+              Absolute Values Only
+            </h6>
+            <BarChart
+              data={salesData.slice(0, 4)}
+              categoryField="month"
+              valueField={['sales', 'profit']}
+              title="Sales with Absolute Labels"
+              height={250}
+              theme={theme}
+              colorPalette={colorPalette}
+              orientation="vertical"
+              stack={true}
+              showAbsoluteValues={true}
+              borderRadius={3}
+              legend={{ show: true, position: 'top' }}
+            />
+          </div>
+
+          {/* Percentage Labels Only */}
+          <div>
+            <h6 style={{ color: theme === 'dark' ? '#ccc' : '#666', fontSize: '14px', marginBottom: '10px' }}>
+              Percentage Labels Only (Stacked)
+            </h6>
+            <BarChart
+              data={salesData.slice(0, 4)}
+              categoryField="month"
+              valueField={['sales', 'profit']}
+              title="Sales with Percentage Labels"
+              height={250}
+              theme={theme}
+              colorPalette={colorPalette}
+              orientation="vertical"
+              stack={true}
+              showPercentageLabels={true}
+              borderRadius={3}
+              legend={{ show: true, position: 'top' }}
+            />
+          </div>
+
+          {/* Both Absolute and Percentage */}
+          <div>
+            <h6 style={{ color: theme === 'dark' ? '#ccc' : '#666', fontSize: '14px', marginBottom: '10px' }}>
+              Both Absolute and Percentage
+            </h6>
+            <BarChart
+              data={salesData.slice(0, 4)}
+              categoryField="month"
+              valueField={['sales', 'profit']}
+              title="Sales with Both Labels"
+              height={250}
+              theme={theme}
+              colorPalette={colorPalette}
+              orientation="vertical"
+              stack={true}
+              showAbsoluteValues={true}
+              showPercentageLabels={true}
+              borderRadius={3}
+              legend={{ show: true, position: 'top' }}
+            />
+          </div>
+
+          {/* No Labels (Clean) */}
+          <div>
+            <h6 style={{ color: theme === 'dark' ? '#ccc' : '#666', fontSize: '14px', marginBottom: '10px' }}>
+              No Labels (Clean for Busy Charts)
+            </h6>
+            <BarChart
+              data={salesData.slice(0, 4)}
+              categoryField="month"
+              valueField={['sales', 'profit', 'expenses']}
+              title="Clean Stacked Chart"
+              height={250}
+              theme={theme}
+              colorPalette={colorPalette}
+              orientation="vertical"
+              stack={true}
+              borderRadius={3}
+              legend={{ show: true, position: 'top' }}
+              tooltip={{
+                show: true,
+                trigger: 'axis',
+              }}
+            />
+          </div>
+        </div>
+      </div>
+
       {/* Percentage Example Section */}
       <div>
         <h5 style={{

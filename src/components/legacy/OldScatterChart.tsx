@@ -62,7 +62,7 @@ export const OldScatterChart = forwardRef<ChartRef, OldScatterChartProps>(({
                     }
                 },
                 ...(title && { title: { text: title, left: 'center' } }),
-                ...(customOption && customOption),
+                ...customOption,
             } as EChartsOption;
         }
         

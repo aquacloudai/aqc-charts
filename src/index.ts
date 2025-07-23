@@ -39,7 +39,39 @@ export {
     extractPoints,
     performKMeansClustering,
     clusterPointsToScatterData
-} from './utils/regression';
+} from './utils/legacy/regression';
+
+// Error handling utilities
+export {
+    ChartError,
+    EChartsLoadError,
+    ChartInitError,
+    DataValidationError,
+    ChartRenderError,
+    TransformError,
+    ChartErrorCode,
+    createChartError,
+    isChartError,
+    isRecoverableError,
+    safeAsync,
+    safeSync
+} from './utils/errors';
+
+export {
+    ChartErrorBoundary,
+    withChartErrorBoundary,
+    useChartErrorHandler
+} from './components/ChartErrorBoundary';
+
+export {
+    validateChartData,
+    validateChartProps,
+    validateFieldMapping,
+    validateDimensions,
+    validateTheme,
+    assertValidation,
+    validateInDevelopment
+} from './utils/validation';
 
 // Types
 export type {

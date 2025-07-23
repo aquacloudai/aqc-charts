@@ -1,0 +1,1 @@
+{"version":3,"file":"sankey-chart.d.ts","sourceRoot":"","sources":["../../../src/utils/chart-builders/sankey-chart.ts"],"names":[],"mappings":"AAAA,OAAO,KAAK,EAAE,aAAa,EAAE,MAAM,2BAA2B,CAAC;AAC/D,OAAO,KAAK,EAAE,gBAAgB,EAAqC,MAAM,SAAS,CAAC;AASnF,wBAAgB,sBAAsB,CAAC,KAAK,EAAE,gBAAgB,GAAG,aAAa,CA6I7E"}
