@@ -1254,7 +1254,15 @@ function buildLineChartOption(props) {
 			symbol: props.showPoints !== false ? props.pointShape || "circle" : "none",
 			symbolSize: props.pointSize || 4
 		}));
-		xAxisData = props.data.map((item) => item[props.xField]);
+		const seen = new Set();
+		xAxisData = [];
+		for (const item of props.data) {
+			const value = item[props.xField];
+			if (value != null && !seen.has(value)) {
+				seen.add(value);
+				xAxisData.push(value);
+			}
+		}
 	} else {
 		if (Array.isArray(props.yField)) series = props.yField.map((field) => {
 			const seriesSpecificConfig = props.seriesConfig?.[field] || {};
@@ -1382,7 +1390,15 @@ function buildBarChartOption(props) {
 				label: createLabelConfig(seriesData, allSeriesData, index)
 			};
 		});
-		categoryData = props.data.map((item) => item[props.categoryField]);
+		const seen = new Set();
+		categoryData = [];
+		for (const item of props.data) {
+			const value = item[props.categoryField];
+			if (value != null && !seen.has(value)) {
+				seen.add(value);
+				categoryData.push(value);
+			}
+		}
 	} else {
 		if (Array.isArray(props.valueField)) {
 			allSeriesData = props.valueField.map((field) => props.data.map((item) => item[field]));

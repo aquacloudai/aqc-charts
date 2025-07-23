@@ -65,8 +65,16 @@ export function buildLineChartOption(props: LineChartProps): EChartsOption {
           symbol: props.showPoints !== false ? (props.pointShape || 'circle') : 'none',
           symbolSize: props.pointSize || 4,
         }));
-        // Use data as-is - let implementers handle uniqueness/ordering
-        xAxisData = props.data.map(item => item[props.xField as string]);
+        // Extract unique X values while preserving original data order
+        const seen = new Set();
+        xAxisData = [];
+        for (const item of props.data) {
+          const value = item[props.xField as string];
+          if (value != null && !seen.has(value)) {
+            seen.add(value);
+            xAxisData.push(value);
+          }
+        }
       } else {
         // Single series
         if (Array.isArray(props.yField)) {

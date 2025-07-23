@@ -118,8 +118,16 @@ export function buildBarChartOption(props: BarChartProps): EChartsOption {
             label: createLabelConfig(seriesData, allSeriesData, index),
           };
         });
-        // Use data as-is - let implementers handle uniqueness/ordering
-        categoryData = props.data.map(item => item[props.categoryField as string]);
+        // Extract unique category values while preserving original data order
+        const seen = new Set();
+        categoryData = [];
+        for (const item of props.data) {
+          const value = item[props.categoryField as string];
+          if (value != null && !seen.has(value)) {
+            seen.add(value);
+            categoryData.push(value);
+          }
+        }
       } else {
         if (Array.isArray(props.valueField)) {
           // Extract all series data for percentage calculations
