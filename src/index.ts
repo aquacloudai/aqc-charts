@@ -41,9 +41,6 @@ export {
     clusterPointsToScatterData
 } from './utils/legacy/regression';
 
-// Date formatting utilities
-export { formatDateForChart, looksLikeDate, detectAxisType, preprocessDateFields } from './utils/dateFormatting';
-export type { DateFormatType } from './utils/dateFormatting';
 
 // Error handling utilities
 export {

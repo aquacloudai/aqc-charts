@@ -3,7 +3,6 @@
 import { COLOR_PALETTES } from './color-palettes';
 import {
   isObjectData,
-  extractUniqueValues,
   groupDataByField,
   detectDataType,
   mapStrokeStyleToECharts,
@@ -20,8 +19,6 @@ import {
 export { COLOR_PALETTES } from './color-palettes';
 export {
   isObjectData,
-  extractUniqueValues,
-  extractUniqueValuesOrdered,
   groupDataByField,
   detectDataType,
   mapStrokeStyleToECharts,

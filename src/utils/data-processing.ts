@@ -5,24 +5,6 @@ export function isObjectData(data: readonly any[]): data is readonly DataPoint[]
   return data.length > 0 && typeof data[0] === 'object' && !Array.isArray(data[0]);
 }
 
-export function extractUniqueValues(data: readonly DataPoint[], field: string): (string | number | Date)[] {
-  return [...new Set(data.map(item => item[field]).filter(val => val != null))];
-}
-
-export function extractUniqueValuesOrdered(data: readonly DataPoint[], field: string): (string | number | Date)[] {
-  const seen = new Set();
-  const result: (string | number | Date)[] = [];
-  
-  for (const item of data) {
-    const value = item[field];
-    if (value != null && !seen.has(value)) {
-      seen.add(value);
-      result.push(value);
-    }
-  }
-  
-  return result;
-}
 
 export function groupDataByField(data: readonly DataPoint[], field: string): Record<string, DataPoint[]> {
   return data.reduce((groups, item) => {

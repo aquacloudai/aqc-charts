@@ -1008,18 +1008,6 @@ const COLOR_PALETTES = {
 function isObjectData(data) {
 	return data.length > 0 && typeof data[0] === "object" && !Array.isArray(data[0]);
 }
-function extractUniqueValuesOrdered(data, field) {
-	const seen = new Set();
-	const result = [];
-	for (const item of data) {
-		const value = item[field];
-		if (value != null && !seen.has(value)) {
-			seen.add(value);
-			result.push(value);
-		}
-	}
-	return result;
-}
 function groupDataByField(data, field) {
 	return data.reduce((groups, item) => {
 		const key = String(item[field] ?? "Unknown");
@@ -1027,13 +1015,6 @@ function groupDataByField(data, field) {
 		groups[key].push(item);
 		return groups;
 	}, {});
-}
-function detectDataType(values) {
-	const nonNullValues = values.filter((v) => v != null);
-	if (nonNullValues.length === 0) return "categorical";
-	if (nonNullValues.every((v) => typeof v === "number" || !isNaN(Number(v)))) return "numeric";
-	if (nonNullValues.some((v) => v instanceof Date || typeof v === "string" && !isNaN(Date.parse(v)))) return "time";
-	return "categorical";
 }
 function mapStrokeStyleToECharts(strokeStyle) {
 	switch (strokeStyle) {
@@ -1043,80 +1024,6 @@ function mapStrokeStyleToECharts(strokeStyle) {
 		default: return "solid";
 	}
 }
-
-//#endregion
-//#region src/utils/dateFormatting.ts
-/**
-* Detects if a value looks like a date string that might be incorrectly parsed as time-series
-*/
-const looksLikeDate = (value) => {
-	if (typeof value !== "string") return false;
-	const datePatterns = [
-		/^\d{4}-\d{2}(-\d{2})?/,
-		/^\d{4}\/\d{2}(\/\d{2})?/,
-		/^W\d{2}$/,
-		/^Q[1-4]$/,
-		/^[A-Z][a-z]{2} \d{2,4}$/
-	];
-	return datePatterns.some((pattern) => pattern.test(value));
-};
-/**
-* Safely formats date strings for categorical display in charts
-*/
-const formatDateForChart = (dateString, format = "month") => {
-	try {
-		if (format === "week" && /^W\d{2}$/.test(dateString)) return dateString;
-		if (format === "quarter" && /^Q[1-4]$/.test(dateString)) return dateString;
-		const date = new Date(dateString);
-		if (isNaN(date.getTime())) return dateString;
-		switch (format) {
-			case "month": return date.toLocaleDateString("en-US", {
-				month: "short",
-				year: "2-digit"
-			});
-			case "monthYear": return date.toLocaleDateString("en-US", {
-				month: "short",
-				year: "numeric"
-			});
-			case "week":
-				const week = Math.ceil(date.getDate() / 7);
-				return `W${week.toString().padStart(2, "0")}`;
-			case "day": return date.toLocaleDateString("en-US", {
-				month: "short",
-				day: "numeric"
-			});
-			case "quarter":
-				const quarter = Math.ceil((date.getMonth() + 1) / 3);
-				return `Q${quarter}`;
-			case "year": return date.getFullYear().toString();
-			default: return dateString;
-		}
-	} catch (error) {
-		return dateString;
-	}
-};
-/**
-* Detects the appropriate axis type for data values
-*/
-const detectAxisType = (data, field) => {
-	if (!data.length) return "category";
-	const sample = data[0]?.[field];
-	if (looksLikeDate(sample)) return "category";
-	if (typeof sample === "number") return "linear";
-	return "category";
-};
-/**
-* Preprocesses data to ensure safe categorical display of date-like values
-*/
-const preprocessDateFields = (data, xField, dateFormat = "month") => {
-	if (!data.length) return [...data];
-	const sample = data[0]?.[xField];
-	if (!looksLikeDate(sample)) return [...data];
-	return data.map((item) => ({
-		...item,
-		[xField]: formatDateForChart(item[xField], dateFormat)
-	}));
-};
 
 //#endregion
 //#region src/utils/base-options.ts
@@ -1140,29 +1047,17 @@ function buildBaseOption(props) {
 	if (!option.backgroundColor) option.backgroundColor = isDark ? "#1a1a1a" : "#ffffff";
 	return option;
 }
-function buildAxisOption(config, dataType = "categorical", theme, data, field) {
+function buildAxisOption(config, dataType = "categorical", theme) {
 	const isDark = theme === "dark";
-	if (!config) {
-		const detectedType = data && field ? detectAxisType(data, field) : dataType;
-		const safeAxisType = detectedType === "time" ? "category" : detectedType;
-		const echartsType = safeAxisType === "numeric" || safeAxisType === "linear" ? "value" : "category";
-		return {
-			type: echartsType,
-			...echartsType === "category" && { boundaryGap: false },
-			axisLine: { lineStyle: { color: isDark ? "#666666" : "#cccccc" } },
-			axisTick: { lineStyle: { color: isDark ? "#666666" : "#cccccc" } },
-			axisLabel: { color: isDark ? "#cccccc" : "#666666" },
-			splitLine: { lineStyle: { color: isDark ? "#333333" : "#f0f0f0" } }
-		};
-	}
-	let axisType;
-	if (config.type) if (config.type === "time" && config.parseDate === false) axisType = "category";
-	else axisType = config.type === "linear" ? "value" : config.type === "log" ? "log" : config.type === "time" ? "time" : "category";
-	else {
-		const detectedType = data && field ? detectAxisType(data, field) : dataType;
-		if (config.parseDate === false && detectedType === "time") axisType = "category";
-		else axisType = detectedType === "numeric" || detectedType === "linear" ? "value" : detectedType === "time" && config.parseDate !== false ? "time" : "category";
-	}
+	if (!config) return {
+		type: dataType === "numeric" ? "value" : dataType === "time" ? "time" : "category",
+		...dataType === "categorical" && { boundaryGap: false },
+		axisLine: { lineStyle: { color: isDark ? "#666666" : "#cccccc" } },
+		axisTick: { lineStyle: { color: isDark ? "#666666" : "#cccccc" } },
+		axisLabel: { color: isDark ? "#cccccc" : "#666666" },
+		splitLine: { lineStyle: { color: isDark ? "#333333" : "#f0f0f0" } }
+	};
+	const axisType = config.type === "linear" ? "value" : config.type === "log" ? "log" : config.type || (dataType === "numeric" ? "value" : dataType === "time" ? "time" : "category");
 	return {
 		type: axisType,
 		name: config.label,
@@ -1359,7 +1254,7 @@ function buildLineChartOption(props) {
 			symbol: props.showPoints !== false ? props.pointShape || "circle" : "none",
 			symbolSize: props.pointSize || 4
 		}));
-		xAxisData = extractUniqueValuesOrdered(props.data, props.xField);
+		xAxisData = props.data.map((item) => item[props.xField]);
 	} else {
 		if (Array.isArray(props.yField)) series = props.yField.map((field) => {
 			const seriesSpecificConfig = props.seriesConfig?.[field] || {};
@@ -1404,15 +1299,12 @@ function buildLineChartOption(props) {
 		symbol: props.showPoints !== false ? props.pointShape || "circle" : "none",
 		symbolSize: props.pointSize || 4
 	}];
-	const xAxisType = props.data && isObjectData(props.data) && props.xField ? detectDataType(props.data.map((item) => item[props.xField])) : "categorical";
-	const xAxisOption = buildAxisOption(props.xAxis, xAxisType, props.theme, props.data, props.xField);
-	const finalAxisType = xAxisOption.type || "category";
 	return {
 		...baseOption,
 		grid: calculateGridSpacing(props.legend, !!props.title, !!props.subtitle, !!props.zoom),
 		xAxis: {
-			...xAxisOption,
-			data: finalAxisType === "category" ? xAxisData : void 0
+			...buildAxisOption(props.xAxis, "categorical", props.theme),
+			data: xAxisData
 		},
 		yAxis: buildAxisOption(props.yAxis, "numeric", props.theme),
 		series,
@@ -1490,7 +1382,7 @@ function buildBarChartOption(props) {
 				label: createLabelConfig(seriesData, allSeriesData, index)
 			};
 		});
-		categoryData = extractUniqueValuesOrdered(props.data, props.categoryField);
+		categoryData = props.data.map((item) => item[props.categoryField]);
 	} else {
 		if (Array.isArray(props.valueField)) {
 			allSeriesData = props.valueField.map((field) => props.data.map((item) => item[field]));
@@ -6896,4 +6788,4 @@ if (typeof document !== "undefined" && !document.getElementById("aqc-charts-styl
 }
 
 //#endregion
-export { BarChart, BaseChart, CalendarHeatmapChart, ChartError, ChartErrorBoundary, ChartErrorCode, ChartInitError, ChartRenderError, ClusterChart, DataValidationError, EChartsLoadError, GanttChart, LineChart, OldBarChart, OldCalendarHeatmapChart, OldClusterChart, OldGanttChart, OldLineChart, OldPieChart, OldRegressionChart, OldSankeyChart, OldScatterChart, OldStackedBarChart, PieChart, RegressionChart, SankeyChart, ScatterChart, TransformError, assertValidation, clusterPointsToScatterData, createChartError, darkTheme, detectAxisType, extractPoints, formatDateForChart, isChartError, isRecoverableError, lightTheme, looksLikeDate, performKMeansClustering, preprocessDateFields, safeAsync, safeSync, useChartErrorHandler, useChartEvents, useChartInstance, useChartOptions, useChartResize, useECharts, validateChartData, validateChartProps, validateDimensions, validateFieldMapping, validateInDevelopment, validateTheme, withChartErrorBoundary };
+export { BarChart, BaseChart, CalendarHeatmapChart, ChartError, ChartErrorBoundary, ChartErrorCode, ChartInitError, ChartRenderError, ClusterChart, DataValidationError, EChartsLoadError, GanttChart, LineChart, OldBarChart, OldCalendarHeatmapChart, OldClusterChart, OldGanttChart, OldLineChart, OldPieChart, OldRegressionChart, OldSankeyChart, OldScatterChart, OldStackedBarChart, PieChart, RegressionChart, SankeyChart, ScatterChart, TransformError, assertValidation, clusterPointsToScatterData, createChartError, darkTheme, extractPoints, isChartError, isRecoverableError, lightTheme, performKMeansClustering, safeAsync, safeSync, useChartErrorHandler, useChartEvents, useChartInstance, useChartOptions, useChartResize, useECharts, validateChartData, validateChartProps, validateDimensions, validateFieldMapping, validateInDevelopment, validateTheme, withChartErrorBoundary };

@@ -3,7 +3,6 @@ import type { LineChartProps } from '@/types';
 
 import {
   isObjectData,
-  extractUniqueValuesOrdered,
   groupDataByField,
   detectDataType,
   mapStrokeStyleToECharts,
@@ -66,7 +65,8 @@ export function buildLineChartOption(props: LineChartProps): EChartsOption {
           symbol: props.showPoints !== false ? (props.pointShape || 'circle') : 'none',
           symbolSize: props.pointSize || 4,
         }));
-        xAxisData = extractUniqueValuesOrdered(props.data, props.xField as string) as any[];
+        // Use data as-is - let implementers handle uniqueness/ordering
+        xAxisData = props.data.map(item => item[props.xField as string]);
       } else {
         // Single series
         if (Array.isArray(props.yField)) {
@@ -126,20 +126,12 @@ export function buildLineChartOption(props: LineChartProps): EChartsOption {
     }
   }
   
-  const xAxisType = (props.data && isObjectData(props.data) && props.xField)
-    ? detectDataType(props.data.map((item: any) => item[props.xField as string]))
-    : 'categorical';
-  
-  // Build the x-axis option and determine the final axis type
-  const xAxisOption = buildAxisOption(props.xAxis, xAxisType, props.theme, props.data, props.xField);
-  const finalAxisType = xAxisOption.type || 'category';
-  
   return {
     ...baseOption,
     grid: calculateGridSpacing(props.legend, !!props.title, !!props.subtitle, !!props.zoom),
     xAxis: {
-      ...xAxisOption,
-      data: finalAxisType === 'category' ? xAxisData : undefined,
+      ...buildAxisOption(props.xAxis, 'categorical', props.theme),
+      data: xAxisData,
     },
     yAxis: buildAxisOption(props.yAxis, 'numeric', props.theme),
     series,

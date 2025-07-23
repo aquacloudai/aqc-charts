@@ -3,7 +3,6 @@ import type { BarChartProps } from '@/types';
 
 import {
   isObjectData,
-  extractUniqueValuesOrdered,
   groupDataByField,
 } from '../data-processing';
 import {
@@ -119,7 +118,8 @@ export function buildBarChartOption(props: BarChartProps): EChartsOption {
             label: createLabelConfig(seriesData, allSeriesData, index),
           };
         });
-        categoryData = extractUniqueValuesOrdered(props.data, props.categoryField as string);
+        // Use data as-is - let implementers handle uniqueness/ordering
+        categoryData = props.data.map(item => item[props.categoryField as string]);
       } else {
         if (Array.isArray(props.valueField)) {
           // Extract all series data for percentage calculations

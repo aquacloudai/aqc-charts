@@ -1,7 +1,6 @@
 import type { EChartsOption } from 'echarts/types/dist/shared';
 import type { AxisConfig, LegendConfig, TooltipConfig } from '@/types';
 import { COLOR_PALETTES } from './color-palettes';
-import { detectAxisType } from './dateFormatting';
 
 // Base option builders
 export function buildBaseOption(props: any): Partial<EChartsOption> {
@@ -57,20 +56,14 @@ export function buildBaseOption(props: any): Partial<EChartsOption> {
   return option;
 }
 
-export function buildAxisOption(config?: AxisConfig, dataType: 'numeric' | 'categorical' | 'time' = 'categorical', theme?: string, data?: readonly any[], field?: string): any {
+export function buildAxisOption(config?: AxisConfig, dataType: 'numeric' | 'categorical' | 'time' = 'categorical', theme?: string): any {
   const isDark = theme === 'dark';
   
-  // Smart axis type detection if no explicit config
   if (!config) {
-    // Use auto-detection for safety, defaulting to category for date-like values
-    const detectedType = data && field ? detectAxisType(data, field) : dataType;
-    const safeAxisType = detectedType === 'time' ? 'category' : detectedType;
-    const echartsType = safeAxisType === 'numeric' || safeAxisType === 'linear' ? 'value' : 'category';
-    
     return {
-      type: echartsType,
+      type: dataType === 'numeric' ? 'value' : dataType === 'time' ? 'time' : 'category',
       // Default boundaryGap for line charts: false for category axes (starts at axis)
-      ...(echartsType === 'category' && { boundaryGap: false }),
+      ...(dataType === 'categorical' && { boundaryGap: false }),
       axisLine: {
         lineStyle: { color: isDark ? '#666666' : '#cccccc' }
       },
@@ -86,30 +79,9 @@ export function buildAxisOption(config?: AxisConfig, dataType: 'numeric' | 'cate
     };
   }
   
-  // Determine axis type with safety overrides
-  let axisType: string;
-  
-  if (config.type) {
-    // Explicit type provided - but still protect against accidental time parsing
-    if (config.type === 'time' && config.parseDate === false) {
-      axisType = 'category'; // Override time to category if parseDate is false
-    } else {
-      axisType = config.type === 'linear' ? 'value' : 
-        config.type === 'log' ? 'log' : 
-        config.type === 'time' ? 'time' : 'category';
-    }
-  } else {
-    // Auto-detect with safety
-    const detectedType = data && field ? detectAxisType(data, field) : dataType;
-    
-    // Safety: if parseDate is explicitly false, force category even for detected time
-    if (config.parseDate === false && detectedType === 'time') {
-      axisType = 'category';
-    } else {
-      axisType = detectedType === 'numeric' || detectedType === 'linear' ? 'value' : 
-        detectedType === 'time' && config.parseDate !== false ? 'time' : 'category';
-    }
-  }
+  const axisType = config.type === 'linear' ? 'value' : 
+    config.type === 'log' ? 'log' :
+    config.type || (dataType === 'numeric' ? 'value' : dataType === 'time' ? 'time' : 'category');
   
   return {
     type: axisType,
