@@ -3,6 +3,7 @@ export { LineChart } from './components/LineChart';
 export { BarChart } from './components/BarChart';
 export { PieChart } from './components/PieChart';
 export { ScatterChart } from './components/ScatterChart';
+export { CombinedChart } from './components/CombinedChart';
 export { ClusterChart } from './components/ClusterChart';
 export { CalendarHeatmapChart } from './components/CalendarHeatmapChart';
 export { SankeyChart } from './components/SankeyChart';
@@ -26,7 +27,7 @@ export { ChartError, EChartsLoadError, ChartInitError, DataValidationError, Char
 export { ChartErrorBoundary, withChartErrorBoundary, useChartErrorHandler } from './components/ChartErrorBoundary';
 export { validateChartData, validateChartProps, validateFieldMapping, validateDimensions, validateTheme, assertValidation, validateInDevelopment } from './utils/validation';
 export type { EChartsInstance, ChartDataPoint, ChartSeries, ChartAxis, ChartTheme, BaseChartProps, ChartRef, CalendarHeatmapDataPoint, CalendarConfig, VisualMapConfig, StackedBarData, StackedBarDataSeries, SankeyData, LineStyleConfig, LegendConfig, TooltipConfig, ScatterDataPoint, ScatterSeries, ScatterChartData, ClusterPoint, ClusterResult, ClusterChartData, ClusterChartDataPoint, ClusterVisualMapPiece, RegressionChartData, RegressionChartDataPoint, RegressionMethod, DataTransformOption, EcStatClusteringTransformOption, EcStatRegressionTransformOption, EcStatTransformOption, DatasetOptionWithTransforms, EChartsOption, SeriesOption, BarSeriesOption, LineSeriesOption, PieSeriesOption, HeatmapSeriesOption, ScatterSeriesOption, TitleOption, LegendComponentOption, TooltipOption, XAXisOption, YAXisOption, VisualMapComponentOption, CalendarOption, } from './types';
-export type { LineChartProps, BarChartProps, PieChartProps, ScatterChartProps, ClusterChartProps, CalendarHeatmapProps, SankeyChartProps, SankeyNode, SankeyLink, GanttChartProps, GanttTask, GanttCategory, TaskBarStyle, CategoryLabelStyle, TimelineStyle, StatusStyleMap, PriorityStyleMap, GanttDataZoomConfig, RegressionChartProps } from './types';
+export type { LineChartProps, BarChartProps, PieChartProps, ScatterChartProps, CombinedChartProps, ClusterChartProps, CalendarHeatmapProps, SankeyChartProps, SankeyNode, SankeyLink, GanttChartProps, GanttTask, GanttCategory, TaskBarStyle, CategoryLabelStyle, TimelineStyle, StatusStyleMap, PriorityStyleMap, GanttDataZoomConfig, RegressionChartProps } from './types';
 export type { OldLineChartProps } from './components/legacy/OldLineChart';
 export type { OldBarChartProps } from './components/legacy/OldBarChart';
 export type { OldPieChartProps } from './components/legacy/OldPieChart';

@@ -65,7 +65,7 @@ import type { GanttChartProps, ErgonomicChartRef } from '@/types';
  *   dataZoom={{ type: 'both' }}
  *   sortBy="priority"
  *   sortOrder="desc"
- *   onTaskClick={(task) => console.log('Task clicked:', task)}
+ *   onTaskClick={(task) => alert('Task clicked: ' + task.name)}
  * />
  */
 declare const GanttChart: import("react").ForwardRefExoticComponent<GanttChartProps & import("react").RefAttributes<ErgonomicChartRef>>;

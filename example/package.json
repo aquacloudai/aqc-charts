@@ -10,9 +10,10 @@
         "typecheck": "tsc --noEmit"
     },
     "dependencies": {
+        "aqc-charts": "file:../",
         "react": "^19.1.0",
         "react-dom": "^19.1.0",
-        "aqc-charts": "file:../"
+        "react-router-dom": "^7.7.0"
     },
     "devDependencies": {
         "@types/react": "^19.1.8",

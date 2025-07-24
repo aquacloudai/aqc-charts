@@ -55,9 +55,6 @@ export const OldClusterChart = forwardRef<ChartRef, OldClusterChartProps>(({
             // dimension 2 will be populated by clustering transform with cluster index
         ]);
 
-        // Debug logging
-        console.log('ClusterChart sourceData sample:', sourceData.slice(0, 3));
-        console.log('ClusterChart config:', { clusterCount, outputClusterIndexDimension });
 
         // Create visual map pieces
         const pieces: ClusterVisualMapPiece[] = [];

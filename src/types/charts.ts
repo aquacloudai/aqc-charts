@@ -35,6 +35,7 @@ export interface LineChartProps extends BaseErgonomicChartProps {
     readonly pointShape?: 'circle' | 'square' | 'triangle' | 'diamond';
     readonly showPoints?: boolean;
     readonly areaOpacity?: number;
+    readonly yAxisIndex?: number; // Which Y axis to use (0 for first, 1 for second, etc.)
   }> | undefined;
   
   // Multiple series options
@@ -49,11 +50,12 @@ export interface LineChartProps extends BaseErgonomicChartProps {
     readonly pointSize?: number;
     readonly pointShape?: 'circle' | 'square' | 'triangle' | 'diamond';
     readonly showPoints?: boolean;
+    readonly yAxisIndex?: number; // Which Y axis to use (0 for first, 1 for second, etc.)
   }[] | undefined;
   
   // Axes
   readonly xAxis?: AxisConfig | undefined;
-  readonly yAxis?: AxisConfig | undefined;
+  readonly yAxis?: AxisConfig | readonly AxisConfig[] | undefined; // Support single or multiple y-axes
   
   // Legend and tooltip
   readonly legend?: LegendConfig | undefined;
@@ -96,11 +98,12 @@ export interface BarChartProps extends BaseErgonomicChartProps {
     readonly data: readonly DataPoint[];
     readonly color?: string;
     readonly stack?: string;
+    readonly yAxisIndex?: number; // Which Y axis to use (0 for first, 1 for second, etc.)
   }[] | undefined;
   
   // Axes
   readonly xAxis?: AxisConfig | undefined;
-  readonly yAxis?: AxisConfig | undefined;
+  readonly yAxis?: AxisConfig | readonly AxisConfig[] | undefined; // Support single or multiple y-axes
   
   // Legend and tooltip
   readonly legend?: LegendConfig | undefined;
@@ -183,4 +186,48 @@ export interface AreaChartProps extends Omit<LineChartProps, 'showArea'> {
   readonly stacked?: boolean;
   readonly stackType?: 'normal' | 'percent';
   readonly opacity?: number;
+}
+
+// Combined Chart Props
+export interface CombinedChartProps extends BaseErgonomicChartProps {
+  readonly data: readonly DataPoint[];
+  
+  // Field mappings
+  readonly xField?: string;
+  
+  // Series configuration for mixed chart types
+  readonly series: readonly {
+    readonly field: string; // Data field to use for this series
+    readonly type: 'line' | 'bar'; // Chart type for this series
+    readonly name: string; // Display name
+    readonly color?: string; // Series color
+    readonly yAxisIndex?: number; // Which Y axis to use (0 or 1)
+    
+    // Line-specific options
+    readonly smooth?: boolean;
+    readonly strokeWidth?: number;
+    readonly strokeStyle?: 'solid' | 'dashed' | 'dotted';
+    readonly showPoints?: boolean;
+    readonly pointSize?: number;
+    readonly showArea?: boolean;
+    readonly areaOpacity?: number;
+    
+    // Bar-specific options
+    readonly barWidth?: number | string;
+    readonly stack?: string; // Stack name for grouping bars
+    readonly showLabels?: boolean;
+  }[];
+  
+  // Axes (can have dual Y axes)
+  readonly xAxis?: AxisConfig;
+  readonly yAxis?: readonly AxisConfig[];
+  
+  // Legend and tooltip
+  readonly legend?: LegendConfig;
+  readonly tooltip?: TooltipConfig;
+  
+  // Zoom and interaction
+  readonly zoom?: boolean;
+  readonly pan?: boolean;
+  readonly brush?: boolean;
 }

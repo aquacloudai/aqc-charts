@@ -1,6 +1,6 @@
 export interface AxisConfig {
     readonly label?: string;
-    readonly type?: 'linear' | 'category' | 'time' | 'log';
+    readonly type?: 'linear' | 'category' | 'time' | 'log' | 'value';
     readonly min?: number | string | Date;
     readonly max?: number | string | Date;
     readonly format?: string;
@@ -10,6 +10,11 @@ export interface AxisConfig {
     readonly rotate?: number;
     readonly boundaryGap?: boolean;
     readonly parseDate?: boolean;
+    readonly name?: string;
+    readonly nameLocation?: 'start' | 'middle' | 'end';
+    readonly nameGap?: number;
+    readonly position?: 'left' | 'right' | 'top' | 'bottom';
+    readonly data?: readonly any[];
 }
 export interface LegendConfig {
     readonly show?: boolean;

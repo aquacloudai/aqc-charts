@@ -24,6 +24,7 @@ export interface LineChartProps extends BaseErgonomicChartProps {
         readonly pointShape?: 'circle' | 'square' | 'triangle' | 'diamond';
         readonly showPoints?: boolean;
         readonly areaOpacity?: number;
+        readonly yAxisIndex?: number;
     }> | undefined;
     readonly series?: readonly {
         readonly name: string;
@@ -36,9 +37,10 @@ export interface LineChartProps extends BaseErgonomicChartProps {
         readonly pointSize?: number;
         readonly pointShape?: 'circle' | 'square' | 'triangle' | 'diamond';
         readonly showPoints?: boolean;
+        readonly yAxisIndex?: number;
     }[] | undefined;
     readonly xAxis?: AxisConfig | undefined;
-    readonly yAxis?: AxisConfig | undefined;
+    readonly yAxis?: AxisConfig | readonly AxisConfig[] | undefined;
     readonly legend?: LegendConfig | undefined;
     readonly tooltip?: TooltipConfig | undefined;
     readonly zoom?: boolean;
@@ -65,9 +67,10 @@ export interface BarChartProps extends BaseErgonomicChartProps {
         readonly data: readonly DataPoint[];
         readonly color?: string;
         readonly stack?: string;
+        readonly yAxisIndex?: number;
     }[] | undefined;
     readonly xAxis?: AxisConfig | undefined;
-    readonly yAxis?: AxisConfig | undefined;
+    readonly yAxis?: AxisConfig | readonly AxisConfig[] | undefined;
     readonly legend?: LegendConfig | undefined;
     readonly tooltip?: TooltipConfig | undefined;
     readonly sortBy?: 'value' | 'category' | 'none';
@@ -121,5 +124,33 @@ export interface AreaChartProps extends Omit<LineChartProps, 'showArea'> {
     readonly stacked?: boolean;
     readonly stackType?: 'normal' | 'percent';
     readonly opacity?: number;
+}
+export interface CombinedChartProps extends BaseErgonomicChartProps {
+    readonly data: readonly DataPoint[];
+    readonly xField?: string;
+    readonly series: readonly {
+        readonly field: string;
+        readonly type: 'line' | 'bar';
+        readonly name: string;
+        readonly color?: string;
+        readonly yAxisIndex?: number;
+        readonly smooth?: boolean;
+        readonly strokeWidth?: number;
+        readonly strokeStyle?: 'solid' | 'dashed' | 'dotted';
+        readonly showPoints?: boolean;
+        readonly pointSize?: number;
+        readonly showArea?: boolean;
+        readonly areaOpacity?: number;
+        readonly barWidth?: number | string;
+        readonly stack?: string;
+        readonly showLabels?: boolean;
+    }[];
+    readonly xAxis?: AxisConfig;
+    readonly yAxis?: readonly AxisConfig[];
+    readonly legend?: LegendConfig;
+    readonly tooltip?: TooltipConfig;
+    readonly zoom?: boolean;
+    readonly pan?: boolean;
+    readonly brush?: boolean;
 }
 //# sourceMappingURL=charts.d.ts.map

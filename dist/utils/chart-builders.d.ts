@@ -6,6 +6,7 @@ export { buildBarChartOption } from './chart-builders/bar-chart';
 export { buildPieChartOption } from './chart-builders/pie-chart';
 export { buildScatterChartOption } from './chart-builders/scatter-chart';
 export { buildGanttChartOption } from './chart-builders/gantt-chart';
+export { buildCombinedChartOption } from './chart-builders/combined-chart';
 export { buildClusterChartOption } from './chart-builders/cluster-chart';
 export { buildCalendarHeatmapOption } from './chart-builders/calendar-heatmap-chart';
 export { buildRegressionChartOption } from './chart-builders/regression-chart';

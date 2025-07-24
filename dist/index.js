@@ -1236,24 +1236,30 @@ function buildLineChartOption(props) {
 			itemStyle: { color: s.color },
 			areaStyle: s.showArea ?? props.showArea ? { opacity: props.areaOpacity || .3 } : void 0,
 			symbol: (s.showPoints ?? props.showPoints) !== false ? s.pointShape ?? props.pointShape ?? "circle" : "none",
-			symbolSize: s.pointSize ?? props.pointSize ?? 4
+			symbolSize: s.pointSize ?? props.pointSize ?? 4,
+			yAxisIndex: s.yAxisIndex ?? 0
 		}));
 		if (props.series && props.series[0] && isObjectData(props.series[0].data) && props.xField) xAxisData = props.series[0].data.map((item) => item[props.xField]);
 	} else if (props.data) if (isObjectData(props.data)) if (props.seriesField) {
 		const groups = groupDataByField(props.data, props.seriesField);
-		series = Object.entries(groups).map(([name, groupData]) => ({
-			name,
-			type: "line",
-			data: groupData.map((item) => item[props.yField]),
-			smooth: props.smooth,
-			lineStyle: {
-				width: props.strokeWidth,
-				type: mapStrokeStyleToECharts(props.strokeStyle)
-			},
-			areaStyle: props.showArea ? { opacity: props.areaOpacity || .3 } : void 0,
-			symbol: props.showPoints !== false ? props.pointShape || "circle" : "none",
-			symbolSize: props.pointSize || 4
-		}));
+		series = Object.entries(groups).map(([name, groupData]) => {
+			const seriesSpecificConfig = props.seriesConfig?.[name] || {};
+			return {
+				name,
+				type: "line",
+				data: groupData.map((item) => item[props.yField]),
+				smooth: seriesSpecificConfig.smooth ?? props.smooth,
+				lineStyle: {
+					width: seriesSpecificConfig.strokeWidth ?? props.strokeWidth,
+					type: mapStrokeStyleToECharts(seriesSpecificConfig.strokeStyle ?? props.strokeStyle)
+				},
+				itemStyle: seriesSpecificConfig.color ? { color: seriesSpecificConfig.color } : void 0,
+				areaStyle: seriesSpecificConfig.showArea ?? props.showArea ? { opacity: seriesSpecificConfig.areaOpacity ?? (props.areaOpacity || .3) } : void 0,
+				symbol: (seriesSpecificConfig.showPoints ?? props.showPoints) !== false ? seriesSpecificConfig.pointShape ?? props.pointShape ?? "circle" : "none",
+				symbolSize: seriesSpecificConfig.pointSize ?? props.pointSize ?? 4,
+				yAxisIndex: seriesSpecificConfig.yAxisIndex ?? 0
+			};
+		});
 		const seen = new Set();
 		xAxisData = [];
 		for (const item of props.data) {
@@ -1278,7 +1284,8 @@ function buildLineChartOption(props) {
 				itemStyle: seriesSpecificConfig.color ? { color: seriesSpecificConfig.color } : void 0,
 				areaStyle: seriesSpecificConfig.showArea ?? props.showArea ? { opacity: seriesSpecificConfig.areaOpacity ?? (props.areaOpacity || .3) } : void 0,
 				symbol: (seriesSpecificConfig.showPoints ?? props.showPoints) !== false ? seriesSpecificConfig.pointShape ?? props.pointShape ?? "circle" : "none",
-				symbolSize: seriesSpecificConfig.pointSize ?? props.pointSize ?? 4
+				symbolSize: seriesSpecificConfig.pointSize ?? props.pointSize ?? 4,
+				yAxisIndex: seriesSpecificConfig.yAxisIndex ?? 0
 			};
 		});
 		else series = [{
@@ -1314,7 +1321,7 @@ function buildLineChartOption(props) {
 			...buildAxisOption(props.xAxis, "categorical", props.theme),
 			data: xAxisData
 		},
-		yAxis: buildAxisOption(props.yAxis, "numeric", props.theme),
+		yAxis: Array.isArray(props.yAxis) ? props.yAxis.map((axis) => buildAxisOption(axis, "numeric", props.theme)) : buildAxisOption(props.yAxis, "numeric", props.theme),
 		series,
 		legend: buildLegendOption(props.legend, !!props.title, !!props.subtitle, !!props.zoom, props.theme),
 		tooltip: buildTooltipOption(props.tooltip, props.theme),
@@ -1369,7 +1376,8 @@ function buildBarChartOption(props) {
 				stack: s.stack || (props.stack ? "defaultStack" : void 0),
 				barWidth: props.barWidth,
 				barGap: props.barGap,
-				label: createLabelConfig(seriesData, allSeriesData, index)
+				label: createLabelConfig(seriesData, allSeriesData, index),
+				yAxisIndex: s.yAxisIndex ?? 0
 			};
 		});
 		if (props.series && props.series[0] && isObjectData(props.series[0].data) && props.categoryField) categoryData = props.series[0].data.map((item) => item[props.categoryField]);
@@ -1387,7 +1395,8 @@ function buildBarChartOption(props) {
 				barWidth: props.barWidth,
 				barGap: props.barGap,
 				itemStyle: { borderRadius: props.borderRadius },
-				label: createLabelConfig(seriesData, allSeriesData, index)
+				label: createLabelConfig(seriesData, allSeriesData, index),
+				yAxisIndex: 0
 			};
 		});
 		const seen = new Set();
@@ -1412,7 +1421,8 @@ function buildBarChartOption(props) {
 					barWidth: props.barWidth,
 					barGap: props.barGap,
 					itemStyle: { borderRadius: props.borderRadius },
-					label: createLabelConfig(seriesData, allSeriesData, index)
+					label: createLabelConfig(seriesData, allSeriesData, index),
+					yAxisIndex: 0
 				};
 			});
 		} else {
@@ -1474,7 +1484,7 @@ function buildBarChartOption(props) {
 	if (props.sortBy && props.sortBy !== "none") {}
 	const isHorizontal = props.orientation === "horizontal";
 	if ((props.stackType === "percent" || props.showPercentage) && props.stack) {
-		const yAxisOptions = isHorizontal ? buildAxisOption(props.yAxis, "categorical", props.theme) : buildAxisOption(props.yAxis, "numeric", props.theme);
+		const yAxisOptions = isHorizontal ? buildAxisOption(Array.isArray(props.yAxis) ? props.yAxis[0] : props.yAxis, "categorical", props.theme) : buildAxisOption(Array.isArray(props.yAxis) ? props.yAxis[0] : props.yAxis, "numeric", props.theme);
 		let tooltipConfig = props.tooltip;
 		if (props.showPercentage && !props.tooltip?.format) tooltipConfig = {
 			...props.tooltip,
@@ -1527,7 +1537,10 @@ function buildBarChartOption(props) {
 				...yAxisOptions,
 				data: categoryData,
 				boundaryGap: true
-			} : yAxisOptions,
+			} : Array.isArray(props.yAxis) ? props.yAxis.map((axis) => ({
+				...buildAxisOption(axis, "numeric", props.theme),
+				...yAxisOptions
+			})) : yAxisOptions,
 			series: series.map((s) => ({
 				...s,
 				stack: props.stackType === "percent" ? "percent" : "defaultStack"
@@ -1546,10 +1559,10 @@ function buildBarChartOption(props) {
 			boundaryGap: true
 		},
 		yAxis: isHorizontal ? {
-			...buildAxisOption(props.yAxis, "categorical", props.theme),
+			...buildAxisOption(Array.isArray(props.yAxis) ? props.yAxis[0] : props.yAxis, "categorical", props.theme),
 			data: categoryData,
 			boundaryGap: true
-		} : buildAxisOption(props.yAxis, "numeric", props.theme),
+		} : Array.isArray(props.yAxis) ? props.yAxis.map((axis) => buildAxisOption(axis, "numeric", props.theme)) : buildAxisOption(props.yAxis, "numeric", props.theme),
 		series,
 		legend: buildLegendOption(props.legend, !!props.title, !!props.subtitle, false, props.theme),
 		tooltip: buildTooltipOption(props.tooltip, props.theme),
@@ -2053,6 +2066,205 @@ function buildGanttChartOption(props) {
 }
 
 //#endregion
+//#region src/utils/negative-value-handling.ts
+/**
+* Analyzes data to detect negative values and calculate appropriate axis ranges
+*/
+function analyzeDataRange(data, fields) {
+	const ranges = {};
+	fields.forEach((field) => {
+		let min = Infinity;
+		let max = -Infinity;
+		let hasNegative = false;
+		data.forEach((item) => {
+			const value = item[field];
+			if (typeof value === "number" && !isNaN(value)) {
+				min = Math.min(min, value);
+				max = Math.max(max, value);
+				if (value < 0) hasNegative = true;
+			}
+		});
+		if (min !== Infinity && max !== -Infinity) {
+			const range = max - min;
+			const padding = range * .1;
+			if (hasNegative) {
+				min = Math.min(min - padding, 0);
+				max = Math.max(max + padding, 0);
+			} else {
+				min = Math.max(0, min - padding);
+				max = max + padding;
+			}
+			ranges[field] = {
+				min,
+				max,
+				hasNegative
+			};
+		}
+	});
+	return ranges;
+}
+/**
+* Enhances axis configuration with proper negative value support
+*/
+function enhanceAxisForNegativeValues(axisConfig, hasNegative) {
+	if (!hasNegative) return axisConfig;
+	return {
+		...axisConfig,
+		axisLine: {
+			...axisConfig.axisLine,
+			onZero: true,
+			lineStyle: {
+				color: "#666666",
+				...axisConfig.axisLine?.lineStyle
+			}
+		},
+		splitLine: {
+			...axisConfig.splitLine,
+			show: true,
+			lineStyle: {
+				color: ["#e6e6e6"],
+				width: 1,
+				type: "solid",
+				...axisConfig.splitLine?.lineStyle
+			}
+		}
+	};
+}
+
+//#endregion
+//#region src/utils/chart-builders/combined-chart.ts
+function buildCombinedChartOption(params) {
+	const { data, xField, series, theme = "light", colorPalette, backgroundColor, title, subtitle, titlePosition = "center", xAxis, yAxis = [{ type: "value" }], legend, tooltip, zoom = false, brush = false, animate = true, animationDuration, customOption } = params;
+	const xAxisData = isObjectData(data) ? data.map((item) => item[xField]) : [];
+	const colors = colorPalette || COLOR_PALETTES[theme] || COLOR_PALETTES.default;
+	const baseOption = buildBaseOption({
+		title,
+		subtitle,
+		titlePosition,
+		backgroundColor,
+		animate,
+		animationDuration
+	});
+	const echartsSeriesData = series.map((seriesConfig, index) => {
+		const { field, type, name, color, yAxisIndex = 0,...seriesOptions } = seriesConfig;
+		const seriesData = isObjectData(data) ? data.map((item) => item[field]) : [];
+		const baseSeriesConfig = {
+			name,
+			type,
+			data: seriesData,
+			color: color || colors[index % colors.length],
+			yAxisIndex
+		};
+		if (type === "line") Object.assign(baseSeriesConfig, {
+			smooth: seriesOptions.smooth || false,
+			lineStyle: {
+				width: seriesOptions.strokeWidth || 2,
+				type: mapStrokeStyleToECharts(seriesOptions.strokeStyle || "solid")
+			},
+			symbol: seriesOptions.showPoints ? "circle" : "none",
+			symbolSize: seriesOptions.pointSize || 4,
+			areaStyle: seriesOptions.showArea ? { opacity: seriesOptions.areaOpacity || .3 } : void 0
+		});
+		else if (type === "bar") Object.assign(baseSeriesConfig, {
+			barWidth: seriesOptions.barWidth,
+			stack: seriesOptions.stack,
+			label: seriesOptions.showLabels ? {
+				show: true,
+				position: "top"
+			} : void 0
+		});
+		return baseSeriesConfig;
+	});
+	const builtXAxis = buildAxisOption({
+		type: "category",
+		...xAxis
+	});
+	if (builtXAxis.type === "category") builtXAxis.data = xAxisData;
+	const seriesFields = series.map((s) => s.field);
+	const dataRanges = analyzeDataRange(data, seriesFields);
+	const builtYAxis = yAxis.map((axisConfig, index) => {
+		const seriesUsingThisAxis = series.filter((s) => (s.yAxisIndex || 0) === index);
+		const fieldsForThisAxis = seriesUsingThisAxis.map((s) => s.field);
+		let axisMin;
+		let axisMax;
+		let hasNegativeValues = false;
+		fieldsForThisAxis.forEach((field) => {
+			const range = dataRanges[field];
+			if (range) {
+				axisMin = axisMin === void 0 ? range.min : Math.min(axisMin, range.min);
+				axisMax = axisMax === void 0 ? range.max : Math.max(axisMax, range.max);
+				if (range.hasNegative) hasNegativeValues = true;
+			}
+		});
+		let axisOptions = {
+			type: "value",
+			...axisConfig
+		};
+		if (axisMin !== void 0 && axisMax !== void 0) {
+			if (axisConfig.min === void 0) axisOptions.min = axisMin;
+			if (axisConfig.max === void 0) axisOptions.max = axisMax;
+		}
+		axisOptions = enhanceAxisForNegativeValues(axisOptions, hasNegativeValues);
+		return buildAxisOption(axisOptions);
+	});
+	const builtLegend = legend !== false ? buildLegendOption({
+		show: true,
+		data: series.map((s) => s.name),
+		...legend
+	}) : void 0;
+	const builtTooltip = buildTooltipOption({
+		trigger: "axis",
+		axisPointer: {
+			type: "cross",
+			crossStyle: { color: "#999" }
+		},
+		...tooltip
+	});
+	const dataZoom = zoom ? [{
+		type: "slider",
+		xAxisIndex: 0,
+		show: true
+	}, {
+		type: "inside",
+		xAxisIndex: 0
+	}] : void 0;
+	const brushConfig = brush ? {
+		toolbox: { feature: { brush: { type: [
+			"rect",
+			"polygon",
+			"lineX",
+			"lineY",
+			"keep",
+			"clear"
+		] } } },
+		brush: { xAxisIndex: 0 }
+	} : void 0;
+	const option = {
+		...baseOption,
+		color: colors,
+		xAxis: builtXAxis,
+		yAxis: builtYAxis,
+		series: echartsSeriesData,
+		legend: builtLegend,
+		tooltip: builtTooltip,
+		dataZoom,
+		...brushConfig,
+		grid: {
+			left: "3%",
+			right: yAxis.length > 1 ? "8%" : "4%",
+			bottom: zoom ? "15%" : "3%",
+			top: "10%",
+			containLabel: true
+		}
+	};
+	if (customOption) return {
+		...option,
+		...customOption
+	};
+	return option;
+}
+
+//#endregion
 //#region src/utils/chart-builders/cluster-chart.ts
 function buildClusterChartOption(props) {
 	const baseOption = buildBaseOption(props);
@@ -2081,13 +2293,14 @@ function buildClusterChartOption(props) {
 		if (Array.isArray(point)) return [Number(point[0]) || 0, Number(point[1]) || 0];
 		return [0, 0];
 	});
+	let hasNegativeX = false;
+	let hasNegativeY = false;
+	sourceData.forEach(([x, y]) => {
+		if (x !== void 0 && x < 0) hasNegativeX = true;
+		if (y !== void 0 && y < 0) hasNegativeY = true;
+	});
 	const outputClusterIndexDimension = 2;
 	const gridLeft = visualMapPosition === "left" ? 120 : 60;
-	console.log("ClusterChart sourceData sample:", sourceData.slice(0, 3));
-	console.log("ClusterChart config:", {
-		clusterCount,
-		outputClusterIndexDimension
-	});
 	const pieces = Array.from({ length: clusterCount }, (_, i) => ({
 		value: i,
 		label: `cluster ${i}`,
@@ -2128,16 +2341,16 @@ function buildClusterChartOption(props) {
 			pieces
 		},
 		grid: { left: gridLeft },
-		xAxis: {
+		xAxis: enhanceAxisForNegativeValues({
 			...buildAxisOption(props.xAxis, "numeric", props.theme),
 			type: "value",
 			scale: true
-		},
-		yAxis: {
+		}, hasNegativeX),
+		yAxis: enhanceAxisForNegativeValues({
 			...buildAxisOption(props.yAxis, "numeric", props.theme),
 			type: "value",
 			scale: true
-		},
+		}, hasNegativeY),
 		series: {
 			type: "scatter",
 			encode: {
@@ -3657,6 +3870,244 @@ const ScatterChart = forwardRef(({ width = "100%", height = 400, className, styl
 ScatterChart.displayName = "ScatterChart";
 
 //#endregion
+//#region src/components/CombinedChart.tsx
+/**
+* Combined Chart component that can mix line and bar series in the same visualization
+* 
+* @example
+* // Combined chart with sales bars and temperature line
+* <CombinedChart
+*   data={[
+*     { month: 'Jan', sales: 100, temperature: 15 },
+*     { month: 'Feb', sales: 120, temperature: 18 },
+*     { month: 'Mar', sales: 110, temperature: 22 }
+*   ]}
+*   xField="month"
+*   series={[
+*     { field: 'sales', type: 'bar', name: 'Sales', color: '#1890ff' },
+*     { field: 'temperature', type: 'line', name: 'Temperature', color: '#ff4d4f', yAxisIndex: 1 }
+*   ]}
+*   yAxis={[
+*     { name: 'Sales (units)', position: 'left' },
+*     { name: 'Temperature (°C)', position: 'right' }
+*   ]}
+* />
+* 
+* @example
+* // Simple combined chart with default styling
+* <CombinedChart
+*   data={salesData}
+*   xField="quarter"
+*   series={[
+*     { field: 'revenue', type: 'bar', name: 'Revenue' },
+*     { field: 'growth', type: 'line', name: 'Growth Rate' }
+*   ]}
+* />
+*/
+const CombinedChart = forwardRef(({ width = "100%", height = 400, className, style, data, xField = "x", series = [], theme = "light", colorPalette, backgroundColor, title, subtitle, titlePosition = "center", xAxis, yAxis = [{ type: "value" }], legend, tooltip, zoom = false, pan = false, brush = false, loading = false, disabled: _disabled = false, animate = true, animationDuration, onChartReady, onDataPointClick, onDataPointHover, customOption, responsive: _responsive = true,...restProps }, ref) => {
+	const chartOption = useMemo(() => {
+		return buildCombinedChartOption({
+			data: data || [],
+			xField,
+			series,
+			theme,
+			colorPalette,
+			backgroundColor,
+			title,
+			subtitle,
+			titlePosition,
+			xAxis: xAxis || void 0,
+			yAxis: yAxis || [{ type: "value" }],
+			legend,
+			tooltip,
+			zoom,
+			pan,
+			brush,
+			animate,
+			animationDuration,
+			customOption
+		});
+	}, [
+		data,
+		xField,
+		series,
+		theme,
+		colorPalette,
+		backgroundColor,
+		title,
+		subtitle,
+		titlePosition,
+		xAxis,
+		yAxis,
+		legend,
+		tooltip,
+		zoom,
+		pan,
+		brush,
+		animate,
+		animationDuration,
+		customOption
+	]);
+	const chartEvents = useMemo(() => {
+		const events = {};
+		if (onDataPointClick) events.click = (params, chart) => {
+			onDataPointClick(params, {
+				chart,
+				event: params
+			});
+		};
+		if (onDataPointHover) events.mouseover = (params, chart) => {
+			onDataPointHover(params, {
+				chart,
+				event: params
+			});
+		};
+		return Object.keys(events).length > 0 ? events : void 0;
+	}, [onDataPointClick, onDataPointHover]);
+	const { containerRef, loading: chartLoading, error, getEChartsInstance, resize, showLoading, hideLoading } = useECharts({
+		option: chartOption,
+		theme,
+		loading,
+		events: chartEvents,
+		onChartReady
+	});
+	const exportImage = (format = "png") => {
+		const chart = getEChartsInstance();
+		if (!chart) return "";
+		return chart.getDataURL({
+			type: format,
+			pixelRatio: 2,
+			backgroundColor: backgroundColor || "#fff"
+		});
+	};
+	const highlight = (dataIndex, seriesIndex = 0) => {
+		const chart = getEChartsInstance();
+		if (!chart) return;
+		chart.dispatchAction({
+			type: "highlight",
+			seriesIndex,
+			dataIndex
+		});
+	};
+	const clearHighlight = () => {
+		const chart = getEChartsInstance();
+		if (!chart) return;
+		chart.dispatchAction({ type: "downplay" });
+	};
+	const updateData = (newData) => {
+		const chart = getEChartsInstance();
+		if (!chart) return;
+		const newOption = buildCombinedChartOption({
+			data: newData,
+			xField,
+			series,
+			theme,
+			colorPalette,
+			backgroundColor,
+			title,
+			subtitle,
+			titlePosition,
+			xAxis: xAxis || void 0,
+			yAxis: yAxis || [{ type: "value" }],
+			legend,
+			tooltip,
+			zoom,
+			pan,
+			brush,
+			animate,
+			animationDuration,
+			customOption
+		});
+		chart.setOption(newOption);
+	};
+	useImperativeHandle(ref, () => ({
+		getChart: getEChartsInstance,
+		exportImage,
+		resize,
+		showLoading: () => showLoading(),
+		hideLoading,
+		highlight,
+		clearHighlight,
+		updateData
+	}), [
+		getEChartsInstance,
+		exportImage,
+		resize,
+		showLoading,
+		hideLoading,
+		highlight,
+		clearHighlight,
+		updateData
+	]);
+	if (error) return /* @__PURE__ */ jsxs("div", {
+		className: `aqc-charts-error ${className || ""}`,
+		style: {
+			width,
+			height,
+			display: "flex",
+			alignItems: "center",
+			justifyContent: "center",
+			color: "#ff4d4f",
+			fontSize: "14px",
+			border: "1px dashed #ff4d4f",
+			borderRadius: "4px",
+			...style
+		},
+		children: ["Error: ", error.message || "Failed to render chart"]
+	});
+	const containerStyle = useMemo(() => ({
+		width,
+		height,
+		position: "relative",
+		...style
+	}), [
+		width,
+		height,
+		style
+	]);
+	return /* @__PURE__ */ jsxs("div", {
+		className: `aqc-charts-container ${className || ""}`,
+		style: containerStyle,
+		...restProps,
+		children: [/* @__PURE__ */ jsx("div", {
+			ref: containerRef,
+			style: {
+				width: "100%",
+				height: "100%"
+			}
+		}), (chartLoading || loading) && /* @__PURE__ */ jsxs("div", {
+			className: "aqc-charts-loading",
+			style: {
+				position: "absolute",
+				top: 0,
+				left: 0,
+				right: 0,
+				bottom: 0,
+				display: "flex",
+				alignItems: "center",
+				justifyContent: "center",
+				backgroundColor: "rgba(255, 255, 255, 0.8)",
+				fontSize: "14px",
+				color: "#666"
+			},
+			children: [/* @__PURE__ */ jsx("div", {
+				className: "aqc-charts-spinner",
+				style: {
+					width: "20px",
+					height: "20px",
+					border: "2px solid #f3f3f3",
+					borderTop: "2px solid #1890ff",
+					borderRadius: "50%",
+					animation: "spin 1s linear infinite",
+					marginRight: "8px"
+				}
+			}), "Loading..."]
+		})]
+	});
+});
+CombinedChart.displayName = "CombinedChart";
+
+//#endregion
 //#region src/components/ClusterChart.tsx
 /**
 * Ergonomic ClusterChart component with intuitive props
@@ -4582,7 +5033,7 @@ SankeyChart.displayName = "SankeyChart";
 *   dataZoom={{ type: 'both' }}
 *   sortBy="priority"
 *   sortOrder="desc"
-*   onTaskClick={(task) => console.log('Task clicked:', task)}
+*   onTaskClick={(task) => alert('Task clicked: ' + task.name)}
 * />
 */
 const GanttChart = forwardRef(({ width = "100%", height = 600, className, style, data, idField = "id", nameField = "name", categoryField = "category", startTimeField = "startTime", endTimeField = "endTime", colorField = "color", statusField = "status", priorityField = "priority", progressField = "progress", assigneeField = "assignee", tasks, categories, theme = "light", colorPalette, backgroundColor, title, subtitle, titlePosition = "center", categoryWidth = 120, taskHeight = .6, categorySpacing = 2, groupSpacing = 8, taskBarStyle, statusStyles, priorityStyles, categoryLabelStyle, showCategoryLabels = true, categoryColors, timelineStyle, timeRange, timeFormat, dataZoom = true, allowPan = true, allowZoom = true, initialZoomLevel, draggable = false, resizable = false, selectable = false, showTaskTooltips = true, showDependencies = false, showMilestones = false, milestoneStyle, todayMarker = false, showProgress = false, showTaskProgress = true, progressStyle, groupByCategory = false, groupByAssignee = false, filterByStatus, filterByPriority, sortBy, sortOrder = "asc", legend, tooltip, loading = false, disabled: _disabled = false, animate = true, animationDuration, onChartReady, onDataPointClick, onDataPointHover, onTaskClick, onTaskDrag: _onTaskDrag, onTaskResize: _onTaskResize, onCategoryClick, onTimeRangeChange, customOption, responsive: _responsive = true,...restProps }, ref) => {
@@ -5705,11 +6156,6 @@ const OldClusterChart = forwardRef(({ data, clusterCount = 6, outputClusterIndex
 	const chartOption = useMemo(() => {
 		if (!data?.data || !Array.isArray(data.data)) return { series: [] };
 		const sourceData = data.data.map((point) => [point.value[0], point.value[1]]);
-		console.log("ClusterChart sourceData sample:", sourceData.slice(0, 3));
-		console.log("ClusterChart config:", {
-			clusterCount,
-			outputClusterIndexDimension
-		});
 		const pieces = [];
 		for (let i = 0; i < clusterCount; i++) pieces.push({
 			value: i,
@@ -6804,4 +7250,4 @@ if (typeof document !== "undefined" && !document.getElementById("aqc-charts-styl
 }
 
 //#endregion
-export { BarChart, BaseChart, CalendarHeatmapChart, ChartError, ChartErrorBoundary, ChartErrorCode, ChartInitError, ChartRenderError, ClusterChart, DataValidationError, EChartsLoadError, GanttChart, LineChart, OldBarChart, OldCalendarHeatmapChart, OldClusterChart, OldGanttChart, OldLineChart, OldPieChart, OldRegressionChart, OldSankeyChart, OldScatterChart, OldStackedBarChart, PieChart, RegressionChart, SankeyChart, ScatterChart, TransformError, assertValidation, clusterPointsToScatterData, createChartError, darkTheme, extractPoints, isChartError, isRecoverableError, lightTheme, performKMeansClustering, safeAsync, safeSync, useChartErrorHandler, useChartEvents, useChartInstance, useChartOptions, useChartResize, useECharts, validateChartData, validateChartProps, validateDimensions, validateFieldMapping, validateInDevelopment, validateTheme, withChartErrorBoundary };
+export { BarChart, BaseChart, CalendarHeatmapChart, ChartError, ChartErrorBoundary, ChartErrorCode, ChartInitError, ChartRenderError, ClusterChart, CombinedChart, DataValidationError, EChartsLoadError, GanttChart, LineChart, OldBarChart, OldCalendarHeatmapChart, OldClusterChart, OldGanttChart, OldLineChart, OldPieChart, OldRegressionChart, OldSankeyChart, OldScatterChart, OldStackedBarChart, PieChart, RegressionChart, SankeyChart, ScatterChart, TransformError, assertValidation, clusterPointsToScatterData, createChartError, darkTheme, extractPoints, isChartError, isRecoverableError, lightTheme, performKMeansClustering, safeAsync, safeSync, useChartErrorHandler, useChartEvents, useChartInstance, useChartOptions, useChartResize, useECharts, validateChartData, validateChartProps, validateDimensions, validateFieldMapping, validateInDevelopment, validateTheme, withChartErrorBoundary };

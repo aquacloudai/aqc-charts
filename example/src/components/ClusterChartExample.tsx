@@ -82,6 +82,39 @@ const biologicalData = [
   { length: 6.8, weight: 2.1, species: 'Hybrid' }
 ];
 
+// New dataset with positive and negative values on both X and Y axes
+const marketPositionData = [
+  // Quadrant I: High growth, high profitability (positive x, positive y)
+  { growth: 15.2, profitability: 8.5, company: 'TechCorp', sector: 'Technology' },
+  { growth: 22.8, profitability: 12.1, company: 'InnovateLtd', sector: 'Technology' },
+  { growth: 18.5, profitability: 9.8, company: 'DataSys', sector: 'Technology' },
+  { growth: 12.3, profitability: 7.2, company: 'CloudTech', sector: 'Technology' },
+  
+  // Quadrant II: Low/negative growth, high profitability (negative x, positive y)
+  { growth: -3.2, profitability: 15.8, company: 'UtilityCorp', sector: 'Utilities' },
+  { growth: -1.8, profitability: 18.2, company: 'PowerGen', sector: 'Utilities' },
+  { growth: -5.4, profitability: 12.5, company: 'WaterWorks', sector: 'Utilities' },
+  { growth: -2.1, profitability: 16.3, company: 'GasSupply', sector: 'Utilities' },
+  
+  // Quadrant III: Low/negative growth, low/negative profitability (negative x, negative y)
+  { growth: -12.4, profitability: -2.3, company: 'OldMedia', sector: 'Media' },
+  { growth: -8.9, profitability: -5.7, company: 'PrintNews', sector: 'Media' },
+  { growth: -15.6, profitability: -8.1, company: 'RadioClassic', sector: 'Media' },
+  { growth: -10.2, profitability: -3.4, company: 'TradePub', sector: 'Media' },
+  
+  // Quadrant IV: High growth, low/negative profitability (positive x, negative y)
+  { growth: 28.7, profitability: -1.8, company: 'StartupA', sector: 'Startup' },
+  { growth: 35.2, profitability: -4.2, company: 'StartupB', sector: 'Startup' },
+  { growth: 42.1, profitability: -6.8, company: 'StartupC', sector: 'Startup' },
+  { growth: 31.5, profitability: -2.5, company: 'StartupD', sector: 'Startup' },
+  
+  // Mixed quadrant points for interesting clustering
+  { growth: 5.8, profitability: -1.2, company: 'TransitionCorp', sector: 'Mixed' },
+  { growth: -2.3, profitability: 2.1, company: 'StableFirm', sector: 'Mixed' },
+  { growth: 8.4, profitability: 1.8, company: 'GrowthCo', sector: 'Mixed' },
+  { growth: -0.5, profitability: -0.8, company: 'NeutralInc', sector: 'Mixed' }
+];
+
 interface ClusterChartExampleProps {
   theme: 'light' | 'dark';
   colorPalette: readonly string[];
@@ -363,6 +396,177 @@ export function ClusterChartExample({ theme, colorPalette, onInteraction }: Clus
             }
           }}
         />
+      </div>
+
+      {/* Market Position Analysis with Positive/Negative Values on Both Axes */}
+      <div style={{ marginBottom: '40px' }}>
+        <h4 style={{
+          color: theme === 'dark' ? '#fff' : '#333',
+          marginBottom: '20px',
+          fontSize: '18px',
+          fontWeight: '600'
+        }}>
+          📊 Market Position Analysis (4-Quadrant Clustering)
+        </h4>
+        <p style={{
+          color: theme === 'dark' ? '#ccc' : '#666',
+          marginBottom: '20px',
+          fontSize: '14px',
+          lineHeight: 1.5
+        }}>
+          <strong>Demonstrates negative value support on both axes:</strong> Company market positions 
+          plotted with growth rate (X-axis) and profitability (Y-axis), both ranging from negative to positive values.
+          This creates 4 distinct business quadrants that the clustering algorithm can identify.
+        </p>
+
+        <ClusterChart
+          data={marketPositionData}
+          xField="growth"
+          yField="profitability"
+          clusterCount={4}
+          title="Market Position Clustering Analysis"
+          subtitle="Growth Rate vs Profitability (4-Quadrant Analysis)"
+          height={500}
+          theme={theme}
+          colorPalette={colorPalette}
+          pointSize={10}
+          pointOpacity={0.8}
+          showVisualMap={true}
+          visualMapPosition="right"
+          tooltip={{
+            show: true,
+            trigger: 'item',
+            format: (params: any) => {
+              if (params.value && Array.isArray(params.value)) {
+                const [growth, profitability, cluster] = params.value;
+                const company = marketPositionData.find(c => 
+                  c.growth === growth && c.profitability === profitability
+                );
+                
+                // Determine quadrant
+                let quadrant = '';
+                if (growth >= 0 && profitability >= 0) quadrant = 'I: High Growth, High Profit';
+                else if (growth < 0 && profitability >= 0) quadrant = 'II: Low Growth, High Profit';
+                else if (growth < 0 && profitability < 0) quadrant = 'III: Low Growth, Low Profit';
+                else quadrant = 'IV: High Growth, Low Profit';
+                
+                return `
+                  <div style="padding: 10px;">
+                    <strong>${company?.company}</strong><br/>
+                    <em>${company?.sector} Sector</em><br/>
+                    <hr style="margin: 6px 0; border: none; border-top: 1px solid #ddd;">
+                    Growth Rate: ${growth}%<br/>
+                    Profitability: ${profitability}%<br/>
+                    <strong>Quadrant ${quadrant}</strong><br/>
+                    <em>Cluster Group: ${cluster + 1}</em>
+                  </div>
+                `;
+              }
+              return `<div style="padding: 8px;">Company data</div>`;
+            },
+          }}
+          xAxis={{
+            label: 'Growth Rate (%)',
+            type: 'linear',
+            grid: true,
+            format: '{value}%'
+          }}
+          yAxis={{
+            label: 'Profitability (%)',
+            type: 'linear', 
+            grid: true,
+            format: '{value}%'
+          }}
+          onDataPointClick={(data) => {
+            if (data.value && Array.isArray(data.value)) {
+              const [growth, profitability, cluster] = data.value;
+              const company = marketPositionData.find(c => 
+                c.growth === growth && c.profitability === profitability
+              );
+              
+              let quadrantName = '';
+              if (growth >= 0 && profitability >= 0) quadrantName = 'Stars';
+              else if (growth < 0 && profitability >= 0) quadrantName = 'Cash Cows';
+              else if (growth < 0 && profitability < 0) quadrantName = 'Dogs';
+              else quadrantName = 'Question Marks';
+              
+              onInteraction?.(`${company?.company} (${company?.sector}): ${growth}% growth, ${profitability}% profit - "${quadrantName}" quadrant, Cluster ${cluster + 1}`);
+            }
+          }}
+        />
+        
+        <div style={{ 
+          marginTop: '20px',
+          display: 'grid',
+          gridTemplateColumns: '1fr 1fr',
+          gap: '15px'
+        }}>
+          <div style={{ 
+            padding: '15px',
+            backgroundColor: theme === 'dark' ? '#1e3a8a' : '#dbeafe',
+            borderRadius: '8px',
+            fontSize: '13px',
+            border: `1px solid ${theme === 'dark' ? '#3b82f6' : '#93c5fd'}`
+          }}>
+            <strong>🌟 Quadrant I (Stars):</strong><br/>
+            High Growth (+), High Profitability (+)<br/>
+            <em>Technology companies leading the market</em>
+          </div>
+          
+          <div style={{ 
+            padding: '15px',
+            backgroundColor: theme === 'dark' ? '#166534' : '#dcfce7',
+            borderRadius: '8px',
+            fontSize: '13px',
+            border: `1px solid ${theme === 'dark' ? '#22c55e' : '#86efac'}`
+          }}>
+            <strong>🐄 Quadrant II (Cash Cows):</strong><br/>
+            Low Growth (-), High Profitability (+)<br/>
+            <em>Stable utilities with consistent returns</em>
+          </div>
+          
+          <div style={{ 
+            padding: '15px',
+            backgroundColor: theme === 'dark' ? '#7f1d1d' : '#fef2f2',
+            borderRadius: '8px',
+            fontSize: '13px',
+            border: `1px solid ${theme === 'dark' ? '#dc2626' : '#fecaca'}`
+          }}>
+            <strong>🐕 Quadrant III (Dogs):</strong><br/>
+            Low Growth (-), Low Profitability (-)<br/>
+            <em>Declining media companies struggling</em>
+          </div>
+          
+          <div style={{ 
+            padding: '15px',
+            backgroundColor: theme === 'dark' ? '#92400e' : '#fef3c7',
+            borderRadius: '8px',
+            fontSize: '13px',
+            border: `1px solid ${theme === 'dark' ? '#f59e0b' : '#fde68a'}`
+          }}>
+            <strong>❓ Quadrant IV (Question Marks):</strong><br/>
+            High Growth (+), Low Profitability (-)<br/>
+            <em>High-growth startups burning cash</em>
+          </div>
+        </div>
+
+        <div style={{ 
+          marginTop: '20px',
+          padding: '15px',
+          backgroundColor: theme === 'dark' ? '#374151' : '#f3f4f6',
+          borderRadius: '8px',
+          fontSize: '14px',
+          border: `1px solid ${theme === 'dark' ? '#6b7280' : '#d1d5db'}`
+        }}>
+          <strong>🎯 Key Features Demonstrated:</strong>
+          <ul style={{ margin: '10px 0 0 0', paddingLeft: '20px', lineHeight: '1.6' }}>
+            <li><strong>4-Quadrant Analysis:</strong> Both X and Y axes cross zero, creating four distinct business quadrants</li>
+            <li><strong>Negative Value Clustering:</strong> Algorithm correctly identifies patterns across positive/negative ranges</li>
+            <li><strong>Business Intelligence:</strong> Real-world BCG Matrix-style analysis of company positions</li>
+            <li><strong>Smart Axis Scaling:</strong> Automatic range detection handles mixed positive/negative data</li>
+            <li><strong>Contextual Tooltips:</strong> Shows quadrant classification and business interpretation</li>
+          </ul>
+        </div>
       </div>
     </div>
   );

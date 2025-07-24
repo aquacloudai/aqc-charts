@@ -8,6 +8,7 @@ import { CalendarHeatmapExample } from './components/CalendarHeatmapExample';
 import { SankeyChartExample } from './components/SankeyChartExample';
 import { GanttChartExample } from './components/GanttChartExample';
 import { RegressionChartExample } from './components/RegressionChartExample';
+import { CombinedChartExample } from './components/CombinedChartExample';
 
 
 // Component for theme and palette selection
@@ -241,6 +242,15 @@ export function Examples() {
           colorPalette={colorPalettes[palette as keyof typeof colorPalettes]}
           onInteraction={(data) => setInteractionData(data)}
         />
+      </ChartCard>
+
+      {/* Combined Charts Showcase */}
+      <ChartCard
+        title="🎯 Combined Chart Showcase"
+        description="Demonstrate mixed line and bar visualizations: dual Y-axes, sales & temperature analysis, revenue & growth tracking, and production efficiency monitoring."
+        theme={theme}
+      >
+        <CombinedChartExample />
       </ChartCard>
 
       {/* Pie Charts Showcase */}

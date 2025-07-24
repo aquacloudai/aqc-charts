@@ -7,6 +7,7 @@ import {
   buildAxisOption,
   buildTooltipOption,
 } from '../base-options';
+import { enhanceAxisForNegativeValues } from '../negative-value-handling';
 
 export function buildClusterChartOption(props: ClusterChartProps): EChartsOption {
   const baseOption = buildBaseOption(props);
@@ -43,12 +44,18 @@ export function buildClusterChartOption(props: ClusterChartProps): EChartsOption
     });
   }
   
+  // Detect if we have negative values in the data for proper axis configuration
+  let hasNegativeX = false;
+  let hasNegativeY = false;
+  
+  sourceData.forEach(([x, y]) => {
+    if (x !== undefined && x < 0) hasNegativeX = true;
+    if (y !== undefined && y < 0) hasNegativeY = true;
+  });
+  
   const outputClusterIndexDimension = 2;
   const gridLeft = visualMapPosition === 'left' ? 120 : 60;
   
-  // Debug logging
-  console.log('ClusterChart sourceData sample:', sourceData.slice(0, 3));
-  console.log('ClusterChart config:', { clusterCount, outputClusterIndexDimension });
   
   // Create visual map pieces for cluster coloring
   const pieces = Array.from({ length: clusterCount }, (_, i) => ({
@@ -98,18 +105,18 @@ export function buildClusterChartOption(props: ClusterChartProps): EChartsOption
     grid: {
       left: gridLeft
     },
-    xAxis: {
+    xAxis: enhanceAxisForNegativeValues({
       ...buildAxisOption(props.xAxis, 'numeric', props.theme),
       // Always override type to 'value' for clustering
       type: 'value',
       scale: true,
-    },
-    yAxis: {
+    }, hasNegativeX),
+    yAxis: enhanceAxisForNegativeValues({
       ...buildAxisOption(props.yAxis, 'numeric', props.theme),
       // Always override type to 'value' for clustering
       type: 'value',
       scale: true,
-    },
+    }, hasNegativeY),
     series: {
       type: 'scatter',
       encode: { 

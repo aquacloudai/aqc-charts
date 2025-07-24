@@ -22,9 +22,22 @@ const temperatureData = [
   { date: '2024-01-02', temperature: 4.1, humidity: 68, precipitation: 2.3 },
   { date: '2024-01-03', temperature: 1.8, humidity: 72, precipitation: 5.1 },
   { date: '2024-01-04', temperature: -0.5, humidity: 58, precipitation: 0 },
-  { date: '2024-01-05', temperature: 3.2, humidity: 63, precipitation: 1.2 },
-  { date: '2024-01-06', temperature: 6.8, humidity: 75, precipitation: 3.4 },
-  { date: '2024-01-07', temperature: 8.1, humidity: 71, precipitation: 0.8 },
+  { date: '2024-01-05', temperature: -2.8, humidity: 54, precipitation: 0 },
+  { date: '2024-01-06', temperature: -4.2, humidity: 48, precipitation: 0 },
+  { date: '2024-01-07', temperature: -1.5, humidity: 52, precipitation: 1.2 },
+  { date: '2024-01-08', temperature: 1.2, humidity: 61, precipitation: 2.8 },
+  { date: '2024-01-09', temperature: 3.8, humidity: 67, precipitation: 0.5 },
+  { date: '2024-01-10', temperature: 6.5, humidity: 72, precipitation: 3.1 },
+];
+
+// New dataset to demonstrate financial performance with negative values
+const performanceData = [
+  { quarter: 'Q1 2023', growth: 15.2, margin: 8.5, satisfaction: 7.8 },
+  { quarter: 'Q2 2023', growth: 22.8, margin: 12.1, satisfaction: 8.2 },
+  { quarter: 'Q3 2023', growth: -8.4, margin: -2.3, satisfaction: 6.9 },
+  { quarter: 'Q4 2023', growth: -15.6, margin: -7.8, satisfaction: 6.1 },
+  { quarter: 'Q1 2024', growth: 5.3, margin: 2.1, satisfaction: 7.3 },
+  { quarter: 'Q2 2024', growth: 18.9, margin: 9.7, satisfaction: 8.0 },
 ];
 
 const stockData = [
@@ -458,6 +471,277 @@ export function LineChartExample({ theme, colorPalette, onInteraction }: LineCha
           responsive
           maintainAspectRatio
         />
+      </div>
+
+      {/* Example 7: Negative Temperature Values */}
+      <div style={{ marginBottom: '40px' }}>
+        <h4 style={{
+          color: theme === 'dark' ? '#fff' : '#333',
+          marginBottom: '20px',
+          fontSize: '18px',
+          fontWeight: '600'
+        }}>
+          🌡️ Temperature with Negative Values
+        </h4>
+        <p style={{
+          color: theme === 'dark' ? '#ccc' : '#666',
+          marginBottom: '20px',
+          fontSize: '14px',
+          lineHeight: 1.5
+        }}>
+          <strong>Demonstrates negative value support:</strong> Temperature data that goes below zero (freezing point).
+          Notice how the chart automatically creates a zero baseline that the temperature line crosses.
+        </p>
+        <LineChart
+          data={temperatureData}
+          xField="date"
+          yField="temperature"
+          title="Daily Temperature (°C)"
+          subtitle="Winter temperature readings with freezing days"
+          height={350}
+          theme={theme}
+          colorPalette={['#ef4444']}
+          smooth
+          strokeWidth={3}
+          showPoints
+          pointSize={6}
+          showArea
+          areaOpacity={0.2}
+          legend={{ show: false }}
+          tooltip={{
+            show: true,
+            trigger: 'item',
+            format: (params: any) => `
+              <div style="padding: 8px;">
+                <strong>${params.axisValue}</strong><br/>
+                Temperature: ${params.value}°C<br/>
+                ${params.value < 0 ? '❄️ Below Freezing' : '🌡️ Above Freezing'}
+              </div>
+            `,
+          }}
+          xAxis={{
+            type: 'category',
+            label: 'Date',
+            rotate: 45
+          }}
+          yAxis={{
+            label: 'Temperature (°C)',
+            format: '{value}°C',
+            grid: true
+          }}
+          onDataPointClick={(data) => {
+            const status = data.value < 0 ? 'freezing' : 'above freezing';
+            onInteraction?.(`Temperature on ${data.axisValue}: ${data.value}°C (${status})`);
+          }}
+          responsive
+        />
+        <div style={{ 
+          marginTop: '15px',
+          padding: '12px',
+          backgroundColor: theme === 'dark' ? '#2d1b69' : '#e0e7ff',
+          borderRadius: '6px',
+          fontSize: '13px',
+          border: `1px solid ${theme === 'dark' ? '#4c1d95' : '#c7d2fe'}`
+        }}>
+          <strong>🎯 Notice:</strong> The chart automatically detects negative values and creates a zero baseline.
+          Days 4-7 show below-freezing temperatures properly displayed below the zero line.
+        </div>
+      </div>
+
+      {/* Example 8: Business Performance with Negative Growth */}
+      <div style={{ marginBottom: '40px' }}>
+        <h4 style={{
+          color: theme === 'dark' ? '#fff' : '#333',
+          marginBottom: '20px',
+          fontSize: '18px',
+          fontWeight: '600'
+        }}>
+          📉 Performance Metrics with Negative Growth
+        </h4>
+        <p style={{
+          color: theme === 'dark' ? '#ccc' : '#666',
+          marginBottom: '20px',
+          fontSize: '14px',
+          lineHeight: 1.5
+        }}>
+          <strong>Real business scenario:</strong> Company performance during challenging periods showing negative growth and margins.
+          All three metrics can cross the zero line independently.
+        </p>
+        <LineChart
+          data={performanceData}
+          xField="quarter"
+          yField={['growth', 'margin']}
+          seriesConfig={{
+            growth: {
+              color: '#3b82f6',
+              strokeWidth: 3,
+              smooth: true,
+              showPoints: true,
+              pointSize: 7,
+            },
+            margin: {
+              color: '#ef4444',
+              strokeWidth: 3,
+              strokeStyle: 'dashed',
+              smooth: true,
+              showPoints: true,
+              pointSize: 7,
+            }
+          }}
+          title="Business Performance Analysis"
+          subtitle="Growth Rate & Profit Margin Trends (%)"
+          height={380}
+          theme={theme}
+          legend={{
+            show: true,
+            position: 'top',
+            orientation: 'horizontal'
+          }}
+          tooltip={{
+            show: true,
+            trigger: 'axis',
+            format: (params: any) => {
+              const data = performanceData.find(d => d.quarter === params[0].axisValue);
+              return `
+                <div style="padding: 8px;">
+                  <strong>${params[0].axisValue}</strong><br/>
+                  Growth Rate: ${data?.growth}%<br/>
+                  Profit Margin: ${data?.margin}%<br/>
+                  Satisfaction: ${data?.satisfaction}/10
+                </div>
+              `;
+            }
+          }}
+          xAxis={{
+            type: 'category',
+            label: 'Quarter'
+          }}
+          yAxis={{
+            label: 'Percentage (%)',
+            format: '{value}%',
+            grid: true
+          }}
+          zoom
+          pan
+          onDataPointClick={(data) => {
+            const trend = data.value > 0 ? 'positive' : 'negative';
+            onInteraction?.(`${data.seriesName} in ${data.axisValue}: ${data.value}% (${trend} trend)`);
+          }}
+          responsive
+        />
+        <div style={{ 
+          marginTop: '15px',
+          padding: '12px',
+          backgroundColor: theme === 'dark' ? '#7f1d1d' : '#fef2f2',
+          borderRadius: '6px',
+          fontSize: '13px',
+          border: `1px solid ${theme === 'dark' ? '#dc2626' : '#fecaca'}`
+        }}>
+          <strong>📊 Analysis:</strong> Q3-Q4 2023 show negative growth and margins, representing a challenging period.
+          The chart clearly visualizes the recovery starting in Q1 2024.
+        </div>
+      </div>
+
+      {/* Example 9: Multiple Y-Axes */}
+      <div style={{ marginBottom: '40px' }}>
+        <h4 style={{
+          color: theme === 'dark' ? '#fff' : '#333',
+          marginBottom: '20px',
+          fontSize: '18px',
+          fontWeight: '600'
+        }}>
+          📊 Multiple Y-Axes - Temperature & Sales
+        </h4>
+        <p style={{
+          color: theme === 'dark' ? '#ccc' : '#666',
+          marginBottom: '20px',
+          fontSize: '14px',
+          lineHeight: 1.5
+        }}>
+          Demonstrates multiple y-axes functionality. Temperature uses the left axis (°C) while sales use the right axis ($).
+          Each series can be assigned to different y-axes using yAxisIndex.
+        </p>
+        <LineChart
+          data={[
+            { month: 'Jan', temperature: -2.5, sales: 12500 },
+            { month: 'Feb', temperature: 1.2, sales: 15800 },
+            { month: 'Mar', temperature: 8.7, sales: 18300 },
+            { month: 'Apr', temperature: 15.3, sales: 22100 },
+            { month: 'May', temperature: 22.1, sales: 28900 },
+            { month: 'Jun', temperature: 28.4, sales: 35200 },
+            { month: 'Jul', temperature: 31.2, sales: 42100 },
+            { month: 'Aug', temperature: 29.8, sales: 38700 },
+            { month: 'Sep', temperature: 24.6, sales: 31500 },
+            { month: 'Oct', temperature: 16.9, sales: 25800 },
+            { month: 'Nov', temperature: 8.3, sales: 19200 },
+            { month: 'Dec', temperature: 2.1, sales: 16900 },
+          ]}
+          xField="month"
+          yField={['temperature', 'sales']}
+          seriesConfig={{
+            temperature: {
+              color: '#ef4444',
+              strokeWidth: 3,
+              smooth: true,
+              showPoints: true,
+              pointSize: 6,
+              yAxisIndex: 0, // Left y-axis
+            },
+            sales: {
+              color: '#22c55e',
+              strokeWidth: 3,
+              smooth: true,
+              showPoints: true,
+              pointSize: 6,
+              yAxisIndex: 1, // Right y-axis
+            }
+          }}
+          title="Temperature vs Sales Correlation"
+          subtitle="Dual y-axis chart showing temperature and sales data"
+          height={400}
+          theme={theme}
+          yAxis={[
+            {
+              name: 'Temperature (°C)',
+              position: 'left',
+              label: 'Temperature',
+              format: '{value}°C',
+              grid: true,
+            },
+            {
+              name: 'Sales ($)',
+              position: 'right',
+              label: 'Sales',
+              format: '${value:,.0f}',
+              grid: false,
+            }
+          ]}
+          legend={{
+            show: true,
+            position: 'top',
+            orientation: 'horizontal'
+          }}
+          tooltip={{
+            show: true,
+            trigger: 'axis'
+          }}
+          onDataPointClick={(data) => {
+            const axis = data.seriesName === 'temperature' ? 'left' : 'right';
+            onInteraction?.(`Clicked ${data.seriesName} on ${axis} y-axis: ${data.value}`);
+          }}
+          responsive
+        />
+        <div style={{ 
+          marginTop: '15px',
+          padding: '12px',
+          backgroundColor: theme === 'dark' ? '#1e3a8a' : '#eff6ff',
+          borderRadius: '6px',
+          fontSize: '13px',
+          border: `1px solid ${theme === 'dark' ? '#3b82f6' : '#bfdbfe'}`
+        }}>
+          <strong>🎯 Multiple Y-Axes:</strong> Temperature scale (-10°C to 40°C) on left, Sales scale ($0 to $50k) on right.
+          This allows comparing metrics with different scales on the same chart.
+        </div>
       </div>
     </>
   );

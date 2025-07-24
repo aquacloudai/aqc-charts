@@ -1,5 +1,6 @@
 import type { EChartsOption } from 'echarts/types/dist/shared';
 import type { BarChartProps } from '@/types';
+import type { AxisConfig } from '@/types/config';
 
 import {
   isObjectData,
@@ -88,6 +89,7 @@ export function buildBarChartOption(props: BarChartProps): EChartsOption {
         barWidth: props.barWidth,
         barGap: props.barGap,
         label: createLabelConfig(seriesData, allSeriesData, index),
+        yAxisIndex: s.yAxisIndex ?? 0, // Default to first y-axis
       };
     });
     
@@ -116,6 +118,7 @@ export function buildBarChartOption(props: BarChartProps): EChartsOption {
             barGap: props.barGap,
             itemStyle: { borderRadius: props.borderRadius },
             label: createLabelConfig(seriesData, allSeriesData, index),
+            yAxisIndex: 0, // Default to first y-axis for grouped data
           };
         });
         // Extract unique category values while preserving original data order
@@ -146,6 +149,7 @@ export function buildBarChartOption(props: BarChartProps): EChartsOption {
               barGap: props.barGap,
               itemStyle: { borderRadius: props.borderRadius },
               label: createLabelConfig(seriesData, allSeriesData, index),
+              yAxisIndex: 0, // Default to first y-axis for multiple value fields
             };
           });
         } else {
@@ -234,8 +238,8 @@ export function buildBarChartOption(props: BarChartProps): EChartsOption {
   // Handle percentage stacking or showPercentage
   if ((props.stackType === 'percent' || props.showPercentage) && props.stack) {
     const yAxisOptions = isHorizontal 
-      ? buildAxisOption(props.yAxis, 'categorical', props.theme)
-      : buildAxisOption(props.yAxis, 'numeric', props.theme);
+      ? buildAxisOption(Array.isArray(props.yAxis) ? props.yAxis[0] : props.yAxis, 'categorical', props.theme)
+      : buildAxisOption(Array.isArray(props.yAxis) ? props.yAxis[0] : props.yAxis, 'numeric', props.theme);
     
     // For showPercentage, we need custom tooltip formatting
     let tooltipConfig = props.tooltip;
@@ -285,7 +289,9 @@ export function buildBarChartOption(props: BarChartProps): EChartsOption {
         : { ...buildAxisOption(props.xAxis, 'categorical', props.theme), data: categoryData, boundaryGap: true },
       yAxis: isHorizontal
         ? { ...yAxisOptions, data: categoryData, boundaryGap: true }
-        : yAxisOptions,
+        : (Array.isArray(props.yAxis) 
+            ? props.yAxis.map(axis => ({ ...buildAxisOption(axis, 'numeric', props.theme), ...yAxisOptions }))
+            : yAxisOptions),
       series: series.map(s => ({ ...s, stack: props.stackType === 'percent' ? 'percent' : 'defaultStack' })),
       legend: buildLegendOption(props.legend, !!props.title, !!props.subtitle, false, props.theme),
       tooltip: buildTooltipOption(tooltipConfig, props.theme),
@@ -300,8 +306,10 @@ export function buildBarChartOption(props: BarChartProps): EChartsOption {
       ? buildAxisOption(props.xAxis, 'numeric', props.theme)
       : { ...buildAxisOption(props.xAxis, 'categorical', props.theme), data: categoryData, boundaryGap: true },
     yAxis: isHorizontal
-      ? { ...buildAxisOption(props.yAxis, 'categorical', props.theme), data: categoryData, boundaryGap: true }
-      : buildAxisOption(props.yAxis, 'numeric', props.theme),
+      ? { ...buildAxisOption(Array.isArray(props.yAxis) ? props.yAxis[0] : props.yAxis, 'categorical', props.theme), data: categoryData, boundaryGap: true }
+      : (Array.isArray(props.yAxis) 
+          ? props.yAxis.map(axis => buildAxisOption(axis, 'numeric', props.theme))
+          : buildAxisOption(props.yAxis as AxisConfig | undefined, 'numeric', props.theme)),
     series,
     legend: buildLegendOption(props.legend, !!props.title, !!props.subtitle, false, props.theme), // Bar charts don't typically use zoom
     tooltip: buildTooltipOption(props.tooltip, props.theme),

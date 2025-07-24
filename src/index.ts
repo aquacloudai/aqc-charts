@@ -4,6 +4,7 @@ export { LineChart } from './components/LineChart';
 export { BarChart } from './components/BarChart';
 export { PieChart } from './components/PieChart';
 export { ScatterChart } from './components/ScatterChart';
+export { CombinedChart } from './components/CombinedChart';
 export { ClusterChart } from './components/ClusterChart';
 export { CalendarHeatmapChart } from './components/CalendarHeatmapChart';
 export { SankeyChart } from './components/SankeyChart';
@@ -135,6 +136,7 @@ export type {
     BarChartProps, 
     PieChartProps,
     ScatterChartProps,
+    CombinedChartProps,
     ClusterChartProps,
     CalendarHeatmapProps,
     SankeyChartProps,

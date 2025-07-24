@@ -70,7 +70,7 @@ import { buildGanttChartOption } from '@/utils/chart-builders';
  *   dataZoom={{ type: 'both' }}
  *   sortBy="priority"
  *   sortOrder="desc"
- *   onTaskClick={(task) => console.log('Task clicked:', task)}
+ *   onTaskClick={(task) => alert('Task clicked: ' + task.name)}
  * />
  */
 const GanttChart = forwardRef<ErgonomicChartRef, GanttChartProps>(({

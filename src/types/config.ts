@@ -1,7 +1,7 @@
 // Axis configuration
 export interface AxisConfig {
   readonly label?: string;
-  readonly type?: 'linear' | 'category' | 'time' | 'log';
+  readonly type?: 'linear' | 'category' | 'time' | 'log' | 'value';
   readonly min?: number | string | Date;
   readonly max?: number | string | Date;
   readonly format?: string; // For formatting labels
@@ -11,6 +11,13 @@ export interface AxisConfig {
   readonly rotate?: number; // For rotated labels
   readonly boundaryGap?: boolean; // For line charts: false = start at axis, true = center on categories
   readonly parseDate?: boolean; // Explicitly control date parsing (default: false for safety)
+  
+  // Additional ECharts axis properties
+  readonly name?: string;
+  readonly nameLocation?: 'start' | 'middle' | 'end';
+  readonly nameGap?: number;
+  readonly position?: 'left' | 'right' | 'top' | 'bottom';
+  readonly data?: readonly any[]; // For category axis
 }
 
 // Legend configuration

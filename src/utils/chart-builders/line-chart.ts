@@ -1,10 +1,10 @@
 import type { EChartsOption } from 'echarts/types/dist/shared';
 import type { LineChartProps } from '@/types';
+import type { AxisConfig } from '@/types/config';
 
 import {
   isObjectData,
   groupDataByField,
-  detectDataType,
   mapStrokeStyleToECharts,
 } from '../data-processing';
 import {
@@ -39,6 +39,7 @@ export function buildLineChartOption(props: LineChartProps): EChartsOption {
       areaStyle: (s.showArea ?? props.showArea) ? { opacity: props.areaOpacity || 0.3 } : undefined,
       symbol: (s.showPoints ?? props.showPoints) !== false ? (s.pointShape ?? props.pointShape ?? 'circle') : 'none',
       symbolSize: s.pointSize ?? props.pointSize ?? 4,
+      yAxisIndex: s.yAxisIndex ?? 0, // Default to first y-axis
     }));
     
     // Extract x-axis data from first series
@@ -52,19 +53,27 @@ export function buildLineChartOption(props: LineChartProps): EChartsOption {
       if (props.seriesField) {
         // Group by series field
         const groups = groupDataByField(props.data, props.seriesField);
-        series = Object.entries(groups).map(([name, groupData]) => ({
-          name,
-          type: 'line',
-          data: groupData.map(item => item[props.yField as string]),
-          smooth: props.smooth,
-          lineStyle: { 
-            width: props.strokeWidth,
-            type: mapStrokeStyleToECharts(props.strokeStyle)
-          },
-          areaStyle: props.showArea ? { opacity: props.areaOpacity || 0.3 } : undefined,
-          symbol: props.showPoints !== false ? (props.pointShape || 'circle') : 'none',
-          symbolSize: props.pointSize || 4,
-        }));
+        series = Object.entries(groups).map(([name, groupData]) => {
+          const seriesSpecificConfig = props.seriesConfig?.[name] || {};
+          return {
+            name,
+            type: 'line',
+            data: groupData.map(item => item[props.yField as string]),
+            smooth: seriesSpecificConfig.smooth ?? props.smooth,
+            lineStyle: { 
+              width: seriesSpecificConfig.strokeWidth ?? props.strokeWidth,
+              type: mapStrokeStyleToECharts(seriesSpecificConfig.strokeStyle ?? props.strokeStyle)
+            },
+            itemStyle: seriesSpecificConfig.color ? { color: seriesSpecificConfig.color } : undefined,
+            areaStyle: (seriesSpecificConfig.showArea ?? props.showArea) ? { 
+              opacity: seriesSpecificConfig.areaOpacity ?? (props.areaOpacity || 0.3)
+            } : undefined,
+            symbol: (seriesSpecificConfig.showPoints ?? props.showPoints) !== false ? 
+              (seriesSpecificConfig.pointShape ?? props.pointShape ?? 'circle') : 'none',
+            symbolSize: seriesSpecificConfig.pointSize ?? props.pointSize ?? 4,
+            yAxisIndex: seriesSpecificConfig.yAxisIndex ?? 0, // Default to first y-axis
+          };
+        });
         // Extract unique X values while preserving original data order
         const seen = new Set();
         xAxisData = [];
@@ -97,6 +106,7 @@ export function buildLineChartOption(props: LineChartProps): EChartsOption {
               symbol: (seriesSpecificConfig.showPoints ?? props.showPoints) !== false ? 
                 (seriesSpecificConfig.pointShape ?? props.pointShape ?? 'circle') : 'none',
               symbolSize: seriesSpecificConfig.pointSize ?? props.pointSize ?? 4,
+              yAxisIndex: seriesSpecificConfig.yAxisIndex ?? 0, // Default to first y-axis
             };
           });
         } else {
@@ -141,7 +151,9 @@ export function buildLineChartOption(props: LineChartProps): EChartsOption {
       ...buildAxisOption(props.xAxis, 'categorical', props.theme),
       data: xAxisData,
     },
-    yAxis: buildAxisOption(props.yAxis, 'numeric', props.theme),
+    yAxis: Array.isArray(props.yAxis) 
+      ? props.yAxis.map(axis => buildAxisOption(axis, 'numeric', props.theme))
+      : buildAxisOption(props.yAxis as AxisConfig | undefined, 'numeric', props.theme),
     series,
     legend: buildLegendOption(props.legend, !!props.title, !!props.subtitle, !!props.zoom, props.theme),
     tooltip: buildTooltipOption(props.tooltip, props.theme),

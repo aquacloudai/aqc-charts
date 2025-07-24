@@ -32,6 +32,26 @@ const departmentData = [
   { quarter: 'Q4 2023', department: 'Sales', revenue: 450000, employees: 44 },
 ];
 
+// New dataset demonstrating negative values (profit/loss scenario)
+const profitLossData = [
+  { month: 'Jan', revenue: 5200, expenses: 4100, netIncome: 1100 },
+  { month: 'Feb', revenue: 4800, expenses: 5300, netIncome: -500 },
+  { month: 'Mar', revenue: 6200, expenses: 4900, netIncome: 1300 },
+  { month: 'Apr', revenue: 4500, expenses: 5800, netIncome: -1300 },
+  { month: 'May', revenue: 7100, expenses: 5200, netIncome: 1900 },
+  { month: 'Jun', revenue: 5400, expenses: 6100, netIncome: -700 },
+];
+
+// Market performance data with negative growth rates
+const marketData = [
+  { sector: 'Technology', growth: 15.8, volatility: 8.2 },
+  { sector: 'Healthcare', growth: 8.3, volatility: 5.1 },
+  { sector: 'Energy', growth: -12.4, volatility: 15.6 },
+  { sector: 'Finance', growth: 4.7, volatility: 9.8 },
+  { sector: 'Retail', growth: -8.9, volatility: 12.3 },
+  { sector: 'Manufacturing', growth: 6.2, volatility: 7.4 },
+];
+
 interface BarChartExampleProps {
   theme: 'light' | 'dark';
   colorPalette: readonly string[];
@@ -309,6 +329,253 @@ export function BarChartExample({ theme, colorPalette, onInteraction }: BarChart
             onInteraction?.(`${data.seriesName} contributed ${Math.round(data.value * 100)}% of total revenue in ${data.name}`);
           }}
         />
+      </div>
+
+      {/* Negative Values Example 1: Net Income with Losses */}
+      <div style={{ marginBottom: '40px' }}>
+        <h4 style={{
+          color: theme === 'dark' ? '#fff' : '#333',
+          marginBottom: '20px',
+          fontSize: '18px',
+          fontWeight: '600'
+        }}>
+          📊 Net Income Analysis (with Losses)
+        </h4>
+        <p style={{
+          color: theme === 'dark' ? '#ccc' : '#666',
+          marginBottom: '20px',
+          fontSize: '14px',
+          lineHeight: 1.5
+        }}>
+          <strong>Demonstrates negative value support:</strong> Monthly net income that includes loss months.
+          Notice how losses (Feb, Apr, Jun) are displayed as bars extending downward below the zero line.
+        </p>
+        <BarChart
+          data={profitLossData}
+          categoryField="month"
+          valueField="netIncome"
+          title="Monthly Net Income ($)"
+          subtitle="Profit and loss analysis with negative values"
+          height={350}
+          theme={theme}
+          colorPalette={['#10b981']}
+          orientation="vertical"
+          showLabels
+          borderRadius={4}
+          legend={{ show: false }}
+          tooltip={{
+            show: true,
+            trigger: 'item',
+            format: (params: any) => {
+              const value = params.value;
+              const status = value >= 0 ? 'Profit' : 'Loss';
+              const color = value >= 0 ? '#10b981' : '#ef4444';
+              return `
+                <div style="padding: 8px;">
+                  <strong>${params.name}</strong><br/>
+                  Net Income: $${Math.abs(value).toLocaleString()}<br/>
+                  <span style="color: ${color}; font-weight: bold;">${status}</span>
+                </div>
+              `;
+            }
+          }}
+          xAxis={{
+            label: 'Month'
+          }}
+          yAxis={{
+            label: 'Net Income ($)',
+            format: '${value:,.0f}',
+            grid: true
+          }}
+          onDataPointClick={(data) => {
+            const status = data.value >= 0 ? 'profit' : 'loss';
+            onInteraction?.(`${data.name}: $${Math.abs(data.value).toLocaleString()} ${status}`);
+          }}
+          responsive
+        />
+        <div style={{ 
+          marginTop: '15px',
+          padding: '12px',
+          backgroundColor: theme === 'dark' ? '#2d1b69' : '#e0e7ff',
+          borderRadius: '6px',
+          fontSize: '13px',
+          border: `1px solid ${theme === 'dark' ? '#4c1d95' : '#c7d2fe'}`
+        }}>
+          <strong>🎯 Key Feature:</strong> The chart automatically creates a zero baseline and displays negative values 
+          (losses) as bars extending downward, while positive values (profits) extend upward.
+        </div>
+      </div>
+
+      {/* Negative Values Example 2: Market Growth Comparison */}
+      <div style={{ marginBottom: '40px' }}>
+        <h4 style={{
+          color: theme === 'dark' ? '#fff' : '#333',
+          marginBottom: '20px',
+          fontSize: '18px',
+          fontWeight: '600'
+        }}>
+          📈 Market Sector Performance
+        </h4>
+        <p style={{
+          color: theme === 'dark' ? '#ccc' : '#666',
+          marginBottom: '20px',
+          fontSize: '14px',
+          lineHeight: 1.5
+        }}>
+          <strong>Real-world scenario:</strong> Market sector growth rates showing both positive and negative performance.
+          Energy and Retail sectors show negative growth (decline), while others show positive growth.
+        </p>
+        <BarChart
+          data={marketData}
+          categoryField="sector"
+          valueField="growth"
+          title="Market Sector Growth Rates (%)"
+          subtitle="Annual performance comparison across industries"
+          height={380}
+          theme={theme}
+          colorPalette={['#3b82f6']}
+          orientation="horizontal"
+          showLabels
+          showAbsoluteValues
+          borderRadius={6}
+          legend={{ show: false }}
+          tooltip={{
+            show: true,
+            trigger: 'item',
+            format: (params: any) => {
+              const growth = params.value;
+              const sector = marketData.find(d => d.sector === params.name);
+              const trend = growth >= 0 ? '📈 Growth' : '📉 Decline';
+              return `
+                <div style="padding: 8px;">
+                  <strong>${params.name}</strong><br/>
+                  Growth Rate: ${growth}%<br/>
+                  Volatility: ${sector?.volatility}%<br/>
+                  ${trend}
+                </div>
+              `;
+            }
+          }}
+          xAxis={{
+            label: 'Growth Rate (%)',
+            format: '{value}%',
+            grid: true
+          }}
+          yAxis={{
+            label: 'Market Sector'
+          }}
+          onDataPointClick={(data) => {
+            const trend = data.value >= 0 ? 'growing' : 'declining';
+            onInteraction?.(`${data.name} sector: ${data.value}% (${trend})`);
+          }}
+          responsive
+        />
+        <div style={{ 
+          marginTop: '15px',
+          padding: '12px',
+          backgroundColor: theme === 'dark' ? '#7f1d1d' : '#fef2f2',
+          borderRadius: '6px',
+          fontSize: '13px',
+          border: `1px solid ${theme === 'dark' ? '#dc2626' : '#fecaca'}`
+        }}>
+          <strong>📊 Analysis:</strong> Energy (-12.4%) and Retail (-8.9%) sectors show negative growth, 
+          indicating market contractions, while Technology leads with 15.8% growth.
+        </div>
+      </div>
+
+      {/* Example 8: Multiple Y-Axes */}
+      <div style={{ marginBottom: '40px' }}>
+        <h4 style={{
+          color: theme === 'dark' ? '#fff' : '#333',
+          marginBottom: '20px',
+          fontSize: '18px',
+          fontWeight: '600'
+        }}>
+          📊 Multiple Y-Axes - Revenue & Employee Count
+        </h4>
+        <p style={{
+          color: theme === 'dark' ? '#ccc' : '#666',
+          marginBottom: '20px',
+          fontSize: '14px',
+          lineHeight: 1.5
+        }}>
+          Demonstrates multiple y-axes in bar charts. Revenue uses the left axis ($) while employee count uses the right axis (#).
+          Each series can be assigned to different y-axes using yAxisIndex.
+        </p>
+        <BarChart
+          series={[
+            {
+              name: 'Revenue',
+              data: [
+                { category: 'Q1', value: 150000 },
+                { category: 'Q2', value: 180000 },
+                { category: 'Q3', value: 165000 },
+                { category: 'Q4', value: 195000 },
+              ],
+              color: '#3b82f6',
+              yAxisIndex: 0, // Left y-axis
+            },
+            {
+              name: 'Employees',
+              data: [
+                { category: 'Q1', value: 25 },
+                { category: 'Q2', value: 32 },
+                { category: 'Q3', value: 28 },
+                { category: 'Q4', value: 35 },
+              ],
+              color: '#ef4444',
+              yAxisIndex: 1, // Right y-axis
+            }
+          ]}
+          categoryField="category"
+          valueField="value"
+          title="Quarterly Revenue vs Employee Count"
+          subtitle="Dual y-axis bar chart showing revenue and headcount"
+          height={400}
+          theme={theme}
+          yAxis={[
+            {
+              name: 'Revenue ($)',
+              position: 'left',
+              label: 'Revenue',
+              format: '${value:,.0f}',
+              grid: true,
+            },
+            {
+              name: 'Employees (#)',
+              position: 'right',
+              label: 'Employee Count',
+              format: '{value}',
+              grid: false,
+            }
+          ]}
+          legend={{
+            show: true,
+            position: 'top',
+            orientation: 'horizontal'
+          }}
+          tooltip={{
+            show: true,
+            trigger: 'axis'
+          }}
+          onDataPointClick={(data) => {
+            const axis = data.seriesName === 'Revenue' ? 'left' : 'right';
+            const unit = data.seriesName === 'Revenue' ? '$' : '';
+            onInteraction?.(`Clicked ${data.seriesName} on ${axis} y-axis: ${unit}${data.value}`);
+          }}
+          responsive
+        />
+        <div style={{ 
+          marginTop: '15px',
+          padding: '12px',
+          backgroundColor: theme === 'dark' ? '#1e3a8a' : '#eff6ff',
+          borderRadius: '6px',
+          fontSize: '13px',
+          border: `1px solid ${theme === 'dark' ? '#3b82f6' : '#bfdbfe'}`
+        }}>
+          <strong>🎯 Multiple Y-Axes:</strong> Revenue scale ($0 to $200k) on left, Employee count (0 to 40) on right.
+          This enables comparison of metrics with vastly different scales on the same chart.
+        </div>
       </div>
     </>
   );

@@ -38,6 +38,7 @@ export { buildBarChartOption } from './chart-builders/bar-chart';
 export { buildPieChartOption } from './chart-builders/pie-chart';
 export { buildScatterChartOption } from './chart-builders/scatter-chart';
 export { buildGanttChartOption } from './chart-builders/gantt-chart';
+export { buildCombinedChartOption } from './chart-builders/combined-chart';
 
 // Re-export advanced chart builders from individual files
 export { buildClusterChartOption } from './chart-builders/cluster-chart';
