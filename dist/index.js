@@ -2177,6 +2177,7 @@ function buildCombinedChartOption(params) {
 	});
 	const builtXAxis = buildAxisOption({
 		type: "category",
+		boundaryGap: true,
 		...xAxis
 	});
 	if (builtXAxis.type === "category") builtXAxis.data = xAxisData;
@@ -2204,6 +2205,7 @@ function buildCombinedChartOption(params) {
 			if (axisConfig.min === void 0) axisOptions.min = axisMin;
 			if (axisConfig.max === void 0) axisOptions.max = axisMax;
 		}
+		if (yAxis.length > 1 && index > 0) axisOptions.splitLine = { show: false };
 		axisOptions = enhanceAxisForNegativeValues(axisOptions, hasNegativeValues);
 		return buildAxisOption(axisOptions);
 	});
@@ -2250,10 +2252,8 @@ function buildCombinedChartOption(params) {
 		dataZoom,
 		...brushConfig,
 		grid: {
-			left: "3%",
-			right: yAxis.length > 1 ? "8%" : "4%",
-			bottom: zoom ? "15%" : "3%",
-			top: "10%",
+			...calculateGridSpacing(legend, !!title, !!subtitle, zoom),
+			right: yAxis.length > 1 ? "8%" : calculateGridSpacing(legend, !!title, !!subtitle, zoom).right,
 			containLabel: true
 		}
 	};

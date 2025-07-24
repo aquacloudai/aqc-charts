@@ -4,6 +4,7 @@ import {
   buildAxisOption,
   buildLegendOption,
   buildTooltipOption,
+  calculateGridSpacing,
   COLOR_PALETTES,
   isObjectData,
   mapStrokeStyleToECharts,
@@ -120,6 +121,7 @@ export function buildCombinedChartOption(params: BuildCombinedChartOptionParams)
   // Build X axis
   const builtXAxis = buildAxisOption({
     type: 'category',
+    boundaryGap: true, // Ensures bars stay within chart boundaries
     ...xAxis,
   });
   
@@ -162,6 +164,12 @@ export function buildCombinedChartOption(params: BuildCombinedChartOptionParams)
     if (axisMin !== undefined && axisMax !== undefined) {
       if (axisConfig.min === undefined) axisOptions.min = axisMin;
       if (axisConfig.max === undefined) axisOptions.max = axisMax;
+    }
+    
+    // For dual axis charts, only show grid lines on the primary (left) axis
+    // This prevents overlapping grid lines that create irregular patterns
+    if (yAxis.length > 1 && index > 0) {
+      axisOptions.splitLine = { show: false };
     }
     
     // Enhance axis for negative value support
@@ -227,10 +235,9 @@ export function buildCombinedChartOption(params: BuildCombinedChartOptionParams)
     dataZoom,
     ...brushConfig,
     grid: {
-      left: '3%',
-      right: yAxis.length > 1 ? '8%' : '4%', // More space for dual axes
-      bottom: zoom ? '15%' : '3%',
-      top: '10%',
+      ...calculateGridSpacing(legend, !!title, !!subtitle, zoom),
+      // Override right spacing for dual axes
+      right: yAxis.length > 1 ? '8%' : calculateGridSpacing(legend, !!title, !!subtitle, zoom).right,
       containLabel: true,
     },
   };

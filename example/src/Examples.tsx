@@ -251,7 +251,7 @@ export function Examples() {
         theme={theme}
       >
         <CombinedChartExample />
-      </ChartCard>
+      </ChartCard>c
 
       {/* Pie Charts Showcase */}
       <ChartCard
