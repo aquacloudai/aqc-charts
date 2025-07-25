@@ -1,13 +1,13 @@
 {
-    "extends": "./tsconfig.json",
-    "compilerOptions": {
-        "noEmit": false,
-        "emitDeclarationOnly": true,
-        "declarationDir": "dist"
-    },
-    "exclude": [
-        "**/*.test.tsx",
-        "**/*.test.ts",
-        "**/*.stories.tsx"
-    ]
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "emitDeclarationOnly": true,
+    "declarationDir": "dist"
+  },
+  "exclude": [
+    "**/*.test.tsx",
+    "**/*.test.ts",
+    "**/*.stories.tsx"
+  ]
 }

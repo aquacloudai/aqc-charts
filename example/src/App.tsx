@@ -12,6 +12,7 @@ import { CalendarChartPage } from './pages/CalendarChartPage';
 import { SankeyChartPage } from './pages/SankeyChartPage';
 import { GanttChartPage } from './pages/GanttChartPage';
 import { RegressionChartPage } from './pages/RegressionChartPage';
+import { GeoChartPage } from './pages/GeoChartPage';
 
 // Theme selector component
 const ThemeSelector = ({
@@ -30,8 +31,8 @@ const ThemeSelector = ({
     padding: '10px',
     borderRadius: '8px',
     border: `1px solid ${theme === 'dark' ? '#333' : '#ddd'}`,
-    boxShadow: theme === 'dark' 
-      ? '0 2px 4px rgba(0,0,0,0.3)' 
+    boxShadow: theme === 'dark'
+      ? '0 2px 4px rgba(0,0,0,0.3)'
       : '0 2px 4px rgba(0,0,0,0.1)',
   }}>
     <label style={{
@@ -75,108 +76,118 @@ function App() {
       <div style={appStyle}>
         <ThemeSelector theme={theme} setTheme={setTheme} />
         <Navigation theme={theme} />
-        
+
         <Routes>
           <Route path="/" element={<Overview theme={theme} />} />
-          <Route 
-            path="/line" 
+          <Route
+            path="/line"
             element={
-              <LineChartPage 
-                theme={theme} 
-                palette={palette} 
-                setPalette={setPalette} 
+              <LineChartPage
+                theme={theme}
+                palette={palette}
+                setPalette={setPalette}
               />
-            } 
+            }
           />
-          <Route 
-            path="/bar" 
+          <Route
+            path="/bar"
             element={
-              <BarChartPage 
-                theme={theme} 
-                palette={palette} 
-                setPalette={setPalette} 
+              <BarChartPage
+                theme={theme}
+                palette={palette}
+                setPalette={setPalette}
               />
-            } 
+            }
           />
-          <Route 
-            path="/pie" 
+          <Route
+            path="/pie"
             element={
-              <PieChartPage 
-                theme={theme} 
-                palette={palette} 
-                setPalette={setPalette} 
+              <PieChartPage
+                theme={theme}
+                palette={palette}
+                setPalette={setPalette}
               />
-            } 
+            }
           />
-          <Route 
-            path="/scatter" 
+          <Route
+            path="/scatter"
             element={
-              <ScatterChartPage 
-                theme={theme} 
-                palette={palette} 
-                setPalette={setPalette} 
+              <ScatterChartPage
+                theme={theme}
+                palette={palette}
+                setPalette={setPalette}
               />
-            } 
+            }
           />
-          <Route 
-            path="/combined" 
+          <Route
+            path="/combined"
             element={
-              <CombinedChartPage 
-                theme={theme} 
-                palette={palette} 
-                setPalette={setPalette} 
+              <CombinedChartPage
+                theme={theme}
+                palette={palette}
+                setPalette={setPalette}
               />
-            } 
+            }
           />
-          <Route 
-            path="/cluster" 
+          <Route
+            path="/cluster"
             element={
-              <ClusterChartPage 
-                theme={theme} 
-                palette={palette} 
-                setPalette={setPalette} 
+              <ClusterChartPage
+                theme={theme}
+                palette={palette}
+                setPalette={setPalette}
               />
-            } 
+            }
           />
-          <Route 
-            path="/calendar" 
+          <Route
+            path="/calendar"
             element={
-              <CalendarChartPage 
-                theme={theme} 
-                palette={palette} 
-                setPalette={setPalette} 
+              <CalendarChartPage
+                theme={theme}
+                palette={palette}
+                setPalette={setPalette}
               />
-            } 
+            }
           />
-          <Route 
-            path="/sankey" 
+          <Route
+            path="/sankey"
             element={
-              <SankeyChartPage 
-                theme={theme} 
-                palette={palette} 
-                setPalette={setPalette} 
+              <SankeyChartPage
+                theme={theme}
+                palette={palette}
+                setPalette={setPalette}
               />
-            } 
+            }
           />
-          <Route 
-            path="/gantt" 
+          <Route
+            path="/gantt"
             element={
-              <GanttChartPage 
-                theme={theme} 
-                palette={palette} 
-                setPalette={setPalette} 
+              <GanttChartPage
+                theme={theme}
+                palette={palette}
+                setPalette={setPalette}
               />
-            } 
+            }
           />
-          <Route 
-            path="/regression" 
+          <Route
+            path="/regression"
             element={
-              <RegressionChartPage 
-                theme={theme} 
-                palette={palette} 
-                setPalette={setPalette} 
+              <RegressionChartPage
+                theme={theme}
+                palette={palette}
+                setPalette={setPalette}
               />
-            } 
+            }
+          />
+          <Route
+            path="/geo"
+            element={
+              <GeoChartPage
+                theme={theme}
+                palette={palette}
+                setPalette={setPalette}
+              />
+            }
           />
         </Routes>
       </div>

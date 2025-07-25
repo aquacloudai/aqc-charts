@@ -5728,6 +5728,246 @@ const RegressionChart = (0, react.forwardRef)(({ width = "100%", height = 400, c
 RegressionChart.displayName = "RegressionChart";
 
 //#endregion
+//#region src/components/GeoChart.tsx
+const GeoChart = (0, react.forwardRef)(({ data, mapName, mapUrl, mapType = "geojson", mapSpecialAreas, chartType = "map", nameField = "name", valueField = "value", visualMap = {}, geo, roam = true, scaleLimit, itemStyle, showLabels = false, labelPosition = "inside", tooltip, toolbox, additionalSeries = [], grid, xAxis, yAxis, onSelectChanged, onMapLoad, onMapError, title,...restProps }, ref) => {
+	const [isMapLoaded, setIsMapLoaded] = (0, react.useState)(false);
+	const registeredMapsRef = (0, react.useRef)(new Set());
+	const stableOnMapLoad = (0, react.useCallback)(() => {
+		onMapLoad?.();
+	}, [onMapLoad]);
+	const stableOnMapError = (0, react.useCallback)((error) => {
+		onMapError?.(error);
+	}, [onMapError]);
+	const loadMapData = (0, react.useCallback)(async () => {
+		try {
+			const echarts = await loadECharts();
+			if (!mapUrl) {
+				setIsMapLoaded(true);
+				return;
+			}
+			const mapKey = `${mapName}-${mapUrl}-${mapType}`;
+			if (registeredMapsRef.current.has(mapKey)) {
+				console.log(`Map "${mapName}" already registered, skipping`);
+				setIsMapLoaded(true);
+				stableOnMapLoad();
+				return;
+			}
+			const response = await fetch(mapUrl);
+			if (!response.ok) throw new Error(`Failed to load map data: ${response.statusText}`);
+			if (mapType === "svg") {
+				const svgText = await response.text();
+				console.log(`Registering SVG map "${mapName}" with ${svgText.length} characters`);
+				echarts.registerMap(mapName, { svg: svgText }, mapSpecialAreas);
+				console.log(`SVG map "${mapName}" registered successfully`);
+				await new Promise((resolve) => setTimeout(resolve, 200));
+			} else {
+				const geoJson = await response.json();
+				console.log(`Registering GeoJSON map "${mapName}"`);
+				echarts.registerMap(mapName, geoJson, mapSpecialAreas);
+				console.log(`GeoJSON map "${mapName}" registered successfully`);
+			}
+			registeredMapsRef.current.add(mapKey);
+			setIsMapLoaded(true);
+			stableOnMapLoad();
+		} catch (error) {
+			const mapError = error instanceof Error ? error : new Error("Unknown error loading map");
+			stableOnMapError(mapError);
+			console.error("Failed to load map data:", mapError);
+		}
+	}, [
+		mapUrl,
+		mapName,
+		mapType,
+		mapSpecialAreas,
+		stableOnMapLoad,
+		stableOnMapError
+	]);
+	(0, react.useEffect)(() => {
+		setIsMapLoaded(false);
+		loadMapData();
+	}, [loadMapData]);
+	const processedData = (0, react.useMemo)(() => {
+		if (!data) return [];
+		return data.map((item) => ({
+			name: typeof item === "object" && nameField in item ? item[nameField] : item.name,
+			value: typeof item === "object" && valueField in item ? item[valueField] : item.value
+		}));
+	}, [
+		data,
+		nameField,
+		valueField
+	]);
+	const dataStats = (0, react.useMemo)(() => {
+		const values = processedData.map((item) => Number(item.value)).filter((v) => !isNaN(v));
+		return {
+			min: Math.min(...values),
+			max: Math.max(...values)
+		};
+	}, [processedData]);
+	const chartOption = (0, react.useMemo)(() => {
+		if (!isMapLoaded) return {};
+		const option = { tooltip: {
+			trigger: "item",
+			showDelay: 200,
+			transitionDuration: 300,
+			formatter: "{b}: {c}",
+			...tooltip
+		} };
+		if (chartType === "geo") {
+			if (mapType === "svg") option.series = [{
+				name: title || "Geographic Data",
+				type: "map",
+				map: mapName,
+				roam,
+				...scaleLimit && { scaleLimit },
+				...itemStyle && { itemStyle },
+				emphasis: {
+					label: { show: showLabels },
+					...itemStyle?.emphasis && { itemStyle: itemStyle.emphasis }
+				},
+				label: {
+					show: showLabels,
+					position: labelPosition
+				},
+				data: processedData,
+				silent: processedData.length === 0
+			}];
+			else {
+				const geoConfig = {
+					map: mapName,
+					roam,
+					layoutCenter: ["50%", "50%"],
+					layoutSize: "100%",
+					selectedMode: "single",
+					itemStyle: { areaColor: void 0 },
+					emphasis: { label: { show: showLabels } },
+					select: {
+						itemStyle: { areaColor: "#b50205" },
+						label: { show: false }
+					},
+					...geo
+				};
+				if (geo?.regions && Array.isArray(geo.regions) && geo.regions.length > 0) geoConfig.regions = geo.regions;
+				option.geo = geoConfig;
+			}
+			if (additionalSeries.length > 0) if (mapType === "svg") {
+				const existingSeries = Array.isArray(option.series) ? option.series : option.series ? [option.series] : [];
+				option.series = [...existingSeries, ...additionalSeries];
+			} else option.series = [...additionalSeries];
+			if (grid) option.grid = grid;
+			if (xAxis) option.xAxis = xAxis;
+			if (yAxis) option.yAxis = yAxis;
+		} else {
+			option.visualMap = {
+				show: true,
+				left: "right",
+				min: dataStats.min,
+				max: dataStats.max,
+				colors: [
+					"#313695",
+					"#4575b4",
+					"#74add1",
+					"#abd9e9",
+					"#e0f3f8",
+					"#ffffbf",
+					"#fee090",
+					"#fdae61",
+					"#f46d43",
+					"#d73027",
+					"#a50026"
+				],
+				text: ["High", "Low"],
+				calculable: true,
+				orient: "vertical",
+				...visualMap
+			};
+			option.series = [{
+				name: title || "Geographic Data",
+				type: "map",
+				map: mapName,
+				roam,
+				...scaleLimit && { scaleLimit },
+				...itemStyle && { itemStyle },
+				emphasis: {
+					label: { show: showLabels },
+					...itemStyle?.emphasis && { itemStyle: itemStyle.emphasis }
+				},
+				label: {
+					show: showLabels,
+					position: labelPosition
+				},
+				data: processedData
+			}];
+		}
+		if (toolbox?.show) option.toolbox = {
+			show: true,
+			left: "left",
+			top: "top",
+			feature: {
+				...toolbox.features?.dataView && { dataView: { readOnly: false } },
+				...toolbox.features?.restore && { restore: {} },
+				...toolbox.features?.saveAsImage && { saveAsImage: {} }
+			}
+		};
+		return option;
+	}, [
+		processedData,
+		mapName,
+		chartType,
+		mapType,
+		dataStats,
+		visualMap,
+		geo,
+		roam,
+		scaleLimit,
+		itemStyle,
+		showLabels,
+		labelPosition,
+		tooltip,
+		toolbox,
+		additionalSeries,
+		grid,
+		xAxis,
+		yAxis,
+		title,
+		isMapLoaded
+	]);
+	const { theme: originalTheme,...filteredProps } = restProps;
+	const validTheme = originalTheme === "auto" ? "light" : originalTheme || "light";
+	const stableOnSelectChanged = (0, react.useCallback)((params) => {
+		onSelectChanged?.(params);
+	}, [onSelectChanged]);
+	const handleChartReady = (0, react.useCallback)((chart) => {
+		if (stableOnSelectChanged) chart.on("selectchanged", stableOnSelectChanged);
+		restProps.onChartReady?.(chart);
+	}, [stableOnSelectChanged, restProps.onChartReady]);
+	if (!isMapLoaded) return /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+		style: {
+			width: filteredProps.width || "100%",
+			height: filteredProps.height || 400,
+			display: "flex",
+			alignItems: "center",
+			justifyContent: "center",
+			backgroundColor: validTheme === "dark" ? "#2a2a2a" : "#f5f5f5",
+			color: validTheme === "dark" ? "#fff" : "#333",
+			border: `1px solid ${validTheme === "dark" ? "#444" : "#ddd"}`,
+			borderRadius: "4px",
+			fontSize: "14px"
+		},
+		children: "Loading map data..."
+	});
+	return /* @__PURE__ */ (0, react_jsx_runtime.jsx)(BaseChart, {
+		ref,
+		option: chartOption,
+		theme: validTheme,
+		onChartReady: handleChartReady,
+		...title && { title },
+		...filteredProps
+	});
+});
+GeoChart.displayName = "GeoChart";
+
+//#endregion
 //#region src/components/legacy/OldCalendarHeatmapChart.tsx
 const OldCalendarHeatmapChart = (0, react.forwardRef)(({ data, year, calendar = {}, visualMap = {}, tooltipFormatter, title,...props }, ref) => {
 	const chartOption = (0, react.useMemo)(() => {
@@ -7286,6 +7526,7 @@ exports.CombinedChart = CombinedChart;
 exports.DataValidationError = DataValidationError;
 exports.EChartsLoadError = EChartsLoadError;
 exports.GanttChart = GanttChart;
+exports.GeoChart = GeoChart;
 exports.LineChart = LineChart;
 exports.OldBarChart = OldBarChart;
 exports.OldCalendarHeatmapChart = OldCalendarHeatmapChart;

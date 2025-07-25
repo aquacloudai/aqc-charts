@@ -5705,6 +5705,246 @@ const RegressionChart = forwardRef(({ width = "100%", height = 400, className, s
 RegressionChart.displayName = "RegressionChart";
 
 //#endregion
+//#region src/components/GeoChart.tsx
+const GeoChart = forwardRef(({ data, mapName, mapUrl, mapType = "geojson", mapSpecialAreas, chartType = "map", nameField = "name", valueField = "value", visualMap = {}, geo, roam = true, scaleLimit, itemStyle, showLabels = false, labelPosition = "inside", tooltip, toolbox, additionalSeries = [], grid, xAxis, yAxis, onSelectChanged, onMapLoad, onMapError, title,...restProps }, ref) => {
+	const [isMapLoaded, setIsMapLoaded] = useState(false);
+	const registeredMapsRef = useRef(new Set());
+	const stableOnMapLoad = useCallback(() => {
+		onMapLoad?.();
+	}, [onMapLoad]);
+	const stableOnMapError = useCallback((error) => {
+		onMapError?.(error);
+	}, [onMapError]);
+	const loadMapData = useCallback(async () => {
+		try {
+			const echarts = await loadECharts();
+			if (!mapUrl) {
+				setIsMapLoaded(true);
+				return;
+			}
+			const mapKey = `${mapName}-${mapUrl}-${mapType}`;
+			if (registeredMapsRef.current.has(mapKey)) {
+				console.log(`Map "${mapName}" already registered, skipping`);
+				setIsMapLoaded(true);
+				stableOnMapLoad();
+				return;
+			}
+			const response = await fetch(mapUrl);
+			if (!response.ok) throw new Error(`Failed to load map data: ${response.statusText}`);
+			if (mapType === "svg") {
+				const svgText = await response.text();
+				console.log(`Registering SVG map "${mapName}" with ${svgText.length} characters`);
+				echarts.registerMap(mapName, { svg: svgText }, mapSpecialAreas);
+				console.log(`SVG map "${mapName}" registered successfully`);
+				await new Promise((resolve) => setTimeout(resolve, 200));
+			} else {
+				const geoJson = await response.json();
+				console.log(`Registering GeoJSON map "${mapName}"`);
+				echarts.registerMap(mapName, geoJson, mapSpecialAreas);
+				console.log(`GeoJSON map "${mapName}" registered successfully`);
+			}
+			registeredMapsRef.current.add(mapKey);
+			setIsMapLoaded(true);
+			stableOnMapLoad();
+		} catch (error) {
+			const mapError = error instanceof Error ? error : new Error("Unknown error loading map");
+			stableOnMapError(mapError);
+			console.error("Failed to load map data:", mapError);
+		}
+	}, [
+		mapUrl,
+		mapName,
+		mapType,
+		mapSpecialAreas,
+		stableOnMapLoad,
+		stableOnMapError
+	]);
+	useEffect(() => {
+		setIsMapLoaded(false);
+		loadMapData();
+	}, [loadMapData]);
+	const processedData = useMemo(() => {
+		if (!data) return [];
+		return data.map((item) => ({
+			name: typeof item === "object" && nameField in item ? item[nameField] : item.name,
+			value: typeof item === "object" && valueField in item ? item[valueField] : item.value
+		}));
+	}, [
+		data,
+		nameField,
+		valueField
+	]);
+	const dataStats = useMemo(() => {
+		const values = processedData.map((item) => Number(item.value)).filter((v) => !isNaN(v));
+		return {
+			min: Math.min(...values),
+			max: Math.max(...values)
+		};
+	}, [processedData]);
+	const chartOption = useMemo(() => {
+		if (!isMapLoaded) return {};
+		const option = { tooltip: {
+			trigger: "item",
+			showDelay: 200,
+			transitionDuration: 300,
+			formatter: "{b}: {c}",
+			...tooltip
+		} };
+		if (chartType === "geo") {
+			if (mapType === "svg") option.series = [{
+				name: title || "Geographic Data",
+				type: "map",
+				map: mapName,
+				roam,
+				...scaleLimit && { scaleLimit },
+				...itemStyle && { itemStyle },
+				emphasis: {
+					label: { show: showLabels },
+					...itemStyle?.emphasis && { itemStyle: itemStyle.emphasis }
+				},
+				label: {
+					show: showLabels,
+					position: labelPosition
+				},
+				data: processedData,
+				silent: processedData.length === 0
+			}];
+			else {
+				const geoConfig = {
+					map: mapName,
+					roam,
+					layoutCenter: ["50%", "50%"],
+					layoutSize: "100%",
+					selectedMode: "single",
+					itemStyle: { areaColor: void 0 },
+					emphasis: { label: { show: showLabels } },
+					select: {
+						itemStyle: { areaColor: "#b50205" },
+						label: { show: false }
+					},
+					...geo
+				};
+				if (geo?.regions && Array.isArray(geo.regions) && geo.regions.length > 0) geoConfig.regions = geo.regions;
+				option.geo = geoConfig;
+			}
+			if (additionalSeries.length > 0) if (mapType === "svg") {
+				const existingSeries = Array.isArray(option.series) ? option.series : option.series ? [option.series] : [];
+				option.series = [...existingSeries, ...additionalSeries];
+			} else option.series = [...additionalSeries];
+			if (grid) option.grid = grid;
+			if (xAxis) option.xAxis = xAxis;
+			if (yAxis) option.yAxis = yAxis;
+		} else {
+			option.visualMap = {
+				show: true,
+				left: "right",
+				min: dataStats.min,
+				max: dataStats.max,
+				colors: [
+					"#313695",
+					"#4575b4",
+					"#74add1",
+					"#abd9e9",
+					"#e0f3f8",
+					"#ffffbf",
+					"#fee090",
+					"#fdae61",
+					"#f46d43",
+					"#d73027",
+					"#a50026"
+				],
+				text: ["High", "Low"],
+				calculable: true,
+				orient: "vertical",
+				...visualMap
+			};
+			option.series = [{
+				name: title || "Geographic Data",
+				type: "map",
+				map: mapName,
+				roam,
+				...scaleLimit && { scaleLimit },
+				...itemStyle && { itemStyle },
+				emphasis: {
+					label: { show: showLabels },
+					...itemStyle?.emphasis && { itemStyle: itemStyle.emphasis }
+				},
+				label: {
+					show: showLabels,
+					position: labelPosition
+				},
+				data: processedData
+			}];
+		}
+		if (toolbox?.show) option.toolbox = {
+			show: true,
+			left: "left",
+			top: "top",
+			feature: {
+				...toolbox.features?.dataView && { dataView: { readOnly: false } },
+				...toolbox.features?.restore && { restore: {} },
+				...toolbox.features?.saveAsImage && { saveAsImage: {} }
+			}
+		};
+		return option;
+	}, [
+		processedData,
+		mapName,
+		chartType,
+		mapType,
+		dataStats,
+		visualMap,
+		geo,
+		roam,
+		scaleLimit,
+		itemStyle,
+		showLabels,
+		labelPosition,
+		tooltip,
+		toolbox,
+		additionalSeries,
+		grid,
+		xAxis,
+		yAxis,
+		title,
+		isMapLoaded
+	]);
+	const { theme: originalTheme,...filteredProps } = restProps;
+	const validTheme = originalTheme === "auto" ? "light" : originalTheme || "light";
+	const stableOnSelectChanged = useCallback((params) => {
+		onSelectChanged?.(params);
+	}, [onSelectChanged]);
+	const handleChartReady = useCallback((chart) => {
+		if (stableOnSelectChanged) chart.on("selectchanged", stableOnSelectChanged);
+		restProps.onChartReady?.(chart);
+	}, [stableOnSelectChanged, restProps.onChartReady]);
+	if (!isMapLoaded) return /* @__PURE__ */ jsx("div", {
+		style: {
+			width: filteredProps.width || "100%",
+			height: filteredProps.height || 400,
+			display: "flex",
+			alignItems: "center",
+			justifyContent: "center",
+			backgroundColor: validTheme === "dark" ? "#2a2a2a" : "#f5f5f5",
+			color: validTheme === "dark" ? "#fff" : "#333",
+			border: `1px solid ${validTheme === "dark" ? "#444" : "#ddd"}`,
+			borderRadius: "4px",
+			fontSize: "14px"
+		},
+		children: "Loading map data..."
+	});
+	return /* @__PURE__ */ jsx(BaseChart, {
+		ref,
+		option: chartOption,
+		theme: validTheme,
+		onChartReady: handleChartReady,
+		...title && { title },
+		...filteredProps
+	});
+});
+GeoChart.displayName = "GeoChart";
+
+//#endregion
 //#region src/components/legacy/OldCalendarHeatmapChart.tsx
 const OldCalendarHeatmapChart = forwardRef(({ data, year, calendar = {}, visualMap = {}, tooltipFormatter, title,...props }, ref) => {
 	const chartOption = useMemo(() => {
@@ -7250,4 +7490,4 @@ if (typeof document !== "undefined" && !document.getElementById("aqc-charts-styl
 }
 
 //#endregion
-export { BarChart, BaseChart, CalendarHeatmapChart, ChartError, ChartErrorBoundary, ChartErrorCode, ChartInitError, ChartRenderError, ClusterChart, CombinedChart, DataValidationError, EChartsLoadError, GanttChart, LineChart, OldBarChart, OldCalendarHeatmapChart, OldClusterChart, OldGanttChart, OldLineChart, OldPieChart, OldRegressionChart, OldSankeyChart, OldScatterChart, OldStackedBarChart, PieChart, RegressionChart, SankeyChart, ScatterChart, TransformError, assertValidation, clusterPointsToScatterData, createChartError, darkTheme, extractPoints, isChartError, isRecoverableError, lightTheme, performKMeansClustering, safeAsync, safeSync, useChartErrorHandler, useChartEvents, useChartInstance, useChartOptions, useChartResize, useECharts, validateChartData, validateChartProps, validateDimensions, validateFieldMapping, validateInDevelopment, validateTheme, withChartErrorBoundary };
+export { BarChart, BaseChart, CalendarHeatmapChart, ChartError, ChartErrorBoundary, ChartErrorCode, ChartInitError, ChartRenderError, ClusterChart, CombinedChart, DataValidationError, EChartsLoadError, GanttChart, GeoChart, LineChart, OldBarChart, OldCalendarHeatmapChart, OldClusterChart, OldGanttChart, OldLineChart, OldPieChart, OldRegressionChart, OldSankeyChart, OldScatterChart, OldStackedBarChart, PieChart, RegressionChart, SankeyChart, ScatterChart, TransformError, assertValidation, clusterPointsToScatterData, createChartError, darkTheme, extractPoints, isChartError, isRecoverableError, lightTheme, performKMeansClustering, safeAsync, safeSync, useChartErrorHandler, useChartEvents, useChartInstance, useChartOptions, useChartResize, useECharts, validateChartData, validateChartProps, validateDimensions, validateFieldMapping, validateInDevelopment, validateTheme, withChartErrorBoundary };

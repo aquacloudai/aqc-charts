@@ -16,7 +16,8 @@ const chartTypes = [
   { path: '/calendar', label: 'Calendar Heatmap', icon: '📅' },
   { path: '/sankey', label: 'Sankey Charts', icon: '🌊' },
   { path: '/gantt', label: 'Gantt Charts', icon: '📋' },
-  { path: '/regression', label: 'Regression Charts', icon: '📈' }
+  { path: '/regression', label: 'Regression Charts', icon: '📈' },
+  { path: '/geo', label: 'Geographic Charts', icon: '🗺️' }
 ];
 
 export const Navigation: React.FC<NavigationProps> = ({ theme }) => {

@@ -9,6 +9,7 @@ import { SankeyChartExample } from './components/SankeyChartExample';
 import { GanttChartExample } from './components/GanttChartExample';
 import { RegressionChartExample } from './components/RegressionChartExample';
 import { CombinedChartExample } from './components/CombinedChartExample';
+import { GeoChartExample } from './components/GeoChartExample';
 
 
 // Component for theme and palette selection
@@ -251,7 +252,7 @@ export function Examples() {
         theme={theme}
       >
         <CombinedChartExample />
-      </ChartCard>c
+      </ChartCard>
 
       {/* Pie Charts Showcase */}
       <ChartCard
@@ -338,6 +339,19 @@ export function Examples() {
         theme={theme}
       >
         <RegressionChartExample />
+      </ChartCard>
+
+      {/* Geo Chart Showcase */}
+      <ChartCard
+        title="🗺️ Geographic Chart Showcase"
+        description="Geographic data visualization with choropleth maps: population density, regional statistics, interactive map exploration with zoom/pan capabilities, and custom GeoJSON support."
+        theme={theme}
+      >
+        <GeoChartExample
+          theme={theme}
+          colorPalette={colorPalettes[palette as keyof typeof colorPalettes]}
+          onInteraction={(data) => setInteractionData(data)}
+        />
       </ChartCard>
 
       {/* Footer */}

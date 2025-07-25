@@ -435,6 +435,15 @@ export function BarChartExample({ theme, colorPalette, onInteraction }: BarChart
           theme={theme}
           colorPalette={['#3b82f6']}
           orientation="horizontal"
+          customOption={{
+            title: {
+              top: 10,
+              itemGap: 8, // Space between title and subtitle
+            },
+            grid: {
+              top: 80, // Provide more space at the top for the title
+            }
+          }}
           showLabels
           showAbsoluteValues
           borderRadius={6}

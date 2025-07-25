@@ -1,91 +1,91 @@
 {
-    "name": "aqc-charts",
-    "version": "0.1.0",
-    "description": "Modern Apache ECharts React components with TypeScript",
-    "keywords": [
-        "react",
-        "echarts",
-        "charts",
-        "typescript",
-        "visualization"
-    ],
-    "author": "Emil Lindfors <emil@aquacloud.ai>",
-    "license": "MIT",
-    "homepage": "https://github.com/aquacloudai/aqc-charts#readme",
-    "repository": {
-        "type": "git",
-        "url": "https://github.com/aquacloudai/aqc-charts.git"
-    },
-    "bugs": {
-        "url": "https://github.com/aquacloudai/aqc-charts/issues"
-    },
-    "type": "module",
-    "main": "./dist/index.cjs",
-    "module": "./dist/index.js",
-    "types": "./dist/index.d.ts",
-    "exports": {
-        ".": {
-            "types": "./dist/index.d.ts",
-            "import": "./dist/index.js",
-            "require": "./dist/index.cjs"
-        }
-    },
-    "files": [
-        "dist",
-        "README.md",
-        "LICENSE"
-    ],
-    "sideEffects": false,
-    "scripts": {
-        "dev": "rolldown --config rolldown.config.js --watch",
-        "build": "rolldown --config rolldown.config.js && bun run build:types",
-        "build:types": "tsc --project tsconfig.build.json",
-        "test": "vitest run",
-        "test:watch": "vitest",
-        "test:ui": "vitest --ui",
-        "test:coverage": "vitest run --coverage",
-        "lint": "oxlint src",
-        "lint:fix": "oxlint src --fix",
-        "format": "dprint fmt",
-        "format:check": "dprint check",
-        "typecheck": "tsc --noEmit",
-        "example": "cd example && bun run dev",
-        "docs": "typedoc src/index.ts",
-        "clean": "rm -rf dist",
-        "prepublishOnly": "bun run clean && bun run build",
-        "release": "np --no-yarn"
-    },
-    "peerDependencies": {
-        "react": ">=19.0.0",
-        "react-dom": ">=19.0.0"
-    },
-    "devDependencies": {
-        "@swc/core": "^1.12.6",
-        "@testing-library/jest-dom": "^6.6.3",
-        "@testing-library/react": "^16.3.0",
-        "@testing-library/user-event": "^14.6.1",
-        "@types/react": "^19.1.8",
-        "@types/react-dom": "^19.1.6",
-        "@vitest/coverage-v8": "^3.2.4",
-        "@vitest/ui": "^3.2.4",
-        "dprint": "^0.50.0",
-        "happy-dom": "^18.0.1",
-        "np": "^10.2.0",
-        "oxlint": "^1.3.0",
-        "react": "^19.1.0",
-        "react-dom": "^19.1.0",
-        "rolldown": "^1.0.0-beta.18",
-        "typedoc": "^0.28.5",
-        "typescript": "^5.8.3",
-        "vite": "^7.0.0",
-        "vitest": "^3.2.4"
-    },
-    "dependencies": {
-        "echarts": "5.6.0",
-        "echarts-stat": "1.2.0"
-    },
-    "engines": {
-        "node": ">=18.0.0",
-        "bun": ">=1.0.0"
+  "name": "aqc-charts",
+  "version": "0.1.0",
+  "description": "Modern Apache ECharts React components with TypeScript",
+  "keywords": [
+    "react",
+    "echarts",
+    "charts",
+    "typescript",
+    "visualization"
+  ],
+  "author": "Emil Lindfors <emil@aquacloud.ai>",
+  "license": "MIT",
+  "homepage": "https://github.com/aquacloudai/aqc-charts#readme",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/aquacloudai/aqc-charts.git"
+  },
+  "bugs": {
+    "url": "https://github.com/aquacloudai/aqc-charts/issues"
+  },
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
     }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "sideEffects": false,
+  "scripts": {
+    "dev": "rolldown --config rolldown.config.js --watch",
+    "build": "rolldown --config rolldown.config.js && bun run build:types",
+    "build:types": "tsc --project tsconfig.build.json",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:ui": "vitest --ui",
+    "test:coverage": "vitest run --coverage",
+    "lint": "oxlint src",
+    "lint:fix": "oxlint src --fix",
+    "format": "dprint fmt",
+    "format:check": "dprint check",
+    "typecheck": "tsc --noEmit",
+    "example": "cd example && bun run dev",
+    "docs": "typedoc src/index.ts",
+    "clean": "rm -rf dist",
+    "prepublishOnly": "bun run clean && bun run build",
+    "release": "np --no-yarn"
+  },
+  "peerDependencies": {
+    "react": ">=19.0.0",
+    "react-dom": ">=19.0.0"
+  },
+  "devDependencies": {
+    "@swc/core": "^1.12.6",
+    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/react": "^16.3.0",
+    "@testing-library/user-event": "^14.6.1",
+    "@types/react": "^19.1.8",
+    "@types/react-dom": "^19.1.6",
+    "@vitest/coverage-v8": "^3.2.4",
+    "@vitest/ui": "^3.2.4",
+    "dprint": "^0.50.0",
+    "happy-dom": "^18.0.1",
+    "np": "^10.2.0",
+    "oxlint": "^1.3.0",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "rolldown": "^1.0.0-beta.18",
+    "typedoc": "^0.28.5",
+    "typescript": "^5.8.3",
+    "vite": "^7.0.0",
+    "vitest": "^3.2.4"
+  },
+  "dependencies": {
+    "echarts": "5.6.0",
+    "echarts-stat": "1.2.0"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "bun": ">=1.0.0"
+  }
 }

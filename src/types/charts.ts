@@ -231,3 +231,164 @@ export interface CombinedChartProps extends BaseErgonomicChartProps {
   readonly pan?: boolean;
   readonly brush?: boolean;
 }
+
+// Geo Chart Props
+export interface GeoChartProps extends BaseErgonomicChartProps {
+  readonly data?: readonly { readonly name: string; readonly value: number }[];
+  
+  // Map configuration
+  readonly mapName: string; // Registered map name (e.g., 'Norway', 'USA')
+  readonly mapUrl?: string; // URL to GeoJSON data
+  readonly mapType?: 'geojson' | 'svg'; // Type of map data
+  readonly mapSpecialAreas?: Record<string, {
+    readonly left: number;
+    readonly top: number;
+    readonly width: number;
+  }>; // Special positioning for regions like Alaska, Hawaii
+  
+  // Chart type - determines whether to use 'map' series or 'geo' coordinate system
+  readonly chartType?: 'map' | 'geo';
+  
+  // Field mappings
+  readonly nameField?: string;
+  readonly valueField?: string;
+  
+  // Visual map configuration (for 'map' type charts)
+  readonly visualMap?: {
+    readonly show?: boolean;
+    readonly min?: number;
+    readonly max?: number;
+    readonly left?: string | number;
+    readonly right?: string | number;
+    readonly top?: string | number;
+    readonly bottom?: string | number;
+    readonly colors?: readonly string[];
+    readonly text?: [string, string]; // [high, low] labels
+    readonly calculable?: boolean;
+    readonly orient?: 'horizontal' | 'vertical';
+  };
+  
+  // Geo coordinate system configuration (for 'geo' type charts)
+  readonly geo?: {
+    readonly map?: string; // Map name
+    readonly roam?: boolean | 'scale' | 'move';
+    readonly layoutCenter?: readonly [string, string]; // e.g., ['50%', '50%']
+    readonly layoutSize?: string | number; // e.g., '100%'
+    readonly selectedMode?: 'single' | 'multiple' | boolean;
+    readonly scaleLimit?: {
+      readonly min?: number;
+      readonly max?: number;
+    };
+    readonly itemStyle?: {
+      readonly areaColor?: string; // Note: ECharts uses areaColor, not color for geo areas
+      readonly borderColor?: string;
+      readonly borderWidth?: number;
+    };
+    readonly emphasis?: {
+      readonly itemStyle?: {
+        readonly areaColor?: string;
+        readonly borderColor?: string;
+        readonly borderWidth?: number;
+      };
+      readonly label?: {
+        readonly show?: boolean;
+        readonly color?: string;
+      };
+    };
+    readonly select?: {
+      readonly itemStyle?: {
+        readonly areaColor?: string;
+        readonly borderColor?: string;
+        readonly borderWidth?: number;
+      };
+      readonly label?: {
+        readonly show?: boolean;
+        readonly color?: string;
+      };
+    };
+    readonly regions?: readonly {
+      readonly name: string;
+      readonly itemStyle?: {
+        readonly areaColor?: string;
+        readonly borderColor?: string;
+        readonly borderWidth?: number;
+      };
+      readonly emphasis?: {
+        readonly itemStyle?: {
+          readonly areaColor?: string;
+          readonly borderColor?: string;
+          readonly borderWidth?: number;
+        };
+      };
+      readonly select?: {
+        readonly itemStyle?: {
+          readonly areaColor?: string;
+          readonly borderColor?: string;
+          readonly borderWidth?: number;
+        };
+      };
+      readonly tooltip?: {
+        readonly show?: boolean;
+        readonly position?: string | readonly [number, number];
+        readonly alwaysShowContent?: boolean;
+        readonly enterable?: boolean;
+        readonly extraCssText?: string;
+        readonly formatter?: string | ((params: any) => string);
+      };
+    }[];
+    readonly tooltip?: {
+      readonly show?: boolean;
+      readonly confine?: boolean;
+      readonly formatter?: string | ((params: any) => string);
+    };
+  };
+  
+  // Map styling (for 'map' type charts)
+  readonly roam?: boolean | 'scale' | 'move'; // Enable zoom/pan
+  readonly scaleLimit?: {
+    readonly min?: number;
+    readonly max?: number;
+  };
+  readonly itemStyle?: {
+    readonly normal?: {
+      readonly areaColor?: string;
+      readonly borderColor?: string;
+      readonly borderWidth?: number;
+    };
+    readonly emphasis?: {
+      readonly areaColor?: string;
+      readonly borderColor?: string;
+      readonly borderWidth?: number;
+    };
+  };
+  
+  // Labels
+  readonly showLabels?: boolean;
+  readonly labelPosition?: 'inside' | 'outside';
+  
+  // Tooltip (global)
+  readonly tooltip?: TooltipConfig | undefined;
+  
+  // Toolbox features
+  readonly toolbox?: {
+    readonly show?: boolean;
+    readonly features?: {
+      readonly dataView?: boolean;
+      readonly restore?: boolean;
+      readonly saveAsImage?: boolean;
+    };
+  };
+  
+  // Additional series configuration (for complex charts like the Sicily example)
+  readonly additionalSeries?: readonly any[];
+  readonly grid?: any; // For additional coordinate systems
+  readonly xAxis?: any;
+  readonly yAxis?: any;
+  
+  // Event handlers
+  readonly onSelectChanged?: (params: any) => void;
+  
+  // Loading state for map data
+  readonly onMapLoad?: () => void;
+  readonly onMapError?: (error: Error) => void;
+}

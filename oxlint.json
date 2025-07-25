@@ -1,26 +1,26 @@
 {
-    "rules": {
-        "react": "error",
-        "unicorn": "warn",
-        "typescript": "error",
-        "import": "warn"
-    },
-    "env": {
-        "browser": true,
-        "es2022": true,
-        "node": true
-    },
-    "globals": {
-        "React": "readonly"
-    },
-    "ignorePatterns": [
-        "dist/**",
-        "node_modules/**",
-        "coverage/**",
-        "**/*.d.ts"
-    ],
-    "plugins": [
-        "react-hooks",
-        "react-refresh"
-    ]
+  "rules": {
+    "react": "error",
+    "unicorn": "warn",
+    "typescript": "error",
+    "import": "warn"
+  },
+  "env": {
+    "browser": true,
+    "es2022": true,
+    "node": true
+  },
+  "globals": {
+    "React": "readonly"
+  },
+  "ignorePatterns": [
+    "dist/**",
+    "node_modules/**",
+    "coverage/**",
+    "**/*.d.ts"
+  ],
+  "plugins": [
+    "react-hooks",
+    "react-refresh"
+  ]
 }

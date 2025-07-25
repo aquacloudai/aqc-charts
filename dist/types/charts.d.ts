@@ -153,4 +153,142 @@ export interface CombinedChartProps extends BaseErgonomicChartProps {
     readonly pan?: boolean;
     readonly brush?: boolean;
 }
+export interface GeoChartProps extends BaseErgonomicChartProps {
+    readonly data?: readonly {
+        readonly name: string;
+        readonly value: number;
+    }[];
+    readonly mapName: string;
+    readonly mapUrl?: string;
+    readonly mapType?: 'geojson' | 'svg';
+    readonly mapSpecialAreas?: Record<string, {
+        readonly left: number;
+        readonly top: number;
+        readonly width: number;
+    }>;
+    readonly chartType?: 'map' | 'geo';
+    readonly nameField?: string;
+    readonly valueField?: string;
+    readonly visualMap?: {
+        readonly show?: boolean;
+        readonly min?: number;
+        readonly max?: number;
+        readonly left?: string | number;
+        readonly right?: string | number;
+        readonly top?: string | number;
+        readonly bottom?: string | number;
+        readonly colors?: readonly string[];
+        readonly text?: [string, string];
+        readonly calculable?: boolean;
+        readonly orient?: 'horizontal' | 'vertical';
+    };
+    readonly geo?: {
+        readonly map?: string;
+        readonly roam?: boolean | 'scale' | 'move';
+        readonly layoutCenter?: readonly [string, string];
+        readonly layoutSize?: string | number;
+        readonly selectedMode?: 'single' | 'multiple' | boolean;
+        readonly scaleLimit?: {
+            readonly min?: number;
+            readonly max?: number;
+        };
+        readonly itemStyle?: {
+            readonly areaColor?: string;
+            readonly borderColor?: string;
+            readonly borderWidth?: number;
+        };
+        readonly emphasis?: {
+            readonly itemStyle?: {
+                readonly areaColor?: string;
+                readonly borderColor?: string;
+                readonly borderWidth?: number;
+            };
+            readonly label?: {
+                readonly show?: boolean;
+                readonly color?: string;
+            };
+        };
+        readonly select?: {
+            readonly itemStyle?: {
+                readonly areaColor?: string;
+                readonly borderColor?: string;
+                readonly borderWidth?: number;
+            };
+            readonly label?: {
+                readonly show?: boolean;
+                readonly color?: string;
+            };
+        };
+        readonly regions?: readonly {
+            readonly name: string;
+            readonly itemStyle?: {
+                readonly areaColor?: string;
+                readonly borderColor?: string;
+                readonly borderWidth?: number;
+            };
+            readonly emphasis?: {
+                readonly itemStyle?: {
+                    readonly areaColor?: string;
+                    readonly borderColor?: string;
+                    readonly borderWidth?: number;
+                };
+            };
+            readonly select?: {
+                readonly itemStyle?: {
+                    readonly areaColor?: string;
+                    readonly borderColor?: string;
+                    readonly borderWidth?: number;
+                };
+            };
+            readonly tooltip?: {
+                readonly show?: boolean;
+                readonly position?: string | readonly [number, number];
+                readonly alwaysShowContent?: boolean;
+                readonly enterable?: boolean;
+                readonly extraCssText?: string;
+                readonly formatter?: string | ((params: any) => string);
+            };
+        }[];
+        readonly tooltip?: {
+            readonly show?: boolean;
+            readonly confine?: boolean;
+            readonly formatter?: string | ((params: any) => string);
+        };
+    };
+    readonly roam?: boolean | 'scale' | 'move';
+    readonly scaleLimit?: {
+        readonly min?: number;
+        readonly max?: number;
+    };
+    readonly itemStyle?: {
+        readonly normal?: {
+            readonly areaColor?: string;
+            readonly borderColor?: string;
+            readonly borderWidth?: number;
+        };
+        readonly emphasis?: {
+            readonly areaColor?: string;
+            readonly borderColor?: string;
+            readonly borderWidth?: number;
+        };
+    };
+    readonly showLabels?: boolean;
+    readonly labelPosition?: 'inside' | 'outside';
+    readonly tooltip?: TooltipConfig | undefined;
+    readonly toolbox?: {
+        readonly show?: boolean;
+        readonly features?: {
+            readonly dataView?: boolean;
+            readonly restore?: boolean;
+            readonly saveAsImage?: boolean;
+        };
+    };
+    readonly additionalSeries?: readonly any[];
+    readonly grid?: any;
+    readonly xAxis?: any;
+    readonly yAxis?: any;
+    readonly onSelectChanged?: (params: any) => void;
+    readonly onMapLoad?: () => void;
+    readonly onMapError?: (error: Error) => void;
+}
 //# sourceMappingURL=charts.d.ts.map

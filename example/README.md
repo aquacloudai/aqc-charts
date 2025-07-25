@@ -30,6 +30,7 @@ The example app includes two main sections:
 ### Ergonomic API Highlights
 
 #### 1. **Intuitive Data Binding**
+
 ```tsx
 // Instead of complex data transformation
 <ErgonomicLineChart
@@ -44,24 +45,28 @@ The example app includes two main sections:
 ```
 
 #### 2. **Smart Defaults**
+
 - Automatic data type detection (numeric, categorical, time)
 - Intelligent color palette selection
 - Responsive design by default
 - Optimized performance settings
 
 #### 3. **Multiple Data Formats**
+
 - **Object Arrays**: `{ month: 'Jan', value: 100 }`
 - **Coordinate Arrays**: `[[x1, y1], [x2, y2]]`
 - **Multiple Series**: Explicit series configuration
 - **Grouped Data**: Automatic grouping by field
 
 #### 4. **Interactive Features**
+
 - Click and hover event handlers
 - Zoom and pan capabilities
 - Data highlighting
 - Real-time data updates
 
 #### 5. **Theme System**
+
 - Built-in theme switching (light/dark)
 - Multiple color palettes
 - Custom styling options
@@ -111,10 +116,13 @@ The example includes a side-by-side comparison showing:
 ## 🎨 Interactive Features
 
 ### Theme Switching
+
 Try switching between light and dark themes to see how charts adapt automatically.
 
 ### Color Palettes
+
 Explore different built-in color schemes:
+
 - **Default**: Professional blue-green palette
 - **Vibrant**: Bold, energetic colors
 - **Pastel**: Soft, gentle tones
@@ -122,6 +130,7 @@ Explore different built-in color schemes:
 - **Earth**: Natural, organic tones
 
 ### Real-time Interaction
+
 - Click on data points to see detailed information
 - Hover over charts for contextual tooltips
 - Use zoom and pan on supported charts

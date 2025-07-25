@@ -110,6 +110,7 @@ Perfect for showing trends, time series data, and continuous relationships.
 ```
 
 **Props:**
+
 - `data` - Array of chart series with type definitions
 - `smooth` - Enable smooth curve interpolation
 - `area` - Fill area under the line(s)
@@ -148,6 +149,7 @@ Ideal for comparing categories, rankings, and discrete data sets.
 ```
 
 **Props:**
+
 - `horizontal` - Render bars horizontally
 - `stack` - Stack multiple bar series
 - `showValues` - Display values on bars
@@ -176,6 +178,7 @@ Great for showing proportions, market share, and part-to-whole relationships.
 ```
 
 **Props:**
+
 - `radius` - Inner and outer radius (donut chart support)
 - `center` - Chart center position
 - `roseType` - Rose chart type (`'radius'` | `'area'` | `false`)

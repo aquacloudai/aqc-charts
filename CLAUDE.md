@@ -39,6 +39,7 @@ aqc-charts/
 ## ⚡ Toolchain & Commands
 
 ### Package Manager: Bun (NOT npm/yarn)
+
 ```bash
 # Install dependencies
 bun install
@@ -52,6 +53,7 @@ bun remove <package>
 ```
 
 ### Development Commands
+
 ```bash
 bun run dev          # Watch mode development
 bun run build        # Production build
@@ -66,6 +68,7 @@ bun run example      # Run example app
 ```
 
 ### Build Tools
+
 - **Bundler**: Rolldown (Rust-based, NOT Rollup/Webpack)
 - **Linter**: Oxlint (Rust-based, NOT ESLint)
 - **Formatter**: dprint (Rust-based, NOT Prettier)
@@ -74,6 +77,7 @@ bun run example      # Run example app
 ## 📝 Code Patterns & Conventions
 
 ### TypeScript Patterns
+
 ```typescript
 // Use readonly for immutable data
 interface ChartSeries {
@@ -92,6 +96,7 @@ const Component = forwardRef<ChartRef, ComponentProps>(({ ... }, ref) => {
 ```
 
 ### React Patterns
+
 ```typescript
 // Custom hooks for logic
 const useECharts = (containerRef, option, theme) => {
@@ -108,6 +113,7 @@ const chartRef = useRef<EChartsInstance | null>(null);
 ```
 
 ### Component Structure
+
 ```typescript
 // 1. Imports
 import React, { forwardRef, useMemo } from 'react';
@@ -138,6 +144,7 @@ Component.displayName = 'Component';
 ## 🔧 Key Technologies
 
 ### Core Dependencies
+
 ```json
 {
   "react": "^18.2.0",           # React framework
@@ -148,6 +155,7 @@ Component.displayName = 'Component';
 ```
 
 ### Build Dependencies
+
 ```json
 {
   "@rolldown/rolldown": "^0.6.2",  # Bundler
@@ -161,6 +169,7 @@ Component.displayName = 'Component';
 ## 📋 Development Guidelines
 
 ### When Adding New Chart Types
+
 1. Create new component in `src/components/`
 2. Extend from `BaseChart` component
 3. Define specific props interface
@@ -169,6 +178,7 @@ Component.displayName = 'Component';
 6. Update TypeScript types
 
 ### File Naming Conventions
+
 - Components: `PascalCase.tsx`
 - Hooks: `useCamelCase.ts`
 - Utils: `camelCase.ts`
@@ -176,6 +186,7 @@ Component.displayName = 'Component';
 - Tests: `ComponentName.test.tsx`
 
 ### Import/Export Patterns
+
 ```typescript
 // Use @ alias for internal imports
 import { BaseChart } from '@/components/BaseChart';
@@ -189,6 +200,7 @@ export type { ChartRef, ChartSeries };
 ## 🧪 Testing
 
 ### Test Structure
+
 ```typescript
 // src/components/__tests__/Component.test.tsx
 import React from 'react';
@@ -205,6 +217,7 @@ describe('Component', () => {
 ```
 
 ### Mock ECharts
+
 ```typescript
 // Already configured in src/setupTests.ts
 global.window.echarts = {
@@ -216,12 +229,14 @@ global.window.echarts = {
 ## 🎨 Styling & Themes
 
 ### CSS Classes
+
 - `.aqc-charts-container` - Main container
 - `.aqc-charts-loading` - Loading overlay
 - `.aqc-charts-error` - Error state
 - `.aqc-charts-spinner` - Loading spinner
 
 ### Theme System
+
 ```typescript
 // Built-in themes
 import { lightTheme, darkTheme } from '@/utils/themes';
@@ -237,6 +252,7 @@ const customTheme: ChartTheme = {
 ## 🔍 Common Operations
 
 ### Adding a New Chart Component
+
 1. Create `src/components/NewChart.tsx`
 2. Define props interface extending `BaseChartProps`
 3. Implement using `BaseChart` with specific options
@@ -244,19 +260,23 @@ const customTheme: ChartTheme = {
 5. Export from `src/index.ts`
 
 ### Statistical Charts (ecStat Integration)
+
 The library includes advanced statistical charts powered by echarts-stat:
 
 #### ClusterChart
+
 - Uses `ecStat:clustering` transform for K-means clustering
 - Automatic color mapping via visual map
 - Configurable cluster count and visualization
 
-#### RegressionChart  
+#### RegressionChart
+
 - Uses `ecStat:regression` transform for regression analysis
 - Supports linear, exponential, logarithmic, and polynomial regression
 - Automatic equation display and R² calculation
 
 ### Updating Dependencies
+
 ```bash
 # Check outdated packages
 bun outdated
@@ -269,6 +289,7 @@ bun update
 ```
 
 ### Debugging
+
 ```bash
 # Type checking
 bun run typecheck
@@ -286,11 +307,13 @@ bun run build --debug
 ## 📊 Performance Considerations
 
 ### Bundle Analysis
+
 - Library targets ~15KB gzipped
 - ECharts is peer dependency (not bundled)
 - Tree-shaking enabled via ES modules
 
 ### Runtime Performance
+
 - Use `useMemo` for complex calculations
 - Use `useCallback` for event handlers
 - Proper cleanup in `useEffect`
@@ -299,6 +322,7 @@ bun run build --debug
 ## 🚨 Common Issues & Solutions
 
 ### Build Failures
+
 ```bash
 # Clear cache and rebuild
 rm -rf dist node_modules bun.lockb
@@ -307,12 +331,14 @@ bun run build
 ```
 
 ### Type Errors
+
 ```bash
 # Generate fresh type declarations
 bun run build:types
 ```
 
 ### Test Failures
+
 ```bash
 # Run specific test
 bun run test Component.test.tsx
@@ -324,11 +350,13 @@ bun run test --update-snapshots
 ## 🔗 External Integrations
 
 ### ECharts API
+
 - Charts automatically load latest ECharts from CDN
 - Access instance via `chartRef.current?.getEChartsInstance()`
 - Supports all ECharts configuration options
 
 ### React Integration
+
 - Supports React 18+ with concurrent features
 - SSR compatible (with proper hydration)
 - Works with Next.js, Vite, Create React App
@@ -336,6 +364,7 @@ bun run test --update-snapshots
 ## 📝 Quick Reference
 
 ### Essential Files to Understand
+
 1. `src/types/index.ts` - All TypeScript definitions
 2. `src/hooks/useECharts.ts` - Core chart logic
 3. `src/components/BaseChart.tsx` - Foundation component
@@ -343,6 +372,7 @@ bun run test --update-snapshots
 5. `rolldown.config.js` - Build configuration
 
 ### Key Commands for AI Tools
+
 ```bash
 bun install           # Setup dependencies
 bun run typecheck     # Validate TypeScript
@@ -352,6 +382,7 @@ bun run example       # Test with example app
 ```
 
 ### Paths & Aliases
+
 - `@/*` maps to `src/*`
 - Main entry: `src/index.ts`
 - Types: `src/types/index.ts`

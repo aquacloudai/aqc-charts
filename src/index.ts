@@ -10,6 +10,7 @@ export { CalendarHeatmapChart } from './components/CalendarHeatmapChart';
 export { SankeyChart } from './components/SankeyChart';
 export { GanttChart } from './components/GanttChart';
 export { RegressionChart } from './components/RegressionChart';
+export { GeoChart } from './components/GeoChart';
 
 // Legacy components (old API)
 export { OldCalendarHeatmapChart } from './components/legacy/OldCalendarHeatmapChart';
@@ -151,7 +152,8 @@ export type {
     StatusStyleMap,
     PriorityStyleMap,
     GanttDataZoomConfig,
-    RegressionChartProps
+    RegressionChartProps,
+    GeoChartProps
 } from './types';
 
 // Legacy component types
