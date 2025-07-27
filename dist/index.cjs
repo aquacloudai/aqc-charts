@@ -5830,7 +5830,7 @@ const GeoChart = (0, react.forwardRef)(({ data, mapName, mapUrl, mapType = "geoj
 					position: labelPosition
 				},
 				data: processedData,
-				silent: processedData.length === 0
+				silent: false
 			}];
 			else {
 				const geoConfig = {
@@ -5858,7 +5858,7 @@ const GeoChart = (0, react.forwardRef)(({ data, mapName, mapUrl, mapType = "geoj
 			if (xAxis) option.xAxis = xAxis;
 			if (yAxis) option.yAxis = yAxis;
 		} else {
-			option.visualMap = {
+			if (processedData.length > 0) option.visualMap = {
 				show: true,
 				left: "right",
 				min: dataStats.min,
