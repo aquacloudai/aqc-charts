@@ -15,6 +15,94 @@ const countryData = {
   france: [{ name: 'France', value: 67391582 }],
 };
 
+// Comprehensive Norwegian Marine Water Typology Data
+const marineTypologyData = {
+  protected_fjords: [
+    // Type 01: Protected Fjord - Sheltered fjord environments
+    { name: 'water-B-01-19', value: 98 },
+    { name: 'water-G-01-16', value: 96 },
+    { name: 'water-G-01-19', value: 94 },
+    { name: 'water-H-01-15', value: 97 },
+    { name: 'water-H-01-16', value: 95 },
+    { name: 'water-M-01-7', value: 99 },
+    { name: 'water-N-01-4', value: 93 },
+    { name: 'water-S-01-6', value: 92 },
+    { name: 'water-S-01-14', value: 91 },
+    // Type 01a: Protected Fjord with Oxygenated Seabed
+    { name: 'water-B-01a-19', value: 97 },
+    { name: 'water-G-01a-16', value: 95 },
+    { name: 'water-H-01a-15', value: 96 },
+    { name: 'water-M-01a-7', value: 98 },
+    { name: 'water-N-01a-4', value: 92 },
+    { name: 'water-S-01a-6', value: 91 },
+  ],
+  freshwater_fjords: [
+    // Type 02: Protected Freshwater Influenced Fjord
+    { name: 'water-B-02-19', value: 88 },
+    { name: 'water-G-02-16', value: 86 },
+    { name: 'water-H-02-15', value: 87 },
+    { name: 'water-M-02-7', value: 89 },
+    { name: 'water-N-02-4', value: 85 },
+    { name: 'water-S-02-6', value: 84 },
+    // Type 02a: Protected Freshwater Influenced with Oxygen Depleted Seabed
+    { name: 'water-G-02a-16', value: 82 },
+    { name: 'water-H-02a-15', value: 83 },
+    { name: 'water-M-02a-7', value: 81 },
+    { name: 'water-N-02a-4', value: 80 },
+    { name: 'water-S-02a-6', value: 79 },
+    // Type 03: Strong Freshwater Influenced Fjord
+    { name: 'water-B-03-19', value: 90 },
+    { name: 'water-G-03-16', value: 88 },
+    { name: 'water-H-03-15', value: 89 },
+    { name: 'water-M-03-7', value: 91 },
+    { name: 'water-N-03-4', value: 87 },
+    { name: 'water-S-03-6', value: 86 },
+    // Type 03a: Strong Freshwater Influenced with Oxygen Depleted Seabed
+    { name: 'water-N-03a-4', value: 78 },
+    { name: 'water-S-03a-6', value: 77 },
+  ],
+  exposed_fjords: [
+    // Type 04: Moderately Exposed Fjord
+    { name: 'water-B-04-19', value: 85 },
+    { name: 'water-G-04-16', value: 83 },
+    { name: 'water-H-04-15', value: 84 },
+    { name: 'water-M-04-7', value: 86 },
+    { name: 'water-N-04-4', value: 82 },
+    { name: 'water-S-04-6', value: 81 },
+    // Type 05: Moderately Exposed Freshwater Influenced Fjord
+    { name: 'water-N-05-4', value: 80 },
+    { name: 'water-S-05-6', value: 79 },
+    { name: 'water-S-05-13', value: 78 },
+  ],
+  coastal_areas: [
+    // Type 06: Wave Exposed Coast - Open coastal areas
+    { name: 'water-N-06-4', value: 95 },
+    { name: 'water-S-06-6', value: 92 },
+    { name: 'water-M-06-7', value: 89 },
+    { name: 'water-H-06-11', value: 87 },
+    { name: 'water-S-06-14', value: 90 },
+    { name: 'water-H-06-15', value: 85 },
+    { name: 'water-G-06-16', value: 88 },
+    { name: 'water-B-06-19', value: 91 },
+    { name: 'water-H-06-16', value: 86 },
+    { name: 'water-G-06-19', value: 84 },
+    // Type 07: Wave Exposed Freshwater Influenced Coast
+    { name: 'water-S-07-6', value: 83 },
+  ],
+  special_waters: [
+    // Type 08: Narrow Straits - Strong currents
+    { name: 'water-B-08-19', value: 75 },
+    { name: 'water-G-08-16', value: 73 },
+    { name: 'water-H-08-15', value: 74 },
+    // Type 09: Special Water Occurrence - Unique characteristics
+    { name: 'water-B-09-19', value: 70 },
+    { name: 'water-G-09-16', value: 68 },
+    { name: 'water-G-09-19', value: 69 },
+    { name: 'water-H-09-15', value: 71 },
+    { name: 'water-N-09-4', value: 67 },
+  ],
+};
+
 // Sample USA data for comparison (matching the original example)
 const usaPopulationData = [
   { name: 'Alabama', value: 4822023 },
@@ -100,7 +188,8 @@ const ExampleCard = ({
 );
 
 export function GeoChartExample({ theme, colorPalette, onInteraction }: GeoChartExampleProps) {
-  const [selectedMap, setSelectedMap] = useState<'norway' | 'norway-svg' | 'germany' | 'france'>('norway');
+  const [selectedMap, setSelectedMap] = useState<'norway' | 'norway-svg' | 'norway-typology' | 'germany' | 'france'>('norway');
+  const [selectedMarineType, setSelectedMarineType] = useState<'protected_fjords' | 'freshwater_fjords' | 'exposed_fjords' | 'coastal_areas' | 'special_waters'>('protected_fjords');
   const [loadedMaps, setLoadedMaps] = useState<Set<string>>(new Set(['norway'])); // Start with norway loaded
 
   const handleChartClick = useCallback((params: any) => {
@@ -132,9 +221,13 @@ export function GeoChartExample({ theme, colorPalette, onInteraction }: GeoChart
     visualMap: {
       show: true,
       left: 'right',
-      colors: colorPalette.slice(0, 6).reverse(),
+      min: 0,
+      max: 100,
       text: ['High', 'Low'],
       calculable: true,
+      inRange: {
+        color: ['#313695', '#d73027']
+      }
     },
     tooltip: {
       trigger: 'item',
@@ -172,7 +265,7 @@ export function GeoChartExample({ theme, colorPalette, onInteraction }: GeoChart
         <select
           value={selectedMap}
           onChange={(e) => {
-            const newMap = e.target.value as 'norway' | 'norway-svg' | 'germany' | 'france';
+            const newMap = e.target.value as 'norway' | 'norway-svg' | 'norway-typology' | 'germany' | 'france';
             setSelectedMap(newMap);
             // Mark the new map as loaded so it will render
             setLoadedMaps(prev => new Set([...prev, newMap]));
@@ -187,6 +280,7 @@ export function GeoChartExample({ theme, colorPalette, onInteraction }: GeoChart
         >
           <option value="norway">🇳🇴 Norway (GeoJSON)</option>
           <option value="norway-svg">🇳🇴 Norway (SVG)</option>
+          <option value="norway-typology">🌊 Norway Water Typology</option>
           <option value="germany">🇩🇪 Germany (GeoJSON)</option>
           <option value="france">🇫🇷 France (GeoJSON)</option>
         </select>
@@ -280,32 +374,103 @@ export function GeoChartExample({ theme, colorPalette, onInteraction }: GeoChart
             color: theme === 'dark' ? '#ccc' : '#666',
             fontSize: '14px',
           }}>
-            This example demonstrates using an SVG map file with administrative regions.
+            This example demonstrates using an SVG map file showing Norwegian aquaculture production areas.
             SVG maps can provide cleaner rendering and smaller file sizes, and this one includes 
-            all Norwegian counties (fylker) for detailed geographic visualization.
+            all 13 mainland production areas with sample fish production data (in tonnes).
           </p>
           
           {loadedMaps.has('norway-svg') && (
             <GeoChart
               data={[
-                { name: 'Troms og Finnmark', value: 243311 },
-                { name: 'Trøndelag', value: 468702 },
-                { name: 'Viken', value: 1241165 },
-                { name: 'Oslo', value: 697010 },
-                { name: 'Vestfold og Telemark', value: 421241 },
-                { name: 'Rogaland', value: 479892 },
-                { name: 'Vestland', value: 636531 },
-                { name: 'Møre og Romsdal', value: 265238 },
-                { name: 'Innlandet', value: 371385 },
+                { name: 'production-area-1', value: 45200 },
+                { name: 'production-area-2', value: 38750 },
+                { name: 'production-area-3', value: 52100 },
+                { name: 'production-area-4', value: 61800 },
+                { name: 'production-area-5', value: 43900 },
+                { name: 'production-area-6', value: 67300 },
+                { name: 'production-area-7', value: 71500 },
+                { name: 'production-area-8', value: 48600 },
+                { name: 'production-area-9', value: 55900 },
+                { name: 'production-area-10', value: 39400 },
+                { name: 'production-area-11', value: 44800 },
+                { name: 'production-area-12', value: 58200 },
+                { name: 'production-area-13', value: 35600 },
               ]}
               mapName="NorwayRegions"
-              mapUrl="/norway-regions.svg"
+              mapUrl="/norwegian_production_areas_mainland.svg"
               mapType="svg"
               chartType="map"
-              title="Norway Counties (SVG Map)"
+              title="Norwegian Aquaculture Production Areas"
               {...commonProps}
               onMapLoad={() => handleMapLoad('Norway SVG')}
               onMapError={(error) => handleMapError('Norway SVG', error)}
+            />
+          )}
+        </ExampleCard>
+      )}
+
+      {selectedMap === 'norway-typology' && (
+        <ExampleCard title="🌊 Norway Water Typology (SVG Example)" theme={theme}>
+          <p style={{
+            margin: '0 0 15px 0',
+            color: theme === 'dark' ? '#ccc' : '#666',
+            fontSize: '14px',
+          }}>
+            Comprehensive Norwegian marine water typology classification system with 5 major categories 
+            covering all Norwegian marine regions (Barents Sea, Norwegian Sea, North Sea, Skagerrak). 
+            Each type represents specific environmental conditions including wave exposure, freshwater influence, and oxygen levels.
+          </p>
+          
+          {/* Marine Type Selection */}
+          <div style={{
+            marginBottom: '20px',
+            padding: '10px',
+            backgroundColor: theme === 'dark' ? '#1a1a1a' : '#f8f8f8',
+            borderRadius: '6px',
+          }}>
+            <label style={{
+              marginRight: '10px',
+              fontWeight: 'bold',
+              color: theme === 'dark' ? '#fff' : '#333'
+            }}>
+              Marine Environment Type:
+            </label>
+            <select
+              value={selectedMarineType}
+              onChange={(e) => setSelectedMarineType(e.target.value as keyof typeof marineTypologyData)}
+              style={{
+                padding: '5px 10px',
+                borderRadius: '4px',
+                border: '1px solid #ccc',
+                backgroundColor: theme === 'dark' ? '#444' : '#fff',
+                color: theme === 'dark' ? '#fff' : '#333'
+              }}
+            >
+              <option value="protected_fjords">🛡️ Protected Fjords</option>
+              <option value="freshwater_fjords">🏞️ Freshwater Influenced Fjords</option>
+              <option value="exposed_fjords">⛰️ Exposed Fjords</option>
+              <option value="coastal_areas">🌊 Wave Exposed Coastal Areas</option>
+              <option value="special_waters">⚡ Special Waters & Straits</option>
+            </select>
+          </div>
+          
+          {loadedMaps.has('norway-typology') && (
+            <GeoChart
+              data={marineTypologyData[selectedMarineType]}
+              mapName="NorwayWaterTypologies"
+              mapUrl="/norwegian_water_typologies_with_map.svg"
+              mapType="svg"
+              chartType="map"
+              title={`Norwegian Water Typologies - ${
+                selectedMarineType === 'protected_fjords' ? 'Protected Fjord Systems' :
+                selectedMarineType === 'freshwater_fjords' ? 'Freshwater Influenced Fjords' :
+                selectedMarineType === 'exposed_fjords' ? 'Exposed Fjord Environments' :
+                selectedMarineType === 'coastal_areas' ? 'Wave Exposed Coastal Waters' :
+                'Special Waters & Narrow Straits'
+              }`}
+              {...commonProps}
+              onMapLoad={() => handleMapLoad('Norway Water Typology')}
+              onMapError={(error) => handleMapError('Norway Water Typology', error)}
             />
           )}
         </ExampleCard>

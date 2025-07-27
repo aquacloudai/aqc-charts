@@ -1,6 +1,7 @@
 import React from 'react';
 import { ChartPage } from './ChartPage';
 import { GeoChartExample } from '../components/GeoChartExample';
+import { ErrorBoundary } from '../components/ErrorBoundary';
 
 interface GeoChartPageProps {
   theme: 'light' | 'dark';
@@ -20,17 +21,20 @@ export const GeoChartPage: React.FC<GeoChartPageProps> = ({ theme, palette, setP
   return (
     <ChartPage
       title="Geographic Chart Showcase"
-      description="Create interactive geographic visualizations with choropleth maps, SVG maps, and region-based interactions. Supports both GeoJSON data and custom SVG maps with interactive elements like the Sicily topographic example."
+      description="Create interactive geographic visualizations with choropleth maps, SVG maps, and region-based interactions. Supports both GeoJSON data and custom SVG maps with marine environment examples."
       icon="🗺️"
       theme={theme}
       palette={palette}
       setPalette={setPalette}
     >
-      <GeoChartExample
-        theme={theme}
-        colorPalette={colorPalettes[palette as keyof typeof colorPalettes]}
-        onInteraction={() => {}} // This will be overridden by ChartPage
-      />
+      <ErrorBoundary theme={theme}>
+        <GeoChartExample
+          theme={theme}
+          colorPalette={colorPalettes[palette as keyof typeof colorPalettes]}
+          onInteraction={() => {}} // This will be overridden by ChartPage
+        />
+      </ErrorBoundary>
+      
     </ChartPage>
   );
 };

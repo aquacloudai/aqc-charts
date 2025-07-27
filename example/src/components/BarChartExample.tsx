@@ -17,6 +17,22 @@ const salesData = [
   { month: 'Dec', sales: 6800, profit: 1870, expenses: 4930, customers: 425 },
 ];
 
+// Temperature data with 4 series to showcase multiple grouped bars
+const temperatureData = [
+  { month: 'Jul 2024', high: 3.2, low: -0.8, average: 1.2, precipitation: 0.5 },
+  { month: 'Aug 2024', high: 2.8, low: -1.2, average: 0.8, precipitation: -0.3 },
+  { month: 'Sep 2024', high: 2.1, low: -0.5, average: 0.8, precipitation: 0.2 },
+  { month: 'Oct 2024', high: 1.8, low: -0.9, average: 0.5, precipitation: -0.4 },
+  { month: 'Nov 2024', high: 1.5, low: -1.1, average: 0.2, precipitation: 0.1 },
+  { month: 'Dec 2024', high: 0.9, low: -1.8, average: -0.5, precipitation: -0.6 },
+  { month: 'Jan 2025', high: 2.2, low: -0.6, average: 0.8, precipitation: 0.3 },
+  { month: 'Feb 2025', high: 1.9, low: -1.0, average: 0.5, precipitation: -0.2 },
+  { month: 'Mar 2025', high: 2.5, low: -0.4, average: 1.1, precipitation: 0.4 },
+  { month: 'Apr 2025', high: 1.7, low: -1.3, average: 0.2, precipitation: -0.1 },
+  { month: 'May 2025', high: 2.0, low: -2.1, average: -0.1, precipitation: -0.8 },
+  { month: 'Jun 2025', high: 0.8, low: -0.7, average: 0.1, precipitation: 0.0 },
+];
+
 const departmentData = [
   { quarter: 'Q1 2023', department: 'Engineering', revenue: 450000, employees: 45 },
   { quarter: 'Q1 2023', department: 'Marketing', revenue: 230000, employees: 25 },
@@ -489,6 +505,107 @@ export function BarChartExample({ theme, colorPalette, onInteraction }: BarChart
         }}>
           <strong>📊 Analysis:</strong> Energy (-12.4%) and Retail (-8.9%) sectors show negative growth, 
           indicating market contractions, while Technology leads with 15.8% growth.
+        </div>
+      </div>
+
+      {/* Temperature Grouped Bar Chart Example */}
+      <div style={{ marginBottom: '40px' }}>
+        <h4 style={{
+          color: theme === 'dark' ? '#fff' : '#333',
+          marginBottom: '20px',
+          fontSize: '18px',
+          fontWeight: '600'
+        }}>
+          🌡️ Temperature Changes from Previous Year
+        </h4>
+        <p style={{
+          color: theme === 'dark' ? '#ccc' : '#666',
+          marginBottom: '20px',
+          fontSize: '14px',
+          lineHeight: 1.5
+        }}>
+          <strong>Four grouped bars with mixed positive/negative values:</strong> Temperature and precipitation changes 
+          showing highs, lows, averages, and precipitation deviations. Perfect example of multiple series grouping.
+        </p>
+        <BarChart
+          data={temperatureData}
+          categoryField="month"
+          valueField={['high', 'low', 'average', 'precipitation']}
+          title="Temperatur og nedbør endring fra forrige år"
+          height={450}
+          theme={theme}
+          colorPalette={['#ef4444', '#3b82f6', '#10b981', '#f59e0b']}
+          orientation="vertical"
+          barGap="15%"
+          borderRadius={2}
+          legend={{ 
+            show: true, 
+            position: 'top',
+            data: [
+              { name: 'high', icon: 'rect' },
+              { name: 'low', icon: 'rect' },
+              { name: 'average', icon: 'rect' },
+              { name: 'precipitation', icon: 'rect' }
+            ]
+          }}
+          tooltip={{
+            show: true,
+            trigger: 'axis',
+            format: (params: any) => {
+              const month = params[0]?.name;
+              let content = `<div style="padding: 8px;"><strong>${month}</strong><br/>`;
+              const colors = { high: '#ef4444', low: '#3b82f6', average: '#10b981', precipitation: '#f59e0b' };
+              params.forEach((param: any) => {
+                const value = param.value;
+                const sign = value >= 0 ? '+' : '';
+                const color = colors[param.seriesName as keyof typeof colors] || '#666';
+                const unit = param.seriesName === 'precipitation' ? 'mm' : '°C';
+                content += `<span style="color: ${color};">${param.seriesName}: ${sign}${value}${unit}</span><br/>`;
+              });
+              content += '</div>';
+              return content;
+            }
+          }}
+          yAxis={{
+            label: 'Temperatur endring',
+            format: '{value}°C',
+            grid: true,
+            splitLine: {
+              show: true,
+              lineStyle: {
+                type: 'dashed',
+                opacity: 0.5
+              }
+            }
+          }}
+          xAxis={{
+            label: 'Måned',
+            axisLabel: {
+              rotate: 45,
+              interval: 0
+            }
+          }}
+          customOption={{
+            grid: {
+              bottom: 80 // More space for rotated labels
+            }
+          }}
+          onDataPointClick={(data) => {
+            const temp = data.value >= 0 ? `+${data.value}` : `${data.value}`;
+            onInteraction?.(`${data.name} ${data.seriesName}: ${temp}°C change from previous year`);
+          }}
+          responsive
+        />
+        <div style={{ 
+          marginTop: '15px',
+          padding: '12px',
+          backgroundColor: theme === 'dark' ? '#065f46' : '#f0fdf4',
+          borderRadius: '6px',
+          fontSize: '13px',
+          border: `1px solid ${theme === 'dark' ? '#10b981' : '#bbf7d0'}`
+        }}>
+          <strong>🌡️ Four-Series Analysis:</strong> Red (highs), blue (lows), green (averages), and yellow (precipitation) bars demonstrate 
+          how multiple grouped series work with mixed positive/negative values. Each month shows 4 distinct grouped bars with proper spacing and colors.
         </div>
       </div>
 

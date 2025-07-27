@@ -174,8 +174,8 @@ export const GeoChart = forwardRef<ChartRef, GeoChartProps>(({
               position: labelPosition,
             },
             data: processedData,
-            // Disable visual map for SVG maps as they usually don't have meaningful data regions
-            silent: processedData.length === 0,
+            // Enable interactions for SVG maps when we have data
+            silent: false,
           } as MapSeriesOption,
         ];
       } else {
@@ -232,29 +232,32 @@ export const GeoChart = forwardRef<ChartRef, GeoChartProps>(({
 
     } else {
       // Use map series (for choropleth maps with data visualization)
-      option.visualMap = {
-        show: true,
-        left: 'right',
-        min: dataStats.min,
-        max: dataStats.max,
-        colors: [
-          '#313695',
-          '#4575b4',
-          '#74add1',
-          '#abd9e9',
-          '#e0f3f8',
-          '#ffffbf',
-          '#fee090',
-          '#fdae61',
-          '#f46d43',
-          '#d73027',
-          '#a50026'
-        ],
-        text: ['High', 'Low'],
-        calculable: true,
-        orient: 'vertical',
-        ...visualMap,
-      };
+      // Only show visualMap if we have data
+      if (processedData.length > 0) {
+        option.visualMap = {
+          show: true,
+          left: 'right',
+          min: dataStats.min,
+          max: dataStats.max,
+          colors: [
+            '#313695',
+            '#4575b4',
+            '#74add1',
+            '#abd9e9',
+            '#e0f3f8',
+            '#ffffbf',
+            '#fee090',
+            '#fdae61',
+            '#f46d43',
+            '#d73027',
+            '#a50026'
+          ],
+          text: ['High', 'Low'],
+          calculable: true,
+          orient: 'vertical',
+          ...visualMap,
+        };
+      }
 
       option.series = [
         {
