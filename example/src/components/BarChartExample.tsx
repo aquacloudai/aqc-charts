@@ -1,5 +1,6 @@
-import React from 'react';
-import { BarChart } from 'aqc-charts';
+import React, { useRef } from 'react';
+import { BarChart, type ErgonomicChartRef, ExportPreviewModal, useFullHDExport } from 'aqc-charts';
+import { createThemeAwareLogo, LOGO_PRESETS } from '../utils/themeAwareLogo';
 
 // Sample datasets for bar chart demonstrations
 const salesData = [
@@ -75,6 +76,71 @@ interface BarChartExampleProps {
 }
 
 export function BarChartExample({ theme, colorPalette, onInteraction }: BarChartExampleProps) {
+  const chartRef = useRef<ErgonomicChartRef>(null);
+
+  // Chart props for Full HD export
+  const exportChartProps = {
+    data: salesData.slice(0, 6), // First 6 months - SAME as main chart
+    categoryField: "month" as const,
+    valueField: "sales" as const,
+    title: "Q1-Q2 Sales", // SAME title as main chart
+    theme,
+    colorPalette: [colorPalette[0]], // SAME color as main chart
+    orientation: "vertical" as const,
+    borderRadius: 8, // Larger border radius for Full HD
+    logo: createThemeAwareLogo(theme, {
+      width: 340, // Larger logo for Full HD
+      height: 70,
+      x: 1500, // Offset for Full HD
+      y: 30,
+      opacity: 0.9,
+      onSaveOnly: false // Always visible in export preview/download
+    })
+  };
+
+  // Use the library's Full HD export hook
+  const { openExportModal, exportModalProps } = useFullHDExport(exportChartProps, {
+    exportName: 'sales-chart-fullhd.png',
+    exportWidth: 1920,
+    exportHeight: 1080,
+    theme,
+    chartComponent: BarChart
+  });
+
+  const handleExportChart = () => {
+    console.log('Export button clicked');
+    if (chartRef.current) {
+      console.log('Chart ref found, calling saveAsImage');
+      chartRef.current.saveAsImage?.('sales-chart-hd.png', {
+        type: 'png',
+        pixelRatio: 4, // High resolution
+        backgroundColor: '#ffffff'
+      });
+    } else {
+      console.log('Chart ref not found');
+    }
+  };
+
+  const handleExportFullHD = () => {
+    console.log('Full HD export button clicked - using library hook');
+    openExportModal();
+  };
+
+  const handleGetDataURL = () => {
+    console.log('Get URL button clicked');
+    if (chartRef.current) {
+      console.log('Chart ref found, calling exportImage');
+      const dataURL = chartRef.current.exportImage?.('png', {
+        pixelRatio: 2,
+        backgroundColor: '#ffffff'
+      });
+      console.log('Chart exported as data URL:', dataURL?.substring(0, 100) + '...');
+      onInteraction?.('Chart exported as data URL - check console');
+    } else {
+      console.log('Chart ref not found');
+    }
+  };
+
   return (
     <>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '25px', marginBottom: '25px' }}>
@@ -89,6 +155,7 @@ export function BarChartExample({ theme, colorPalette, onInteraction }: BarChart
             📈 Vertical Bars - Monthly Sales
           </h5>
           <BarChart
+            ref={chartRef}
             data={salesData.slice(0, 6)} // First 6 months
             categoryField="month"
             valueField="sales"
@@ -98,6 +165,28 @@ export function BarChartExample({ theme, colorPalette, onInteraction }: BarChart
             colorPalette={[colorPalette[0]]}
             orientation="vertical"
             borderRadius={4}
+            logo={createThemeAwareLogo(theme, {
+              position: 'top-right',
+              ...LOGO_PRESETS.small,
+              onSaveOnly: true  // Only show on export, not on main chart
+            })}
+            customOption={{
+              toolbox: {
+                show: true,
+                feature: {
+                  saveAsImage: {
+                    show: true,
+                    title: 'Save as High-Res Image',
+                    type: 'png',
+                    pixelRatio: 4, // High resolution
+                    backgroundColor: '#ffffff',
+                    name: 'chart-hires'
+                  }
+                },
+                right: 10,
+                top: 10
+              }
+            }}
             tooltip={{
               show: true,
               trigger: 'item'
@@ -106,6 +195,60 @@ export function BarChartExample({ theme, colorPalette, onInteraction }: BarChart
               onInteraction?.(`Clicked on ${data.name}: $${data.value?.toLocaleString()}`);
             }}
           />
+          <div style={{ marginTop: '10px' }}>
+            <div style={{ display: 'flex', gap: '8px', marginBottom: '8px', flexWrap: 'wrap' }}>
+              <button
+                onClick={handleExportChart}
+                style={{
+                  padding: '6px 12px',
+                  fontSize: '12px',
+                  backgroundColor: theme === 'dark' ? '#4a5568' : '#e2e8f0',
+                  color: theme === 'dark' ? '#fff' : '#333',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: 'pointer'
+                }}
+              >
+                💾 Save HD
+              </button>
+              <button
+                onClick={handleExportFullHD}
+                style={{
+                  padding: '6px 12px',
+                  fontSize: '12px',
+                  backgroundColor: theme === 'dark' ? '#2d3748' : '#f0f4f8',
+                  color: theme === 'dark' ? '#fff' : '#333',
+                  border: `1px solid ${theme === 'dark' ? '#4a5568' : '#cbd5e0'}`,
+                  borderRadius: '4px',
+                  cursor: 'pointer'
+                }}
+              >
+                📺 Full HD
+              </button>
+              <button
+                onClick={handleGetDataURL}
+                style={{
+                  padding: '6px 12px',
+                  fontSize: '12px',
+                  backgroundColor: theme === 'dark' ? '#2d3748' : '#f7fafc',
+                  color: theme === 'dark' ? '#fff' : '#333',
+                  border: `1px solid ${theme === 'dark' ? '#4a5568' : '#e2e8f0'}`,
+                  borderRadius: '4px',
+                  cursor: 'pointer'
+                }}
+              >
+                🔗 Get URL
+              </button>
+            </div>
+            <p style={{
+              fontSize: '11px',
+              color: theme === 'dark' ? '#a0aec0' : '#718096',
+              margin: 0,
+              fontStyle: 'italic'
+            }}>
+              📝 Logo visible for testing. Try: 📷 ECharts built-in (top-right), 💾 Save HD (high-res), or 📺 Full HD (1920x1080)
+            </p>
+          </div>
         </div>
 
         {/* Horizontal Bar Chart */}
@@ -128,6 +271,10 @@ export function BarChartExample({ theme, colorPalette, onInteraction }: BarChart
             colorPalette={[colorPalette[1]]}
             orientation="horizontal"
             borderRadius={6}
+            logo={createThemeAwareLogo(theme, {
+              position: 'top-right',
+              ...LOGO_PRESETS.small
+            })}
             tooltip={{
               show: true,
               trigger: 'item',
@@ -165,6 +312,10 @@ export function BarChartExample({ theme, colorPalette, onInteraction }: BarChart
             orientation="vertical"
             barGap="20%"
             borderRadius={3}
+            logo={createThemeAwareLogo(theme, {
+              position: 'bottom-left',
+              ...LOGO_PRESETS.small
+            })}
             legend={{ show: true, position: 'top' }}
             tooltip={{
               show: true,
@@ -196,6 +347,10 @@ export function BarChartExample({ theme, colorPalette, onInteraction }: BarChart
             stack={true}
             stackType="normal"
             borderRadius={2}
+            logo={createThemeAwareLogo(theme, {
+              position: 'top-left',
+              ...LOGO_PRESETS.small
+            })}
             legend={{ show: true, position: 'top' }}
             tooltip={{
               show: true,
@@ -236,6 +391,10 @@ export function BarChartExample({ theme, colorPalette, onInteraction }: BarChart
               stack={true}
               showAbsoluteValues={true}
               borderRadius={3}
+              logo={createThemeAwareLogo(theme, {
+                position: 'bottom-right',
+                ...LOGO_PRESETS.small
+              })}
               legend={{ show: true, position: 'top' }}
             />
           </div>
@@ -257,6 +416,10 @@ export function BarChartExample({ theme, colorPalette, onInteraction }: BarChart
               stack={true}
               showPercentageLabels={true}
               borderRadius={3}
+              logo={createThemeAwareLogo(theme, {
+                position: 'bottom-left',
+                ...LOGO_PRESETS.small
+              })}
               legend={{ show: true, position: 'top' }}
             />
           </div>
@@ -279,6 +442,10 @@ export function BarChartExample({ theme, colorPalette, onInteraction }: BarChart
               showAbsoluteValues={true}
               showPercentageLabels={true}
               borderRadius={3}
+              logo={createThemeAwareLogo(theme, {
+                position: 'top-right',
+                ...LOGO_PRESETS.small
+              })}
               legend={{ show: true, position: 'top' }}
             />
           </div>
@@ -299,6 +466,10 @@ export function BarChartExample({ theme, colorPalette, onInteraction }: BarChart
               orientation="vertical"
               stack={true}
               borderRadius={3}
+              logo={createThemeAwareLogo(theme, {
+                position: 'top-left',
+                ...LOGO_PRESETS.small
+              })}
               legend={{ show: true, position: 'top' }}
               tooltip={{
                 show: true,
@@ -333,6 +504,10 @@ export function BarChartExample({ theme, colorPalette, onInteraction }: BarChart
           stack={true}
           showPercentage={true}
           borderRadius={3}
+          logo={createThemeAwareLogo(theme, {
+            position: 'bottom-right',
+            ...LOGO_PRESETS.medium
+          })}
           legend={{ show: true, position: 'top' }}
           tooltip={{
             show: true,
@@ -378,6 +553,10 @@ export function BarChartExample({ theme, colorPalette, onInteraction }: BarChart
           orientation="vertical"
           showLabels
           borderRadius={4}
+          logo={createThemeAwareLogo(theme, {
+            position: 'top-right',
+            ...LOGO_PRESETS.medium
+          })}
           legend={{ show: false }}
           tooltip={{
             show: true,
@@ -409,7 +588,7 @@ export function BarChartExample({ theme, colorPalette, onInteraction }: BarChart
           }}
           responsive
         />
-        <div style={{ 
+        <div style={{
           marginTop: '15px',
           padding: '12px',
           backgroundColor: theme === 'dark' ? '#2d1b69' : '#e0e7ff',
@@ -417,7 +596,7 @@ export function BarChartExample({ theme, colorPalette, onInteraction }: BarChart
           fontSize: '13px',
           border: `1px solid ${theme === 'dark' ? '#4c1d95' : '#c7d2fe'}`
         }}>
-          <strong>🎯 Key Feature:</strong> The chart automatically creates a zero baseline and displays negative values 
+          <strong>🎯 Key Feature:</strong> The chart automatically creates a zero baseline and displays negative values
           (losses) as bars extending downward, while positive values (profits) extend upward.
         </div>
       </div>
@@ -463,6 +642,10 @@ export function BarChartExample({ theme, colorPalette, onInteraction }: BarChart
           showLabels
           showAbsoluteValues
           borderRadius={6}
+          logo={createThemeAwareLogo(theme, {
+            position: 'bottom-right',
+            ...LOGO_PRESETS.medium
+          })}
           legend={{ show: false }}
           tooltip={{
             show: true,
@@ -495,7 +678,7 @@ export function BarChartExample({ theme, colorPalette, onInteraction }: BarChart
           }}
           responsive
         />
-        <div style={{ 
+        <div style={{
           marginTop: '15px',
           padding: '12px',
           backgroundColor: theme === 'dark' ? '#7f1d1d' : '#fef2f2',
@@ -503,7 +686,7 @@ export function BarChartExample({ theme, colorPalette, onInteraction }: BarChart
           fontSize: '13px',
           border: `1px solid ${theme === 'dark' ? '#dc2626' : '#fecaca'}`
         }}>
-          <strong>📊 Analysis:</strong> Energy (-12.4%) and Retail (-8.9%) sectors show negative growth, 
+          <strong>📊 Analysis:</strong> Energy (-12.4%) and Retail (-8.9%) sectors show negative growth,
           indicating market contractions, while Technology leads with 15.8% growth.
         </div>
       </div>
@@ -524,7 +707,7 @@ export function BarChartExample({ theme, colorPalette, onInteraction }: BarChart
           fontSize: '14px',
           lineHeight: 1.5
         }}>
-          <strong>Four grouped bars with mixed positive/negative values:</strong> Temperature and precipitation changes 
+          <strong>Four grouped bars with mixed positive/negative values:</strong> Temperature and precipitation changes
           showing highs, lows, averages, and precipitation deviations. Perfect example of multiple series grouping.
         </p>
         <BarChart
@@ -538,8 +721,12 @@ export function BarChartExample({ theme, colorPalette, onInteraction }: BarChart
           orientation="vertical"
           barGap="15%"
           borderRadius={2}
-          legend={{ 
-            show: true, 
+          logo={createThemeAwareLogo(theme, {
+            position: 'top-left',
+            ...LOGO_PRESETS.medium
+          })}
+          legend={{
+            show: true,
             position: 'top',
             data: [
               { name: 'high', icon: 'rect' },
@@ -596,7 +783,7 @@ export function BarChartExample({ theme, colorPalette, onInteraction }: BarChart
           }}
           responsive
         />
-        <div style={{ 
+        <div style={{
           marginTop: '15px',
           padding: '12px',
           backgroundColor: theme === 'dark' ? '#065f46' : '#f0fdf4',
@@ -604,7 +791,7 @@ export function BarChartExample({ theme, colorPalette, onInteraction }: BarChart
           fontSize: '13px',
           border: `1px solid ${theme === 'dark' ? '#10b981' : '#bbf7d0'}`
         }}>
-          <strong>🌡️ Four-Series Analysis:</strong> Red (highs), blue (lows), green (averages), and yellow (precipitation) bars demonstrate 
+          <strong>🌡️ Four-Series Analysis:</strong> Red (highs), blue (lows), green (averages), and yellow (precipitation) bars demonstrate
           how multiple grouped series work with mixed positive/negative values. Each month shows 4 distinct grouped bars with proper spacing and colors.
         </div>
       </div>
@@ -659,6 +846,9 @@ export function BarChartExample({ theme, colorPalette, onInteraction }: BarChart
           subtitle="Dual y-axis bar chart showing revenue and headcount"
           height={400}
           theme={theme}
+          logo={createThemeAwareLogo(theme, {
+            ...LOGO_PRESETS.exportOnly  // This one only appears on export
+          })}
           yAxis={[
             {
               name: 'Revenue ($)',
@@ -691,7 +881,7 @@ export function BarChartExample({ theme, colorPalette, onInteraction }: BarChart
           }}
           responsive
         />
-        <div style={{ 
+        <div style={{
           marginTop: '15px',
           padding: '12px',
           backgroundColor: theme === 'dark' ? '#1e3a8a' : '#eff6ff',
@@ -703,6 +893,9 @@ export function BarChartExample({ theme, colorPalette, onInteraction }: BarChart
           This enables comparison of metrics with vastly different scales on the same chart.
         </div>
       </div>
+
+      {/* Export Preview Modal - Now from the library! */}
+      <ExportPreviewModal {...exportModalProps} />
     </>
   );
 }

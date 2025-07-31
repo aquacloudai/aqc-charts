@@ -1,6 +1,7 @@
 import type { EChartsOption } from 'echarts/types/dist/shared';
-import type { AxisConfig, LegendConfig, TooltipConfig } from '@/types';
+import type { AxisConfig, LegendConfig, TooltipConfig, ChartLogo } from '@/types';
 import { COLOR_PALETTES } from './color-palettes';
+import { createLogoGraphic } from './logo';
 
 // Base option builders
 export function buildBaseOption(props: any): Partial<EChartsOption> {
@@ -51,6 +52,17 @@ export function buildBaseOption(props: any): Partial<EChartsOption> {
   // Ensure we have proper defaults for theme-aware styling
   if (!option.backgroundColor) {
     option.backgroundColor = isDark ? '#1a1a1a' : '#ffffff';
+  }
+
+  // Add logo if provided and not onSaveOnly
+  if (props.logo && !props.logo.onSaveOnly) {
+    const chartWidth = typeof props.width === 'number' ? props.width : 600;
+    const chartHeight = typeof props.height === 'number' ? props.height : 400;
+    const logoGraphic = createLogoGraphic(props.logo, chartWidth, chartHeight);
+    
+    option.graphic = option.graphic ? 
+      (Array.isArray(option.graphic) ? [...option.graphic, logoGraphic] : [option.graphic, logoGraphic]) :
+      [logoGraphic];
   }
   
   return option;

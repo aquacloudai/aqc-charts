@@ -1,4 +1,14 @@
 import type { EChartsType } from 'echarts/core';
+export interface ChartLogo {
+    readonly src: string;
+    readonly position?: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right' | 'center';
+    readonly width?: number;
+    readonly height?: number;
+    readonly x?: number;
+    readonly y?: number;
+    readonly opacity?: number;
+    readonly onSaveOnly?: boolean;
+}
 export interface BaseErgonomicChartProps {
     readonly width?: number | string;
     readonly height?: number | string;
@@ -10,6 +20,7 @@ export interface BaseErgonomicChartProps {
     readonly title?: string | undefined;
     readonly subtitle?: string | undefined;
     readonly titlePosition?: 'left' | 'center' | 'right';
+    readonly logo?: ChartLogo;
     readonly loading?: boolean;
     readonly disabled?: boolean;
     readonly animate?: boolean;
@@ -26,7 +37,17 @@ export interface DataPoint {
 }
 export interface ErgonomicChartRef {
     readonly getChart: () => EChartsType | null;
-    readonly exportImage: (format?: 'png' | 'jpeg' | 'svg') => string;
+    readonly exportImage: (format?: 'png' | 'jpeg' | 'svg', opts?: {
+        pixelRatio?: number;
+        backgroundColor?: string;
+        excludeComponents?: string[];
+    }) => string;
+    readonly saveAsImage?: (filename?: string, opts?: {
+        type?: 'png' | 'jpeg' | 'svg';
+        pixelRatio?: number;
+        backgroundColor?: string;
+        excludeComponents?: string[];
+    }) => void;
     readonly resize: () => void;
     readonly showLoading: (text?: string) => void;
     readonly hideLoading: () => void;

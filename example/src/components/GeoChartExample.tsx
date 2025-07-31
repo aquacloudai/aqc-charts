@@ -1,6 +1,7 @@
-import React, { useState, useCallback, useMemo } from 'react';
-import { GeoChart } from '../../../src';
-import type { GeoChartProps } from '../../../src';
+import React, { useState, useCallback, useMemo, useRef } from 'react';
+import { GeoChart, ExportPreviewModal, useFullHDExport } from '../../../src';
+import type { GeoChartProps, ErgonomicChartRef } from '../../../src';
+import { createThemeAwareLogo, LOGO_PRESETS } from '../utils/themeAwareLogo';
 
 interface GeoChartExampleProps {
   theme: 'light' | 'dark';
@@ -159,12 +160,12 @@ const usaPopulationData = [
   { name: 'Puerto Rico', value: 3667084 },
 ];
 
-const ExampleCard = ({ 
-  title, 
+const ExampleCard = ({
+  title,
   children,
   theme
-}: { 
-  title: string; 
+}: {
+  title: string;
   children: React.ReactNode;
   theme: 'light' | 'dark';
 }) => (
@@ -191,6 +192,7 @@ export function GeoChartExample({ theme, colorPalette, onInteraction }: GeoChart
   const [selectedMap, setSelectedMap] = useState<'norway' | 'norway-svg' | 'norway-typology' | 'germany' | 'france'>('norway');
   const [selectedMarineType, setSelectedMarineType] = useState<'protected_fjords' | 'freshwater_fjords' | 'exposed_fjords' | 'coastal_areas' | 'special_waters'>('protected_fjords');
   const [loadedMaps, setLoadedMaps] = useState<Set<string>>(new Set(['norway'])); // Start with norway loaded
+  const norwayChartRef = useRef<ErgonomicChartRef>(null);
 
   const handleChartClick = useCallback((params: any) => {
     if (params && params.data) {
@@ -246,6 +248,61 @@ export function GeoChartExample({ theme, colorPalette, onInteraction }: GeoChart
     roam: true,
   }), [theme, handleChartClick, handleChartHover, colorPalette]);
 
+  // Export props for Norway GeoChart with Full HD optimizations
+  const norwayExportChartProps = useMemo(() => ({
+    data: countryData.norway,
+    mapName: "Norway",
+    mapUrl: "/norwegian_water_typologies_with_map.svg",
+    mapType: "svg" as const,
+    chartType: "map" as const,
+    title: "Norway Typology Export",
+    theme,
+    height: 1080, // Full HD height
+    logo: createThemeAwareLogo(theme, {
+      width: 300, // Larger logo for Full HD
+      height: 80,
+      x: 1550, // Position for Full HD
+      y: 40,
+      opacity: 0.9,
+      onSaveOnly: false // Visible in export
+    }),
+    visualMap: {
+      show: true,
+      left: 'right',
+      min: 0,
+      max: 6000000,
+      text: ['High Population', 'Low Population'],
+      calculable: true,
+      inRange: {
+        color: colorPalette.slice(0, 5) // Use theme colors
+      }
+    },
+    tooltip: {
+      trigger: 'item',
+      showDelay: 0,
+      transitionDuration: 0.2,
+      formatter: '{b}: {c:,.0f} people',
+    },
+    toolbox: {
+      show: false, // Hide toolbox in export
+    },
+    roam: true,
+    onMapLoad: () => handleMapLoad('Norway Export'),
+    onMapError: (error: Error) => handleMapError('Norway Export', error)
+  }), [theme, colorPalette, handleMapLoad, handleMapError]);
+
+  // Full HD export hook for Norway GeoChart
+  const { openExportModal: openNorwayExport, exportModalProps: norwayExportProps } = useFullHDExport(
+    norwayExportChartProps,
+    {
+      chartComponent: GeoChart,
+      exportName: 'norway-population-fullhd.png',
+      exportWidth: 1920,
+      exportHeight: 1080,
+      theme
+    }
+  );
+
   return (
     <div>
       {/* Map Selection */}
@@ -296,19 +353,55 @@ export function GeoChartExample({ theme, colorPalette, onInteraction }: GeoChart
             This example uses a real GeoJSON file downloaded from GitHub to display Norway's boundaries.
             Perfect for custom geographic data visualization!
           </p>
-          
+
           {loadedMaps.has('norway') && (
-            <GeoChart
-              data={countryData.norway}
-              mapName="Norway"
-              mapUrl="/norway.geojson"
-              mapType="geojson"
-              chartType="map"
-              title="Norway Population"
-              {...commonProps}
-              onMapLoad={() => handleMapLoad('Norway')}
-              onMapError={(error) => handleMapError('Norway', error)}
-            />
+            <>
+              <GeoChart
+                ref={norwayChartRef}
+                data={countryData.norway}
+                mapName="Norway"
+                mapUrl="/norway.geojson"
+                mapType="geojson"
+                chartType="map"
+                title="Norway Population"
+                {...commonProps}
+                logo={createThemeAwareLogo(theme, {
+                  position: 'top-right',
+                  ...LOGO_PRESETS.small,
+                  onSaveOnly: true // Only show on export
+                })}
+                onMapLoad={() => handleMapLoad('Norway')}
+                onMapError={(error) => handleMapError('Norway', error)}
+              />
+
+              {/* Export Controls */}
+              <div style={{ marginTop: '15px', display: 'flex', gap: '10px', alignItems: 'center' }}>
+                <button
+                  onClick={openNorwayExport}
+                  style={{
+                    padding: '8px 16px',
+                    fontSize: '14px',
+                    backgroundColor: theme === 'dark' ? '#4a5568' : '#e2e8f0',
+                    color: theme === 'dark' ? '#fff' : '#333',
+                    border: 'none',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px'
+                  }}
+                >
+                  📺 Export Full HD (1920×1080)
+                </button>
+                <span style={{
+                  fontSize: '12px',
+                  color: theme === 'dark' ? '#a0aec0' : '#718096',
+                  fontStyle: 'italic'
+                }}>
+                  📍 High-resolution geographic export with logo
+                </span>
+              </div>
+            </>
           )}
         </ExampleCard>
       )}
@@ -323,7 +416,7 @@ export function GeoChartExample({ theme, colorPalette, onInteraction }: GeoChart
             This example demonstrates using a German GeoJSON file for geographic visualization.
             The data is loaded dynamically from a remote source.
           </p>
-          
+
           {loadedMaps.has('germany') && (
             <GeoChart
               data={countryData.germany}
@@ -350,7 +443,7 @@ export function GeoChartExample({ theme, colorPalette, onInteraction }: GeoChart
             This example shows France using GeoJSON data. Notice how different countries
             have different boundary complexities and shapes.
           </p>
-          
+
           {loadedMaps.has('france') && (
             <GeoChart
               data={countryData.france}
@@ -375,10 +468,10 @@ export function GeoChartExample({ theme, colorPalette, onInteraction }: GeoChart
             fontSize: '14px',
           }}>
             This example demonstrates using an SVG map file showing Norwegian aquaculture production areas.
-            SVG maps can provide cleaner rendering and smaller file sizes, and this one includes 
+            SVG maps can provide cleaner rendering and smaller file sizes, and this one includes
             all 13 mainland production areas with sample fish production data (in tonnes).
           </p>
-          
+
           {loadedMaps.has('norway-svg') && (
             <GeoChart
               data={[
@@ -416,11 +509,11 @@ export function GeoChartExample({ theme, colorPalette, onInteraction }: GeoChart
             color: theme === 'dark' ? '#ccc' : '#666',
             fontSize: '14px',
           }}>
-            Comprehensive Norwegian marine water typology classification system with 5 major categories 
-            covering all Norwegian marine regions (Barents Sea, Norwegian Sea, North Sea, Skagerrak). 
+            Comprehensive Norwegian marine water typology classification system with 5 major categories
+            covering all Norwegian marine regions (Barents Sea, Norwegian Sea, North Sea, Skagerrak).
             Each type represents specific environmental conditions including wave exposure, freshwater influence, and oxygen levels.
           </p>
-          
+
           {/* Marine Type Selection */}
           <div style={{
             marginBottom: '20px',
@@ -453,7 +546,7 @@ export function GeoChartExample({ theme, colorPalette, onInteraction }: GeoChart
               <option value="special_waters">⚡ Special Waters & Straits</option>
             </select>
           </div>
-          
+
           {loadedMaps.has('norway-typology') && (
             <GeoChart
               data={marineTypologyData[selectedMarineType]}
@@ -461,18 +554,18 @@ export function GeoChartExample({ theme, colorPalette, onInteraction }: GeoChart
               mapUrl="/norwegian_water_typologies_with_map.svg"
               mapType="svg"
               chartType="map"
-              title={`Norwegian Water Typologies - ${
-                selectedMarineType === 'protected_fjords' ? 'Protected Fjord Systems' :
+              title={`Norwegian Water Typologies - ${selectedMarineType === 'protected_fjords' ? 'Protected Fjord Systems' :
                 selectedMarineType === 'freshwater_fjords' ? 'Freshwater Influenced Fjords' :
-                selectedMarineType === 'exposed_fjords' ? 'Exposed Fjord Environments' :
-                selectedMarineType === 'coastal_areas' ? 'Wave Exposed Coastal Waters' :
-                'Special Waters & Narrow Straits'
-              }`}
+                  selectedMarineType === 'exposed_fjords' ? 'Exposed Fjord Environments' :
+                    selectedMarineType === 'coastal_areas' ? 'Wave Exposed Coastal Waters' :
+                      'Special Waters & Narrow Straits'
+                }`}
               {...commonProps}
               onMapLoad={() => handleMapLoad('Norway Water Typology')}
               onMapError={(error) => handleMapError('Norway Water Typology', error)}
             />
           )}
+
         </ExampleCard>
       )}
 
@@ -488,7 +581,7 @@ export function GeoChartExample({ theme, colorPalette, onInteraction }: GeoChart
           overflowX: 'auto',
         }}>
           <pre style={{ margin: 0, whiteSpace: 'pre-wrap' }}>
-{`import { GeoChart } from 'aqc-charts';
+            {`import { GeoChart } from 'aqc-charts';
 
 // Sample data for choropleth maps
 const populationData = [
@@ -545,6 +638,9 @@ const populationData = [
           </pre>
         </div>
       </ExampleCard>
+
+      {/* Export Preview Modal for Norway GeoChart */}
+      <ExportPreviewModal {...norwayExportProps} />
     </div>
   );
 }

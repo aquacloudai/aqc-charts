@@ -1,5 +1,6 @@
 import React, { Component, forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
 import { jsx, jsxs } from "react/jsx-runtime";
+import { createPortal } from "react-dom";
 
 //#region src/utils/errors.ts
 /**
@@ -722,8 +723,78 @@ function validateInDevelopment(value, validator, context = "component") {
 }
 
 //#endregion
+//#region src/utils/logo.ts
+const calculateLogoPosition = (logo, chartWidth, chartHeight) => {
+	const logoWidth = logo.width || 100;
+	const logoHeight = logo.height || 50;
+	const padding = 10;
+	if (logo.x !== void 0 && logo.y !== void 0) return {
+		x: logo.x,
+		y: logo.y
+	};
+	switch (logo.position || "bottom-right") {
+		case "top-left": return {
+			x: padding,
+			y: padding
+		};
+		case "top-right": return {
+			x: chartWidth - logoWidth - padding,
+			y: padding
+		};
+		case "bottom-left": return {
+			x: padding,
+			y: chartHeight - logoHeight - padding
+		};
+		case "bottom-right": return {
+			x: chartWidth - logoWidth - padding,
+			y: chartHeight - logoHeight - padding
+		};
+		case "center": return {
+			x: (chartWidth - logoWidth) / 2,
+			y: (chartHeight - logoHeight) / 2
+		};
+		default: return {
+			x: chartWidth - logoWidth - padding,
+			y: chartHeight - logoHeight - padding
+		};
+	}
+};
+const createLogoGraphic = (logo, chartWidth, chartHeight) => {
+	const position = calculateLogoPosition(logo, chartWidth, chartHeight);
+	return {
+		type: "image",
+		style: {
+			image: logo.src,
+			x: position.x,
+			y: position.y,
+			width: logo.width || 100,
+			height: logo.height || 50,
+			opacity: logo.opacity || 1
+		},
+		z: 1e3,
+		silent: true
+	};
+};
+const addLogoToOption = (option, logo, chartWidth, chartHeight) => {
+	if (!logo) return option;
+	const logoGraphic = createLogoGraphic(logo, chartWidth, chartHeight);
+	return {
+		...option,
+		graphic: [...Array.isArray(option.graphic) ? option.graphic : option.graphic ? [option.graphic] : [], logoGraphic]
+	};
+};
+const removeLogoFromOption = (option) => {
+	if (!option.graphic) return option;
+	const filteredGraphics = Array.isArray(option.graphic) ? option.graphic.filter((graphic) => graphic.type !== "image") : option.graphic.type !== "image" ? [option.graphic] : [];
+	return {
+		...option,
+		graphic: filteredGraphics.length > 0 ? filteredGraphics : void 0
+	};
+};
+
+//#endregion
 //#region src/components/BaseChart.tsx
-const BaseChart = forwardRef(({ title, width = "100%", height = 400, theme = "light", loading: externalLoading = false, notMerge = false, lazyUpdate = true, onChartReady, onClick, onDoubleClick, onMouseOver, onMouseOut, onDataZoom, onBrush, className = "", style = {}, option, renderer: _renderer = "canvas", locale: _locale = "en",...restProps }, ref) => {
+const BaseChart = forwardRef(({ title, width = "100%", height = 400, theme = "light", loading: externalLoading = false, notMerge = false, lazyUpdate = true, logo, onChartReady, onClick, onDoubleClick, onMouseOver, onMouseOut, onDataZoom, onBrush, className = "", style = {}, option, renderer: _renderer = "canvas", locale: _locale = "en",...restProps }, ref) => {
 	useMemo(() => {
 		try {
 			const dimensionResult = validateDimensions(width, height);
@@ -753,16 +824,28 @@ const BaseChart = forwardRef(({ title, width = "100%", height = 400, theme = "li
 		option
 	]);
 	const chartOption = useMemo(() => {
-		if (title && typeof title === "string") return {
-			...option,
+		let processedOption = option;
+		if (title && typeof title === "string") processedOption = {
+			...processedOption,
 			title: {
-				...option.title,
+				...processedOption.title,
 				text: title,
 				left: "center"
 			}
 		};
-		return option;
-	}, [option, title]);
+		if (logo && !logo.onSaveOnly) {
+			const chartWidth = typeof width === "number" ? width : 600;
+			const chartHeight = typeof height === "number" ? height : 400;
+			processedOption = addLogoToOption(processedOption, logo, chartWidth, chartHeight);
+		}
+		return processedOption;
+	}, [
+		option,
+		title,
+		logo,
+		width,
+		height
+	]);
 	const { containerRef: echartsContainerRefFromHook, loading: chartLoading, error, refresh, getEChartsInstance, clear, resize: resizeChart, showLoading: showChartLoading, hideLoading: hideChartLoading, dispose } = useECharts({
 		option: chartOption,
 		theme,
@@ -834,6 +917,53 @@ const BaseChart = forwardRef(({ title, width = "100%", height = 400, theme = "li
 		if (chart) if (externalLoading) chart.showLoading();
 		else chart.hideLoading();
 	}, [chart, externalLoading]);
+	const exportImage = useCallback((opts) => {
+		const chartInstance = getEChartsInstance();
+		if (!chartInstance) return "";
+		if (logo?.onSaveOnly) {
+			const currentOption = chartInstance.getOption();
+			const chartWidth = typeof width === "number" ? width : 600;
+			const chartHeight = typeof height === "number" ? height : 400;
+			const optionWithLogo = addLogoToOption(currentOption, logo, chartWidth, chartHeight);
+			chartInstance.setOption(optionWithLogo, {
+				notMerge: false,
+				lazyUpdate: false
+			});
+			const dataURL = chartInstance.getDataURL({
+				type: opts?.type || "png",
+				pixelRatio: opts?.pixelRatio || 1,
+				backgroundColor: opts?.backgroundColor || "#fff",
+				...opts?.excludeComponents && { excludeComponents: opts.excludeComponents }
+			});
+			const optionWithoutLogo = removeLogoFromOption(currentOption);
+			chartInstance.setOption(optionWithoutLogo, {
+				notMerge: false,
+				lazyUpdate: false
+			});
+			return dataURL;
+		}
+		return chartInstance.getDataURL({
+			type: opts?.type || "png",
+			pixelRatio: opts?.pixelRatio || 1,
+			backgroundColor: opts?.backgroundColor || "#fff",
+			...opts?.excludeComponents && { excludeComponents: opts.excludeComponents }
+		});
+	}, [
+		getEChartsInstance,
+		logo,
+		width,
+		height
+	]);
+	const saveAsImage = useCallback((filename, opts) => {
+		const dataURL = exportImage(opts);
+		if (!dataURL) return;
+		const link = document.createElement("a");
+		link.download = filename || `chart.${opts?.type || "png"}`;
+		link.href = dataURL;
+		document.body.appendChild(link);
+		link.click();
+		document.body.removeChild(link);
+	}, [exportImage]);
 	useImperativeHandle(ref, () => ({
 		getEChartsInstance,
 		refresh,
@@ -841,7 +971,9 @@ const BaseChart = forwardRef(({ title, width = "100%", height = 400, theme = "li
 		resize: resizeChart,
 		showLoading: showChartLoading,
 		hideLoading: hideChartLoading,
-		dispose
+		dispose,
+		exportImage,
+		saveAsImage
 	}), [
 		getEChartsInstance,
 		refresh,
@@ -849,7 +981,9 @@ const BaseChart = forwardRef(({ title, width = "100%", height = 400, theme = "li
 		resizeChart,
 		showChartLoading,
 		hideChartLoading,
-		dispose
+		dispose,
+		exportImage,
+		saveAsImage
 	]);
 	const containerStyle = useMemo(() => ({
 		width,
@@ -1045,6 +1179,12 @@ function buildBaseOption(props) {
 	else option.color = [...COLOR_PALETTES.default];
 	option.textStyle = { color: isDark ? "#ffffff" : "#333333" };
 	if (!option.backgroundColor) option.backgroundColor = isDark ? "#1a1a1a" : "#ffffff";
+	if (props.logo && !props.logo.onSaveOnly) {
+		const chartWidth = typeof props.width === "number" ? props.width : 600;
+		const chartHeight = typeof props.height === "number" ? props.height : 400;
+		const logoGraphic = createLogoGraphic(props.logo, chartWidth, chartHeight);
+		option.graphic = option.graphic ? Array.isArray(option.graphic) ? [...option.graphic, logoGraphic] : [option.graphic, logoGraphic] : [logoGraphic];
+	}
 	return option;
 }
 function buildAxisOption(config, dataType = "categorical", theme) {
@@ -2788,7 +2928,7 @@ function buildSankeyChartOption(props) {
 *   yField="value"
 * />
 */
-const LineChart = forwardRef(({ width = "100%", height = 400, className, style, data, xField = "x", yField = "y", seriesField, series, seriesConfig, theme = "light", colorPalette, backgroundColor, title, subtitle, titlePosition = "center", smooth = false, strokeWidth = 2, strokeStyle = "solid", showPoints = true, pointSize = 4, pointShape = "circle", showArea = false, areaOpacity = .3, areaGradient = false, xAxis, yAxis, legend, tooltip, zoom = false, pan = false, brush = false, loading = false, disabled: _disabled = false, animate = true, animationDuration, onChartReady, onDataPointClick, onDataPointHover, customOption, responsive: _responsive = true,...restProps }, ref) => {
+const LineChart = forwardRef(({ width = "100%", height = 400, className, style, data, xField = "x", yField = "y", seriesField, series, seriesConfig, theme = "light", colorPalette, backgroundColor, title, subtitle, titlePosition = "center", logo, smooth = false, strokeWidth = 2, strokeStyle = "solid", showPoints = true, pointSize = 4, pointShape = "circle", showArea = false, areaOpacity = .3, areaGradient = false, xAxis, yAxis, legend, tooltip, zoom = false, pan = false, brush = false, loading = false, disabled: _disabled = false, animate = true, animationDuration, onChartReady, onDataPointClick, onDataPointHover, customOption, responsive: _responsive = true,...restProps }, ref) => {
 	const chartOption = useMemo(() => {
 		return buildLineChartOption({
 			data: data || void 0,
@@ -2803,6 +2943,9 @@ const LineChart = forwardRef(({ width = "100%", height = 400, className, style, 
 			title,
 			subtitle,
 			titlePosition,
+			...logo && { logo },
+			...width && { width },
+			...height && { height },
 			smooth,
 			strokeWidth,
 			strokeStyle,
@@ -2836,6 +2979,9 @@ const LineChart = forwardRef(({ width = "100%", height = 400, className, style, 
 		title,
 		subtitle,
 		titlePosition,
+		logo,
+		width,
+		height,
 		smooth,
 		strokeWidth,
 		strokeStyle,
@@ -2879,14 +3025,67 @@ const LineChart = forwardRef(({ width = "100%", height = 400, className, style, 
 		events: chartEvents,
 		onChartReady
 	});
-	const exportImage = (format = "png") => {
+	const exportImage = (format = "png", opts) => {
 		const chart = getEChartsInstance();
 		if (!chart) return "";
+		if (logo?.onSaveOnly) {
+			const currentOption = chart.getOption();
+			const chartWidth = typeof width === "number" ? width : 600;
+			const chartHeight = typeof height === "number" ? height : 400;
+			const logoGraphic = {
+				type: "image",
+				style: {
+					image: logo.src,
+					x: logo.x !== void 0 ? logo.x : logo.position === "bottom-right" ? chartWidth - (logo.width || 100) - 10 : 10,
+					y: logo.y !== void 0 ? logo.y : logo.position === "bottom-right" ? chartHeight - (logo.height || 50) - 10 : 10,
+					width: logo.width || 100,
+					height: logo.height || 50,
+					opacity: logo.opacity || 1
+				},
+				z: 1e3,
+				silent: true
+			};
+			const optionWithLogo = {
+				...currentOption,
+				graphic: [...Array.isArray(currentOption.graphic) ? currentOption.graphic : currentOption.graphic ? [currentOption.graphic] : [], logoGraphic]
+			};
+			chart.setOption(optionWithLogo, {
+				notMerge: false,
+				lazyUpdate: false
+			});
+			const dataURL = chart.getDataURL({
+				type: format,
+				pixelRatio: opts?.pixelRatio || 2,
+				backgroundColor: opts?.backgroundColor || backgroundColor || "#fff",
+				...opts?.excludeComponents && { excludeComponents: opts.excludeComponents }
+			});
+			const filteredGraphics = Array.isArray(currentOption.graphic) ? currentOption.graphic.filter((g) => g.type !== "image") : currentOption.graphic && currentOption.graphic.type !== "image" ? [currentOption.graphic] : [];
+			const optionWithoutLogo = {
+				...currentOption,
+				graphic: filteredGraphics.length > 0 ? filteredGraphics : void 0
+			};
+			chart.setOption(optionWithoutLogo, {
+				notMerge: false,
+				lazyUpdate: false
+			});
+			return dataURL;
+		}
 		return chart.getDataURL({
 			type: format,
-			pixelRatio: 2,
-			backgroundColor: backgroundColor || "#fff"
+			pixelRatio: opts?.pixelRatio || 2,
+			backgroundColor: opts?.backgroundColor || backgroundColor || "#fff",
+			...opts?.excludeComponents && { excludeComponents: opts.excludeComponents }
 		});
+	};
+	const saveAsImage = (filename, opts) => {
+		const dataURL = exportImage(opts?.type || "png", opts);
+		if (!dataURL) return;
+		const link = document.createElement("a");
+		link.download = filename || `chart.${opts?.type || "png"}`;
+		link.href = dataURL;
+		document.body.appendChild(link);
+		link.click();
+		document.body.removeChild(link);
 	};
 	const highlight = (dataIndex, seriesIndex = 0) => {
 		const chart = getEChartsInstance();
@@ -2943,6 +3142,7 @@ const LineChart = forwardRef(({ width = "100%", height = 400, className, style, 
 	useImperativeHandle(ref, () => ({
 		getChart: getEChartsInstance,
 		exportImage,
+		saveAsImage,
 		resize,
 		showLoading: () => showLoading(),
 		hideLoading,
@@ -2952,6 +3152,7 @@ const LineChart = forwardRef(({ width = "100%", height = 400, className, style, 
 	}), [
 		getEChartsInstance,
 		exportImage,
+		saveAsImage,
 		resize,
 		showLoading,
 		hideLoading,
@@ -3076,7 +3277,7 @@ LineChart.displayName = "LineChart";
 *   valueField="value"
 * />
 */
-const BarChart = forwardRef(({ width = "100%", height = 400, className, style, data, categoryField = "category", valueField = "value", seriesField, series, theme = "light", colorPalette, backgroundColor, title, subtitle, titlePosition = "center", orientation = "vertical", barWidth, barGap, borderRadius = 0, stack = false, stackType = "normal", showPercentage = false, showLabels = false, showAbsoluteValues = false, showPercentageLabels = false, xAxis, yAxis, legend, tooltip, sortBy = "none", sortOrder = "asc", loading = false, disabled: _disabled = false, animate = true, animationDuration, onChartReady, onDataPointClick, onDataPointHover, customOption, responsive: _responsive = true,...restProps }, ref) => {
+const BarChart = forwardRef(({ width = "100%", height = 400, className, style, data, categoryField = "category", valueField = "value", seriesField, series, theme = "light", colorPalette, backgroundColor, title, subtitle, titlePosition = "center", logo, orientation = "vertical", barWidth, barGap, borderRadius = 0, stack = false, stackType = "normal", showPercentage = false, showLabels = false, showAbsoluteValues = false, showPercentageLabels = false, xAxis, yAxis, legend, tooltip, sortBy = "none", sortOrder = "asc", loading = false, disabled: _disabled = false, animate = true, animationDuration, onChartReady, onDataPointClick, onDataPointHover, customOption, responsive: _responsive = true,...restProps }, ref) => {
 	const chartOption = useMemo(() => {
 		return buildBarChartOption({
 			data: data || void 0,
@@ -3090,6 +3291,9 @@ const BarChart = forwardRef(({ width = "100%", height = 400, className, style, d
 			title,
 			subtitle,
 			titlePosition,
+			...logo && { logo },
+			...width && { width },
+			...height && { height },
 			orientation,
 			barWidth,
 			barGap,
@@ -3122,6 +3326,9 @@ const BarChart = forwardRef(({ width = "100%", height = 400, className, style, d
 		title,
 		subtitle,
 		titlePosition,
+		logo,
+		width,
+		height,
 		orientation,
 		barWidth,
 		barGap,
@@ -3165,14 +3372,67 @@ const BarChart = forwardRef(({ width = "100%", height = 400, className, style, d
 		events: chartEvents,
 		onChartReady
 	});
-	const exportImage = (format = "png") => {
+	const exportImage = (format = "png", opts) => {
 		const chart = getEChartsInstance();
 		if (!chart) return "";
+		if (logo?.onSaveOnly) {
+			const currentOption = chart.getOption();
+			const chartWidth = typeof width === "number" ? width : 600;
+			const chartHeight = typeof height === "number" ? height : 400;
+			const logoGraphic = {
+				type: "image",
+				style: {
+					image: logo.src,
+					x: logo.x !== void 0 ? logo.x : logo.position === "bottom-right" ? chartWidth - (logo.width || 100) - 10 : 10,
+					y: logo.y !== void 0 ? logo.y : logo.position === "bottom-right" ? chartHeight - (logo.height || 50) - 10 : 10,
+					width: logo.width || 100,
+					height: logo.height || 50,
+					opacity: logo.opacity || 1
+				},
+				z: 1e3,
+				silent: true
+			};
+			const optionWithLogo = {
+				...currentOption,
+				graphic: [...Array.isArray(currentOption.graphic) ? currentOption.graphic : currentOption.graphic ? [currentOption.graphic] : [], logoGraphic]
+			};
+			chart.setOption(optionWithLogo, {
+				notMerge: false,
+				lazyUpdate: false
+			});
+			const dataURL = chart.getDataURL({
+				type: format,
+				pixelRatio: opts?.pixelRatio || 2,
+				backgroundColor: opts?.backgroundColor || backgroundColor || "#fff",
+				...opts?.excludeComponents && { excludeComponents: opts.excludeComponents }
+			});
+			const filteredGraphics = Array.isArray(currentOption.graphic) ? currentOption.graphic.filter((g) => g.type !== "image") : currentOption.graphic && currentOption.graphic.type !== "image" ? [currentOption.graphic] : [];
+			const optionWithoutLogo = {
+				...currentOption,
+				graphic: filteredGraphics.length > 0 ? filteredGraphics : void 0
+			};
+			chart.setOption(optionWithoutLogo, {
+				notMerge: false,
+				lazyUpdate: false
+			});
+			return dataURL;
+		}
 		return chart.getDataURL({
 			type: format,
-			pixelRatio: 2,
-			backgroundColor: backgroundColor || "#fff"
+			pixelRatio: opts?.pixelRatio || 2,
+			backgroundColor: opts?.backgroundColor || backgroundColor || "#fff",
+			...opts?.excludeComponents && { excludeComponents: opts.excludeComponents }
 		});
+	};
+	const saveAsImage = (filename, opts) => {
+		const dataURL = exportImage(opts?.type || "png", opts);
+		if (!dataURL) return;
+		const link = document.createElement("a");
+		link.download = filename || `chart.${opts?.type || "png"}`;
+		link.href = dataURL;
+		document.body.appendChild(link);
+		link.click();
+		document.body.removeChild(link);
 	};
 	const highlight = (dataIndex, seriesIndex = 0) => {
 		const chart = getEChartsInstance();
@@ -3228,6 +3488,7 @@ const BarChart = forwardRef(({ width = "100%", height = 400, className, style, d
 	useImperativeHandle(ref, () => ({
 		getChart: getEChartsInstance,
 		exportImage,
+		saveAsImage,
 		resize,
 		showLoading: () => showLoading(),
 		hideLoading,
@@ -3237,6 +3498,7 @@ const BarChart = forwardRef(({ width = "100%", height = 400, className, style, d
 	}), [
 		getEChartsInstance,
 		exportImage,
+		saveAsImage,
 		resize,
 		showLoading,
 		hideLoading,
@@ -5945,6 +6207,268 @@ const GeoChart = forwardRef(({ data, mapName, mapUrl, mapType = "geojson", mapSp
 GeoChart.displayName = "GeoChart";
 
 //#endregion
+//#region src/components/ExportPreviewModal.tsx
+/**
+* Export Preview Modal - Shows a full-resolution chart preview before export
+* 
+* Features:
+* - Portal-based modal (no DOM interference)
+* - Configurable export dimensions (default: 1920x1080)
+* - Preview scaling (50% for Full HD)
+* - One-click export to PNG
+* - Theme-aware styling
+* - Escape key support
+*/
+function ExportPreviewModal({ isOpen, onClose, chartProps, chartComponent: ChartComponent, exportName = "chart-export.png", exportWidth = 1920, exportHeight = 1080, theme = "light" }) {
+	const chartRef = useRef(null);
+	const [isExporting, setIsExporting] = useState(false);
+	useEffect(() => {
+		const handleEscape = (e) => {
+			if (e.key === "Escape") onClose();
+		};
+		if (isOpen) {
+			document.addEventListener("keydown", handleEscape);
+			document.body.style.overflow = "hidden";
+		}
+		return () => {
+			document.removeEventListener("keydown", handleEscape);
+			document.body.style.overflow = "unset";
+		};
+	}, [isOpen, onClose]);
+	const handleExport = async () => {
+		if (!chartRef.current) return;
+		setIsExporting(true);
+		try {
+			await new Promise((resolve) => setTimeout(resolve, 300));
+			const chart = chartRef.current.getChart?.();
+			if (chart) {
+				const dataURL = chart.getDataURL({
+					type: "png",
+					pixelRatio: 1,
+					backgroundColor: "#ffffff"
+				});
+				if (dataURL) {
+					const link = document.createElement("a");
+					link.download = exportName;
+					link.href = dataURL;
+					document.body.appendChild(link);
+					link.click();
+					document.body.removeChild(link);
+				}
+			}
+		} catch (error) {
+			console.error("Export failed:", error);
+		} finally {
+			setIsExporting(false);
+		}
+	};
+	if (!isOpen) return null;
+	const previewScale = Math.min(.5, 960 / exportWidth, 540 / exportHeight);
+	const previewWidth = exportWidth * previewScale;
+	const previewHeight = exportHeight * previewScale;
+	const fullHDChartProps = {
+		...chartProps,
+		width: exportWidth,
+		height: exportHeight,
+		customOption: {
+			...chartProps.customOption,
+			title: {
+				textStyle: {
+					fontSize: Math.round(32 * (exportWidth / 1920)),
+					fontWeight: "bold"
+				},
+				top: Math.round(20 * (exportHeight / 1080)),
+				left: "center",
+				...chartProps.customOption?.title
+			},
+			xAxis: {
+				axisLabel: {
+					fontSize: Math.round(20 * (exportWidth / 1920)),
+					fontWeight: "normal"
+				},
+				nameTextStyle: { fontSize: Math.round(24 * (exportWidth / 1920)) },
+				...chartProps.customOption?.xAxis
+			},
+			yAxis: {
+				axisLabel: {
+					fontSize: Math.round(20 * (exportWidth / 1920)),
+					fontWeight: "normal"
+				},
+				nameTextStyle: { fontSize: Math.round(24 * (exportWidth / 1920)) },
+				...chartProps.customOption?.yAxis
+			},
+			legend: {
+				textStyle: { fontSize: Math.round(20 * (exportWidth / 1920)) },
+				...chartProps.customOption?.legend
+			},
+			grid: {
+				top: Math.round(80 * (exportHeight / 1080)),
+				left: Math.round(80 * (exportWidth / 1920)),
+				right: Math.round(80 * (exportWidth / 1920)),
+				bottom: Math.round(80 * (exportHeight / 1080)),
+				...chartProps.customOption?.grid
+			},
+			toolbox: {
+				show: false,
+				...chartProps.customOption?.toolbox
+			}
+		}
+	};
+	const modalContent = /* @__PURE__ */ jsx("div", {
+		style: {
+			position: "fixed",
+			top: 0,
+			left: 0,
+			right: 0,
+			bottom: 0,
+			backgroundColor: "rgba(0, 0, 0, 0.8)",
+			display: "flex",
+			alignItems: "center",
+			justifyContent: "center",
+			zIndex: 1e4,
+			padding: "20px"
+		},
+		onClick: (e) => {
+			if (e.target === e.currentTarget) onClose();
+		},
+		children: /* @__PURE__ */ jsxs("div", {
+			style: {
+				backgroundColor: theme === "dark" ? "#1a1a1a" : "#ffffff",
+				borderRadius: "12px",
+				padding: "24px",
+				maxWidth: "95vw",
+				maxHeight: "95vh",
+				overflow: "auto",
+				boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
+				border: `1px solid ${theme === "dark" ? "#374151" : "#e5e7eb"}`
+			},
+			children: [
+				/* @__PURE__ */ jsxs("div", {
+					style: {
+						display: "flex",
+						justifyContent: "space-between",
+						alignItems: "center",
+						marginBottom: "20px"
+					},
+					children: [/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsxs("h3", {
+						style: {
+							margin: 0,
+							color: theme === "dark" ? "#ffffff" : "#1f2937",
+							fontSize: "20px",
+							fontWeight: "600"
+						},
+						children: [
+							"📺 Export Preview (",
+							exportWidth,
+							"×",
+							exportHeight,
+							")"
+						]
+					}), /* @__PURE__ */ jsx("p", {
+						style: {
+							margin: "4px 0 0 0",
+							color: theme === "dark" ? "#9ca3af" : "#6b7280",
+							fontSize: "14px"
+						},
+						children: "Preview your chart at full resolution with optimized scaling"
+					})] }), /* @__PURE__ */ jsx("button", {
+						onClick: onClose,
+						style: {
+							background: "none",
+							border: "none",
+							fontSize: "24px",
+							cursor: "pointer",
+							color: theme === "dark" ? "#9ca3af" : "#6b7280",
+							padding: "4px",
+							borderRadius: "4px"
+						},
+						title: "Close (Esc)",
+						children: "✕"
+					})]
+				}),
+				/* @__PURE__ */ jsx("div", {
+					style: {
+						width: `${previewWidth}px`,
+						height: `${previewHeight}px`,
+						border: `2px solid ${theme === "dark" ? "#374151" : "#e5e7eb"}`,
+						borderRadius: "8px",
+						overflow: "hidden",
+						backgroundColor: theme === "dark" ? "#111827" : "#f9fafb"
+					},
+					children: /* @__PURE__ */ jsx("div", {
+						style: {
+							transform: `scale(${previewScale})`,
+							transformOrigin: "top left",
+							width: `${exportWidth}px`,
+							height: `${exportHeight}px`
+						},
+						children: /* @__PURE__ */ jsx(ChartComponent, {
+							ref: chartRef,
+							...fullHDChartProps
+						})
+					})
+				}),
+				/* @__PURE__ */ jsxs("div", {
+					style: {
+						marginTop: "16px",
+						padding: "12px",
+						backgroundColor: theme === "dark" ? "#111827" : "#f3f4f6",
+						borderRadius: "6px",
+						fontSize: "13px",
+						color: theme === "dark" ? "#d1d5db" : "#4b5563"
+					},
+					children: [
+						/* @__PURE__ */ jsx("strong", { children: "📋 Export Details:" }),
+						/* @__PURE__ */ jsx("br", {}),
+						"• Resolution: ",
+						exportWidth,
+						"×",
+						exportHeight,
+						" pixels • Format: PNG with white background • Quality: High resolution (1:1 pixel ratio) • Logos: Included as configured • Text: Auto-scaled for resolution"
+					]
+				}),
+				/* @__PURE__ */ jsxs("div", {
+					style: {
+						display: "flex",
+						gap: "12px",
+						marginTop: "20px",
+						justifyContent: "flex-end"
+					},
+					children: [/* @__PURE__ */ jsx("button", {
+						onClick: onClose,
+						style: {
+							padding: "10px 20px",
+							fontSize: "14px",
+							backgroundColor: "transparent",
+							color: theme === "dark" ? "#9ca3af" : "#6b7280",
+							border: `1px solid ${theme === "dark" ? "#4b5563" : "#d1d5db"}`,
+							borderRadius: "6px",
+							cursor: "pointer"
+						},
+						children: "Cancel"
+					}), /* @__PURE__ */ jsx("button", {
+						onClick: handleExport,
+						disabled: isExporting,
+						style: {
+							padding: "10px 20px",
+							fontSize: "14px",
+							backgroundColor: theme === "dark" ? "#3b82f6" : "#2563eb",
+							color: "#ffffff",
+							border: "none",
+							borderRadius: "6px",
+							cursor: isExporting ? "wait" : "pointer",
+							opacity: isExporting ? .7 : 1
+						},
+						children: isExporting ? "⏳ Exporting..." : "💾 Export PNG"
+					})]
+				})
+			]
+		})
+	});
+	return createPortal(modalContent, document.body);
+}
+
+//#endregion
 //#region src/components/legacy/OldCalendarHeatmapChart.tsx
 const OldCalendarHeatmapChart = forwardRef(({ data, year, calendar = {}, visualMap = {}, tooltipFormatter, title,...props }, ref) => {
 	const chartOption = useMemo(() => {
@@ -7104,6 +7628,54 @@ const OldPieChart = forwardRef(({ data, radius = ["40%", "70%"], center = ["50%"
 OldPieChart.displayName = "OldPieChart";
 
 //#endregion
+//#region src/hooks/useFullHDExport.ts
+/**
+* Custom hook for Full HD chart export functionality
+* 
+* @param chartProps - The chart props to export
+* @param options - Export configuration options
+* @returns Export modal state and controls
+* 
+* @example
+* ```tsx
+* function MyChart() {
+*   const chartProps = { data, title: "My Chart", ... };
+*   const { isExportModalOpen, openExportModal, closeExportModal, exportModalProps } = 
+*     useFullHDExport(chartProps, { exportName: 'my-chart.png' });
+* 
+*   return (
+*     <>
+*       <BarChart {...chartProps} />
+*       <button onClick={openExportModal}>Export Full HD</button>
+*       <ExportPreviewModal {...exportModalProps} />
+*     </>
+*   );
+* }
+* ```
+*/
+function useFullHDExport(chartProps, options) {
+	const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+	const { exportName = "chart-export.png", exportWidth = 1920, exportHeight = 1080, theme = "light", chartComponent } = options;
+	const openExportModal = () => setIsExportModalOpen(true);
+	const closeExportModal = () => setIsExportModalOpen(false);
+	return {
+		isExportModalOpen,
+		openExportModal,
+		closeExportModal,
+		exportModalProps: {
+			isOpen: isExportModalOpen,
+			onClose: closeExportModal,
+			chartProps,
+			chartComponent,
+			exportName,
+			exportWidth,
+			exportHeight,
+			theme
+		}
+	};
+}
+
+//#endregion
 //#region src/utils/themes.ts
 const lightTheme = {
 	backgroundColor: "#ffffff",
@@ -7490,4 +8062,4 @@ if (typeof document !== "undefined" && !document.getElementById("aqc-charts-styl
 }
 
 //#endregion
-export { BarChart, BaseChart, CalendarHeatmapChart, ChartError, ChartErrorBoundary, ChartErrorCode, ChartInitError, ChartRenderError, ClusterChart, CombinedChart, DataValidationError, EChartsLoadError, GanttChart, GeoChart, LineChart, OldBarChart, OldCalendarHeatmapChart, OldClusterChart, OldGanttChart, OldLineChart, OldPieChart, OldRegressionChart, OldSankeyChart, OldScatterChart, OldStackedBarChart, PieChart, RegressionChart, SankeyChart, ScatterChart, TransformError, assertValidation, clusterPointsToScatterData, createChartError, darkTheme, extractPoints, isChartError, isRecoverableError, lightTheme, performKMeansClustering, safeAsync, safeSync, useChartErrorHandler, useChartEvents, useChartInstance, useChartOptions, useChartResize, useECharts, validateChartData, validateChartProps, validateDimensions, validateFieldMapping, validateInDevelopment, validateTheme, withChartErrorBoundary };
+export { BarChart, BaseChart, CalendarHeatmapChart, ChartError, ChartErrorBoundary, ChartErrorCode, ChartInitError, ChartRenderError, ClusterChart, CombinedChart, DataValidationError, EChartsLoadError, ExportPreviewModal, GanttChart, GeoChart, LineChart, OldBarChart, OldCalendarHeatmapChart, OldClusterChart, OldGanttChart, OldLineChart, OldPieChart, OldRegressionChart, OldSankeyChart, OldScatterChart, OldStackedBarChart, PieChart, RegressionChart, SankeyChart, ScatterChart, TransformError, assertValidation, clusterPointsToScatterData, createChartError, darkTheme, extractPoints, isChartError, isRecoverableError, lightTheme, performKMeansClustering, safeAsync, safeSync, useChartErrorHandler, useChartEvents, useChartInstance, useChartOptions, useChartResize, useECharts, useFullHDExport, validateChartData, validateChartProps, validateDimensions, validateFieldMapping, validateInDevelopment, validateTheme, withChartErrorBoundary };

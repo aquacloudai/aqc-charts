@@ -1,8 +1,9 @@
-import { forwardRef, useEffect, useImperativeHandle, useMemo } from 'react';
+import { forwardRef, useEffect, useImperativeHandle, useMemo, useCallback } from 'react';
 import type { BaseChartProps, ChartRef } from '@/types';
 import { useECharts } from '@/hooks/useECharts';
 import { validateDimensions, validateTheme, assertValidation } from '@/utils/validation';
 import { isChartError } from '@/utils/errors';
+import { addLogoToOption, removeLogoFromOption } from '@/utils/logo';
 
 export const BaseChart = forwardRef<ChartRef, BaseChartProps>(({
     title,
@@ -12,6 +13,7 @@ export const BaseChart = forwardRef<ChartRef, BaseChartProps>(({
     loading: externalLoading = false,
     notMerge = false,
     lazyUpdate = true,
+    logo,
     onChartReady,
     onClick,
     onDoubleClick,
@@ -57,20 +59,31 @@ export const BaseChart = forwardRef<ChartRef, BaseChartProps>(({
         }
     }, [width, height, theme, option]);
 
-    // Simple title override if provided as string prop
+    // Process chart option with title and logo
     const chartOption = useMemo(() => {
+        let processedOption = option;
+
+        // Add title if provided as string prop
         if (title && typeof title === 'string') {
-            return {
-                ...option,
+            processedOption = {
+                ...processedOption,
                 title: {
-                    ...option.title,
+                    ...processedOption.title,
                     text: title,
                     left: 'center',
                 },
             };
         }
-        return option;
-    }, [option, title]);
+
+        // Add logo if provided and not onSaveOnly
+        if (logo && !logo.onSaveOnly) {
+            const chartWidth = typeof width === 'number' ? width : 600; // Default fallback
+            const chartHeight = typeof height === 'number' ? height : 400; // Default fallback
+            processedOption = addLogoToOption(processedOption, logo, chartWidth, chartHeight);
+        }
+
+        return processedOption;
+    }, [option, title, logo, width, height]);
 
     const { 
         containerRef: echartsContainerRefFromHook,
@@ -169,6 +182,56 @@ export const BaseChart = forwardRef<ChartRef, BaseChartProps>(({
         }
     }, [chart, externalLoading]);
 
+    // Export functions with logo support
+    const exportImage = useCallback((opts?: { type?: 'png' | 'jpeg' | 'svg'; pixelRatio?: number; backgroundColor?: string; excludeComponents?: string[] }) => {
+        const chartInstance = getEChartsInstance();
+        if (!chartInstance) return '';
+
+        // If logo should only appear on save, temporarily add it
+        if (logo?.onSaveOnly) {
+            const currentOption = chartInstance.getOption();
+            const chartWidth = typeof width === 'number' ? width : 600;
+            const chartHeight = typeof height === 'number' ? height : 400;
+            const optionWithLogo = addLogoToOption(currentOption, logo, chartWidth, chartHeight);
+            
+            chartInstance.setOption(optionWithLogo, { notMerge: false, lazyUpdate: false });
+            
+            const dataURL = chartInstance.getDataURL({
+                type: opts?.type || 'png',
+                pixelRatio: opts?.pixelRatio || 1,
+                backgroundColor: opts?.backgroundColor || '#fff',
+                ...(opts?.excludeComponents && { excludeComponents: opts.excludeComponents }),
+            });
+            
+            // Remove logo after export
+            const optionWithoutLogo = removeLogoFromOption(currentOption);
+            chartInstance.setOption(optionWithoutLogo, { notMerge: false, lazyUpdate: false });
+            
+            return dataURL;
+        }
+
+        // Normal export without temporary logo
+        return chartInstance.getDataURL({
+            type: opts?.type || 'png',
+            pixelRatio: opts?.pixelRatio || 1,
+            backgroundColor: opts?.backgroundColor || '#fff',
+            ...(opts?.excludeComponents && { excludeComponents: opts.excludeComponents }),
+        });
+    }, [getEChartsInstance, logo, width, height]);
+
+    const saveAsImage = useCallback((filename?: string, opts?: { type?: 'png' | 'jpeg' | 'svg'; pixelRatio?: number; backgroundColor?: string; excludeComponents?: string[] }) => {
+        const dataURL = exportImage(opts);
+        if (!dataURL) return;
+
+        // Create download link
+        const link = document.createElement('a');
+        link.download = filename || `chart.${opts?.type || 'png'}`;
+        link.href = dataURL;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }, [exportImage]);
+
     // Expose chart instance through ref
     useImperativeHandle(ref, () => ({
         getEChartsInstance,
@@ -178,7 +241,9 @@ export const BaseChart = forwardRef<ChartRef, BaseChartProps>(({
         showLoading: showChartLoading,
         hideLoading: hideChartLoading,
         dispose,
-    }), [getEChartsInstance, refresh, clear, resizeChart, showChartLoading, hideChartLoading, dispose]);
+        exportImage,
+        saveAsImage,
+    }), [getEChartsInstance, refresh, clear, resizeChart, showChartLoading, hideChartLoading, dispose, exportImage, saveAsImage]);
 
     const containerStyle = useMemo(() => ({
         width,

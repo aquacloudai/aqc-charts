@@ -21,6 +21,7 @@ export interface EChartsInstance {
     getConnectedDataURL: (opts?: unknown) => string;
     clear: () => void;
 }
+export type { ChartLogo } from './base';
 export interface BaseChartProps {
     readonly title?: string;
     readonly width?: number | string;
@@ -29,6 +30,7 @@ export interface BaseChartProps {
     readonly loading?: boolean;
     readonly notMerge?: boolean;
     readonly lazyUpdate?: boolean;
+    readonly logo?: import('./base').ChartLogo;
     readonly onChartReady?: (chart: import('echarts/core').EChartsType) => void;
     readonly onClick?: (params: unknown, chart: import('echarts/core').EChartsType) => void;
     readonly onDoubleClick?: (params: unknown, chart: import('echarts/core').EChartsType) => void;
@@ -79,6 +81,18 @@ export interface ChartRef {
     showLoading: () => void;
     hideLoading: () => void;
     dispose: () => void;
+    exportImage?: (opts?: {
+        type?: 'png' | 'jpeg' | 'svg';
+        pixelRatio?: number;
+        backgroundColor?: string;
+        excludeComponents?: string[];
+    }) => string;
+    saveAsImage?: (filename?: string, opts?: {
+        type?: 'png' | 'jpeg' | 'svg';
+        pixelRatio?: number;
+        backgroundColor?: string;
+        excludeComponents?: string[];
+    }) => void;
 }
 export interface CalendarHeatmapDataPoint {
     readonly date: string;

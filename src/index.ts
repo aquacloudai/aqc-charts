@@ -12,6 +12,9 @@ export { GanttChart } from './components/GanttChart';
 export { RegressionChart } from './components/RegressionChart';
 export { GeoChart } from './components/GeoChart';
 
+// Export utilities
+export { ExportPreviewModal } from './components/ExportPreviewModal';
+
 // Legacy components (old API)
 export { OldCalendarHeatmapChart } from './components/legacy/OldCalendarHeatmapChart';
 export { OldStackedBarChart } from './components/legacy/OldStackedBarChart';
@@ -26,6 +29,7 @@ export { OldPieChart } from './components/legacy/OldPieChart';
 
 // Hooks
 export { useECharts } from './hooks/useECharts';
+export { useFullHDExport } from './hooks/useFullHDExport';
 
 // Individual chart hooks (advanced usage)
 export { 
@@ -177,6 +181,13 @@ export type {
     AreaChartProps,
     ErgonomicChartRef
 } from './types';
+
+// Export utility types
+export type { ExportPreviewModalProps } from './components/ExportPreviewModal';
+export type { 
+    UseFullHDExportOptions,
+    UseFullHDExportReturn
+} from './hooks/useFullHDExport';
 
 // CSS injection for styling (optimized for modern bundlers)
 if (typeof document !== 'undefined' && !document.getElementById('aqc-charts-styles')) {

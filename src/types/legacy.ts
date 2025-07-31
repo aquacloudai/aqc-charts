@@ -32,6 +32,9 @@ export interface EChartsInstance {
     clear: () => void;
 }
 
+// Re-export ChartLogo from base types to avoid duplication
+export type { ChartLogo } from './base';
+
 export interface BaseChartProps {
     // Core props - just the essentials for easy chart creation
     readonly title?: string;
@@ -43,6 +46,9 @@ export interface BaseChartProps {
     readonly loading?: boolean;
     readonly notMerge?: boolean;
     readonly lazyUpdate?: boolean;
+
+    // Logo/watermark
+    readonly logo?: import('./base').ChartLogo;
 
     // Event handlers
     readonly onChartReady?: (chart: import('echarts/core').EChartsType) => void;
@@ -105,6 +111,8 @@ export interface ChartRef {
     showLoading: () => void;
     hideLoading: () => void;
     dispose: () => void;
+    exportImage?: (opts?: { type?: 'png' | 'jpeg' | 'svg'; pixelRatio?: number; backgroundColor?: string; excludeComponents?: string[] }) => string;
+    saveAsImage?: (filename?: string, opts?: { type?: 'png' | 'jpeg' | 'svg'; pixelRatio?: number; backgroundColor?: string; excludeComponents?: string[] }) => void;
 }
 
 // Convenience interfaces for specific chart types

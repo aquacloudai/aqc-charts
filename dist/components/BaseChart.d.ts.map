@@ -1,1 +1,1 @@
-{"version":3,"file":"BaseChart.d.ts","sourceRoot":"","sources":["../../src/components/BaseChart.tsx"],"names":[],"mappings":"AACA,OAAO,KAAK,EAAE,cAAc,EAAE,QAAQ,EAAE,MAAM,SAAS,CAAC;AAKxD,eAAO,MAAM,SAAS,qGAwQpB,CAAC"}
+{"version":3,"file":"BaseChart.d.ts","sourceRoot":"","sources":["../../src/components/BaseChart.tsx"],"names":[],"mappings":"AACA,OAAO,KAAK,EAAE,cAAc,EAAE,QAAQ,EAAE,MAAM,SAAS,CAAC;AAMxD,eAAO,MAAM,SAAS,qGAwUpB,CAAC"}

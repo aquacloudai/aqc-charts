@@ -66,6 +66,9 @@ const LineChart = forwardRef<ErgonomicChartRef, LineChartProps>(({
   subtitle,
   titlePosition = 'center',
   
+  // Logo
+  logo,
+  
   // Line styling
   smooth = false,
   strokeWidth = 2,
@@ -123,6 +126,9 @@ const LineChart = forwardRef<ErgonomicChartRef, LineChartProps>(({
       title,
       subtitle,
       titlePosition,
+      ...(logo && { logo }),
+      ...(width && { width }),
+      ...(height && { height }),
       smooth,
       strokeWidth,
       strokeStyle,
@@ -146,7 +152,7 @@ const LineChart = forwardRef<ErgonomicChartRef, LineChartProps>(({
   }, [
     data, xField, yField, seriesField, series, seriesConfig,
     theme, colorPalette, backgroundColor,
-    title, subtitle, titlePosition,
+    title, subtitle, titlePosition, logo, width, height,
     smooth, strokeWidth, strokeStyle, showPoints, pointSize, pointShape,
     showArea, areaOpacity, areaGradient,
     xAxis, yAxis, legend, tooltip,
@@ -190,16 +196,84 @@ const LineChart = forwardRef<ErgonomicChartRef, LineChartProps>(({
     onChartReady,
   });
   
-  // Export image functionality
-  const exportImage = (format: 'png' | 'jpeg' | 'svg' = 'png'): string => {
+  // Export image functionality with logo support
+  const exportImage = (format: 'png' | 'jpeg' | 'svg' = 'png', opts?: { pixelRatio?: number; backgroundColor?: string; excludeComponents?: string[] }): string => {
     const chart = getEChartsInstance();
     if (!chart) return '';
     
+    // If logo should only appear on save, temporarily add it
+    if (logo?.onSaveOnly) {
+      const currentOption = chart.getOption();
+      const chartWidth = typeof width === 'number' ? width : 600;
+      const chartHeight = typeof height === 'number' ? height : 400;
+      
+      // Add logo to option
+      const logoGraphic = {
+        type: 'image',
+        style: {
+          image: logo.src,
+          x: logo.x !== undefined ? logo.x : (logo.position === 'bottom-right' ? chartWidth - (logo.width || 100) - 10 : 10),
+          y: logo.y !== undefined ? logo.y : (logo.position === 'bottom-right' ? chartHeight - (logo.height || 50) - 10 : 10),
+          width: logo.width || 100,
+          height: logo.height || 50,
+          opacity: logo.opacity || 1,
+        },
+        z: 1000,
+        silent: true,
+      };
+      
+      const optionWithLogo = {
+        ...currentOption,
+        graphic: [
+          ...(Array.isArray(currentOption.graphic) ? currentOption.graphic : currentOption.graphic ? [currentOption.graphic] : []),
+          logoGraphic,
+        ],
+      };
+      
+      chart.setOption(optionWithLogo, { notMerge: false, lazyUpdate: false });
+      
+      const dataURL = chart.getDataURL({
+        type: format,
+        pixelRatio: opts?.pixelRatio || 2,
+        backgroundColor: opts?.backgroundColor || backgroundColor || '#fff',
+        ...(opts?.excludeComponents && { excludeComponents: opts.excludeComponents }),
+      });
+      
+      // Remove logo after export
+      const filteredGraphics = Array.isArray(currentOption.graphic) 
+        ? currentOption.graphic.filter((g: any) => g.type !== 'image')
+        : (currentOption.graphic && (currentOption.graphic as any).type !== 'image') ? [currentOption.graphic] : [];
+      
+      const optionWithoutLogo = {
+        ...currentOption,
+        graphic: filteredGraphics.length > 0 ? filteredGraphics : undefined,
+      };
+      chart.setOption(optionWithoutLogo, { notMerge: false, lazyUpdate: false });
+      
+      return dataURL;
+    }
+    
+    // Normal export without temporary logo
     return chart.getDataURL({
       type: format,
-      pixelRatio: 2,
-      backgroundColor: backgroundColor || '#fff',
+      pixelRatio: opts?.pixelRatio || 2,
+      backgroundColor: opts?.backgroundColor || backgroundColor || '#fff',
+      ...(opts?.excludeComponents && { excludeComponents: opts.excludeComponents }),
     });
+  };
+
+  // Save as image functionality
+  const saveAsImage = (filename?: string, opts?: { type?: 'png' | 'jpeg' | 'svg'; pixelRatio?: number; backgroundColor?: string; excludeComponents?: string[] }) => {
+    const dataURL = exportImage(opts?.type || 'png', opts);
+    if (!dataURL) return;
+
+    // Create download link
+    const link = document.createElement('a');
+    link.download = filename || `chart.${opts?.type || 'png'}`;
+    link.href = dataURL;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
   
   // Highlight functionality
@@ -269,13 +343,14 @@ const LineChart = forwardRef<ErgonomicChartRef, LineChartProps>(({
   useImperativeHandle(ref, () => ({
     getChart: getEChartsInstance,
     exportImage,
+    saveAsImage,
     resize,
     showLoading: () => showLoading(),
     hideLoading,
     highlight,
     clearHighlight,
     updateData,
-  }), [getEChartsInstance, exportImage, resize, showLoading, hideLoading, highlight, clearHighlight, updateData]);
+  }), [getEChartsInstance, exportImage, saveAsImage, resize, showLoading, hideLoading, highlight, clearHighlight, updateData]);
   
   // Error state
   if (error) {
