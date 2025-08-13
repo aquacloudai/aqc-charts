@@ -1828,6 +1828,257 @@ function buildScatterChartOption(props) {
 }
 
 //#endregion
+//#region src/utils/chart-builders/stacked-area-chart.ts
+function buildStackedAreaChartOption(props) {
+	const baseOption = buildBaseOption(props);
+	let series = [];
+	let xAxisData = [];
+	if (props.series && props.data) {
+		series = props.series.map((s, index) => ({
+			name: s.name,
+			type: "line",
+			data: isObjectData(s.data) && props.yField ? s.data.map((item) => item[props.yField]) : s.data,
+			smooth: s.smooth ?? props.smooth,
+			lineStyle: {
+				width: s.strokeWidth ?? props.strokeWidth ?? 2,
+				type: mapStrokeStyleToECharts(s.strokeStyle ?? props.strokeStyle)
+			},
+			itemStyle: { color: s.color },
+			areaStyle: {
+				opacity: props.opacity ?? .7,
+				...props.areaGradient && { color: {
+					type: "linear",
+					x: 0,
+					y: 0,
+					x2: 0,
+					y2: 1,
+					colorStops: [{
+						offset: 0,
+						color: s.color || `rgba(${index * 50 % 255}, ${index * 80 % 255}, ${index * 120 % 255}, 0.8)`
+					}, {
+						offset: 1,
+						color: s.color || `rgba(${index * 50 % 255}, ${index * 80 % 255}, ${index * 120 % 255}, 0.1)`
+					}]
+				} }
+			},
+			symbol: (s.showPoints ?? props.showPoints) !== false ? s.pointShape ?? props.pointShape ?? "circle" : "none",
+			symbolSize: s.pointSize ?? props.pointSize ?? 4,
+			yAxisIndex: s.yAxisIndex ?? 0,
+			stack: props.stacked ? "Total" : void 0,
+			...props.stackType === "percent" && {
+				stack: "Total",
+				areaStyle: {
+					...series[index]?.areaStyle,
+					opacity: .7
+				}
+			}
+		}));
+		if (props.series && props.series[0] && isObjectData(props.series[0].data) && props.xField) xAxisData = props.series[0].data.map((item) => item[props.xField]);
+	} else if (props.data) if (isObjectData(props.data)) if (props.seriesField) {
+		const groups = groupDataByField(props.data, props.seriesField);
+		series = Object.entries(groups).map(([name, groupData]) => {
+			const seriesSpecificConfig = props.seriesConfig?.[name] || {};
+			return {
+				name,
+				type: "line",
+				data: groupData.map((item) => item[props.yField]),
+				smooth: seriesSpecificConfig.smooth ?? props.smooth,
+				lineStyle: {
+					width: seriesSpecificConfig.strokeWidth ?? props.strokeWidth ?? 2,
+					type: mapStrokeStyleToECharts(seriesSpecificConfig.strokeStyle ?? props.strokeStyle)
+				},
+				itemStyle: seriesSpecificConfig.color ? { color: seriesSpecificConfig.color } : void 0,
+				areaStyle: {
+					opacity: props.opacity ?? .7,
+					...props.areaGradient && seriesSpecificConfig.color && { color: {
+						type: "linear",
+						x: 0,
+						y: 0,
+						x2: 0,
+						y2: 1,
+						colorStops: [{
+							offset: 0,
+							color: seriesSpecificConfig.color + "CC"
+						}, {
+							offset: 1,
+							color: seriesSpecificConfig.color + "1A"
+						}]
+					} }
+				},
+				symbol: (seriesSpecificConfig.showPoints ?? props.showPoints) !== false ? seriesSpecificConfig.pointShape ?? props.pointShape ?? "circle" : "none",
+				symbolSize: seriesSpecificConfig.pointSize ?? props.pointSize ?? 4,
+				yAxisIndex: seriesSpecificConfig.yAxisIndex ?? 0,
+				stack: props.stacked ? "Total" : void 0
+			};
+		});
+		const seen = new Set();
+		xAxisData = [];
+		for (const item of props.data) {
+			const value = item[props.xField];
+			if (value != null && !seen.has(value)) {
+				seen.add(value);
+				xAxisData.push(value);
+			}
+		}
+	} else {
+		if (Array.isArray(props.yField)) series = props.yField.map((field) => {
+			const seriesSpecificConfig = props.seriesConfig?.[field] || {};
+			return {
+				name: field,
+				type: "line",
+				data: props.data.map((item) => item[field]),
+				smooth: seriesSpecificConfig.smooth ?? props.smooth,
+				lineStyle: {
+					width: seriesSpecificConfig.strokeWidth ?? props.strokeWidth ?? 2,
+					type: mapStrokeStyleToECharts(seriesSpecificConfig.strokeStyle ?? props.strokeStyle)
+				},
+				itemStyle: seriesSpecificConfig.color ? { color: seriesSpecificConfig.color } : void 0,
+				areaStyle: {
+					opacity: props.opacity ?? .7,
+					...props.areaGradient && seriesSpecificConfig.color && { color: {
+						type: "linear",
+						x: 0,
+						y: 0,
+						x2: 0,
+						y2: 1,
+						colorStops: [{
+							offset: 0,
+							color: seriesSpecificConfig.color + "CC"
+						}, {
+							offset: 1,
+							color: seriesSpecificConfig.color + "1A"
+						}]
+					} }
+				},
+				symbol: (seriesSpecificConfig.showPoints ?? props.showPoints) !== false ? seriesSpecificConfig.pointShape ?? props.pointShape ?? "circle" : "none",
+				symbolSize: seriesSpecificConfig.pointSize ?? props.pointSize ?? 4,
+				yAxisIndex: seriesSpecificConfig.yAxisIndex ?? 0,
+				stack: props.stacked ? "Total" : void 0
+			};
+		});
+		else series = [{
+			type: "line",
+			data: props.data.map((item) => item[props.yField]),
+			smooth: props.smooth,
+			lineStyle: {
+				width: props.strokeWidth ?? 2,
+				type: mapStrokeStyleToECharts(props.strokeStyle)
+			},
+			areaStyle: {
+				opacity: props.opacity ?? .7,
+				...props.areaGradient && { color: {
+					type: "linear",
+					x: 0,
+					y: 0,
+					x2: 0,
+					y2: 1,
+					colorStops: [{
+						offset: 0,
+						color: "rgba(64, 158, 255, 0.8)"
+					}, {
+						offset: 1,
+						color: "rgba(64, 158, 255, 0.1)"
+					}]
+				} }
+			},
+			symbol: props.showPoints !== false ? props.pointShape || "circle" : "none",
+			symbolSize: props.pointSize || 4,
+			stack: props.stacked ? "Total" : void 0
+		}];
+		if (props.data) xAxisData = props.data.map((item) => item[props.xField]);
+	}
+	else series = [{
+		type: "line",
+		data: props.data,
+		smooth: props.smooth,
+		lineStyle: {
+			width: props.strokeWidth ?? 2,
+			type: mapStrokeStyleToECharts(props.strokeStyle)
+		},
+		areaStyle: {
+			opacity: props.opacity ?? .7,
+			...props.areaGradient && { color: {
+				type: "linear",
+				x: 0,
+				y: 0,
+				x2: 0,
+				y2: 1,
+				colorStops: [{
+					offset: 0,
+					color: "rgba(64, 158, 255, 0.8)"
+				}, {
+					offset: 1,
+					color: "rgba(64, 158, 255, 0.1)"
+				}]
+			} }
+		},
+		symbol: props.showPoints !== false ? props.pointShape || "circle" : "none",
+		symbolSize: props.pointSize || 4,
+		stack: props.stacked ? "Total" : void 0
+	}];
+	if (props.stackType === "percent") series = series.map((s) => ({
+		...s,
+		stack: "Total",
+		areaStyle: {
+			...s.areaStyle,
+			opacity: .7
+		}
+	}));
+	return {
+		...baseOption,
+		grid: calculateGridSpacing(props.legend, !!props.title, !!props.subtitle, !!props.zoom),
+		xAxis: {
+			...buildAxisOption(props.xAxis, "categorical", props.theme),
+			data: xAxisData
+		},
+		yAxis: Array.isArray(props.yAxis) ? props.yAxis.map((axis) => ({
+			...buildAxisOption(axis, "numeric", props.theme),
+			...props.stackType === "percent" && {
+				axisLabel: {
+					...buildAxisOption(axis, "numeric", props.theme).axisLabel,
+					formatter: "{value}%"
+				},
+				max: 100
+			}
+		})) : {
+			...buildAxisOption(props.yAxis, "numeric", props.theme),
+			...props.stackType === "percent" && {
+				axisLabel: {
+					...buildAxisOption(props.yAxis, "numeric", props.theme).axisLabel,
+					formatter: "{value}%"
+				},
+				max: 100
+			}
+		},
+		series,
+		legend: buildLegendOption(props.legend, !!props.title, !!props.subtitle, !!props.zoom, props.theme),
+		tooltip: {
+			...buildTooltipOption(props.tooltip, props.theme),
+			...props.stackType === "percent" && {
+				trigger: "axis",
+				axisPointer: { type: "cross" },
+				formatter: function(params) {
+					if (!Array.isArray(params)) return "";
+					let total = 0;
+					params.forEach((param) => {
+						total += param.value;
+					});
+					let result = params[0].name + "<br/>";
+					params.forEach((param) => {
+						const percentage = total > 0 ? (param.value / total * 100).toFixed(1) : "0.0";
+						result += `${param.marker}${param.seriesName}: ${param.value} (${percentage}%)<br/>`;
+					});
+					return result;
+				}
+			}
+		},
+		...props.zoom && { dataZoom: [{ type: "inside" }, { type: "slider" }] },
+		...props.brush && { brush: {} },
+		...props.customOption
+	};
+}
+
+//#endregion
 //#region src/utils/chart-builders/gantt-chart.ts
 function buildGanttChartOption(props) {
 	const baseOption = buildBaseOption(props);
@@ -4130,6 +4381,314 @@ const ScatterChart = forwardRef(({ width = "100%", height = 400, className, styl
 	});
 });
 ScatterChart.displayName = "ScatterChart";
+
+//#endregion
+//#region src/components/StackedAreaChart.tsx
+const StackedAreaChart = forwardRef(({ width = "100%", height = 400, className, style, data, xField = "x", yField = "y", seriesField, series, seriesConfig, theme = "light", colorPalette, backgroundColor, title, subtitle, titlePosition = "center", logo, stacked = true, stackType = "normal", opacity = .7, smooth = false, strokeWidth = 2, strokeStyle = "solid", showPoints = false, pointSize = 4, pointShape = "circle", areaOpacity = .3, areaGradient = true, xAxis, yAxis, legend, tooltip, zoom = false, pan = false, brush = false, loading = false, disabled: _disabled = false, animate = true, animationDuration, onChartReady, onDataPointClick, onDataPointHover, customOption, responsive: _responsive = true,...restProps }, ref) => {
+	const chartOption = useMemo(() => {
+		return buildStackedAreaChartOption({
+			data: data || void 0,
+			xField,
+			yField,
+			seriesField,
+			series,
+			seriesConfig,
+			theme,
+			colorPalette,
+			backgroundColor,
+			title,
+			subtitle,
+			titlePosition,
+			...logo && { logo },
+			...width && { width },
+			...height && { height },
+			stacked,
+			stackType,
+			opacity,
+			smooth,
+			strokeWidth,
+			strokeStyle,
+			showPoints,
+			pointSize,
+			pointShape,
+			areaOpacity,
+			areaGradient,
+			xAxis: xAxis || void 0,
+			yAxis: yAxis || void 0,
+			legend,
+			tooltip,
+			zoom,
+			pan,
+			brush,
+			animate,
+			animationDuration,
+			customOption
+		});
+	}, [
+		data,
+		xField,
+		yField,
+		seriesField,
+		series,
+		seriesConfig,
+		theme,
+		colorPalette,
+		backgroundColor,
+		title,
+		subtitle,
+		titlePosition,
+		logo,
+		width,
+		height,
+		stacked,
+		stackType,
+		opacity,
+		smooth,
+		strokeWidth,
+		strokeStyle,
+		showPoints,
+		pointSize,
+		pointShape,
+		areaOpacity,
+		areaGradient,
+		xAxis,
+		yAxis,
+		legend,
+		tooltip,
+		zoom,
+		pan,
+		brush,
+		animate,
+		animationDuration,
+		customOption
+	]);
+	const chartEvents = useMemo(() => {
+		const events = {};
+		if (onDataPointClick) events.click = (params, chart) => {
+			onDataPointClick(params, {
+				chart,
+				event: params
+			});
+		};
+		if (onDataPointHover) events.mouseover = (params, chart) => {
+			onDataPointHover(params, {
+				chart,
+				event: params
+			});
+		};
+		return Object.keys(events).length > 0 ? events : void 0;
+	}, [onDataPointClick, onDataPointHover]);
+	const { containerRef, loading: chartLoading, error, getEChartsInstance, resize, showLoading, hideLoading } = useECharts({
+		option: chartOption,
+		theme,
+		loading,
+		events: chartEvents,
+		onChartReady
+	});
+	const exportImage = (format = "png", opts) => {
+		const chart = getEChartsInstance();
+		if (!chart) return "";
+		if (logo?.onSaveOnly) {
+			const currentOption = chart.getOption();
+			const chartWidth = typeof width === "number" ? width : 600;
+			const chartHeight = typeof height === "number" ? height : 400;
+			const logoGraphic = {
+				type: "image",
+				style: {
+					image: logo.src,
+					x: logo.x !== void 0 ? logo.x : logo.position === "bottom-right" ? chartWidth - (logo.width || 100) - 10 : 10,
+					y: logo.y !== void 0 ? logo.y : logo.position === "bottom-right" ? chartHeight - (logo.height || 50) - 10 : 10,
+					width: logo.width || 100,
+					height: logo.height || 50,
+					opacity: logo.opacity || 1
+				},
+				z: 1e3,
+				silent: true
+			};
+			const optionWithLogo = {
+				...currentOption,
+				graphic: [...Array.isArray(currentOption.graphic) ? currentOption.graphic : currentOption.graphic ? [currentOption.graphic] : [], logoGraphic]
+			};
+			chart.setOption(optionWithLogo, {
+				notMerge: false,
+				lazyUpdate: false
+			});
+			const dataURL = chart.getDataURL({
+				type: format,
+				pixelRatio: opts?.pixelRatio || 2,
+				backgroundColor: opts?.backgroundColor || backgroundColor || "#fff",
+				...opts?.excludeComponents && { excludeComponents: opts.excludeComponents }
+			});
+			const filteredGraphics = Array.isArray(currentOption.graphic) ? currentOption.graphic.filter((g) => g.type !== "image") : currentOption.graphic && currentOption.graphic.type !== "image" ? [currentOption.graphic] : [];
+			const optionWithoutLogo = {
+				...currentOption,
+				graphic: filteredGraphics.length > 0 ? filteredGraphics : void 0
+			};
+			chart.setOption(optionWithoutLogo, {
+				notMerge: false,
+				lazyUpdate: false
+			});
+			return dataURL;
+		}
+		return chart.getDataURL({
+			type: format,
+			pixelRatio: opts?.pixelRatio || 2,
+			backgroundColor: opts?.backgroundColor || backgroundColor || "#fff",
+			...opts?.excludeComponents && { excludeComponents: opts.excludeComponents }
+		});
+	};
+	const saveAsImage = (filename, opts) => {
+		const dataURL = exportImage(opts?.type || "png", opts);
+		if (!dataURL) return;
+		const link = document.createElement("a");
+		link.download = filename || `stacked-area-chart.${opts?.type || "png"}`;
+		link.href = dataURL;
+		document.body.appendChild(link);
+		link.click();
+		document.body.removeChild(link);
+	};
+	const highlight = (dataIndex, seriesIndex = 0) => {
+		const chart = getEChartsInstance();
+		if (!chart) return;
+		chart.dispatchAction({
+			type: "highlight",
+			seriesIndex,
+			dataIndex
+		});
+	};
+	const clearHighlight = () => {
+		const chart = getEChartsInstance();
+		if (!chart) return;
+		chart.dispatchAction({ type: "downplay" });
+	};
+	const updateData = (newData) => {
+		const chart = getEChartsInstance();
+		if (!chart) return;
+		const newOption = buildStackedAreaChartOption({
+			data: newData,
+			xField,
+			yField,
+			seriesField: seriesField || void 0,
+			series,
+			seriesConfig,
+			theme,
+			colorPalette,
+			backgroundColor,
+			title,
+			subtitle,
+			titlePosition,
+			stacked,
+			stackType,
+			opacity,
+			smooth,
+			strokeWidth,
+			strokeStyle,
+			showPoints,
+			pointSize,
+			pointShape,
+			areaOpacity,
+			areaGradient,
+			xAxis: xAxis || void 0,
+			yAxis: yAxis || void 0,
+			legend,
+			tooltip,
+			zoom,
+			pan,
+			brush,
+			animate,
+			animationDuration,
+			customOption
+		});
+		chart.setOption(newOption);
+	};
+	useImperativeHandle(ref, () => ({
+		getChart: getEChartsInstance,
+		exportImage,
+		saveAsImage,
+		resize,
+		showLoading: () => showLoading(),
+		hideLoading,
+		highlight,
+		clearHighlight,
+		updateData
+	}), [
+		getEChartsInstance,
+		exportImage,
+		saveAsImage,
+		resize,
+		showLoading,
+		hideLoading,
+		highlight,
+		clearHighlight,
+		updateData
+	]);
+	if (error) return /* @__PURE__ */ jsxs("div", {
+		className: `aqc-charts-error ${className || ""}`,
+		style: {
+			width,
+			height,
+			display: "flex",
+			alignItems: "center",
+			justifyContent: "center",
+			color: "#ff4d4f",
+			fontSize: "14px",
+			border: "1px dashed #ff4d4f",
+			borderRadius: "4px",
+			...style
+		},
+		children: ["Error: ", error.message || "Failed to render chart"]
+	});
+	const containerStyle = useMemo(() => ({
+		width,
+		height,
+		position: "relative",
+		...style
+	}), [
+		width,
+		height,
+		style
+	]);
+	return /* @__PURE__ */ jsxs("div", {
+		className: `aqc-charts-container ${className || ""}`,
+		style: containerStyle,
+		...restProps,
+		children: [/* @__PURE__ */ jsx("div", {
+			ref: containerRef,
+			style: {
+				width: "100%",
+				height: "100%"
+			}
+		}), (chartLoading || loading) && /* @__PURE__ */ jsxs("div", {
+			className: "aqc-charts-loading",
+			style: {
+				position: "absolute",
+				top: 0,
+				left: 0,
+				right: 0,
+				bottom: 0,
+				display: "flex",
+				alignItems: "center",
+				justifyContent: "center",
+				backgroundColor: "rgba(255, 255, 255, 0.8)",
+				fontSize: "14px",
+				color: "#666"
+			},
+			children: [/* @__PURE__ */ jsx("div", {
+				className: "aqc-charts-spinner",
+				style: {
+					width: "20px",
+					height: "20px",
+					border: "2px solid #f3f3f3",
+					borderTop: "2px solid #1890ff",
+					borderRadius: "50%",
+					animation: "spin 1s linear infinite",
+					marginRight: "8px"
+				}
+			}), "Loading..."]
+		})]
+	});
+});
+StackedAreaChart.displayName = "StackedAreaChart";
 
 //#endregion
 //#region src/components/CombinedChart.tsx
@@ -8062,4 +8621,4 @@ if (typeof document !== "undefined" && !document.getElementById("aqc-charts-styl
 }
 
 //#endregion
-export { BarChart, BaseChart, CalendarHeatmapChart, ChartError, ChartErrorBoundary, ChartErrorCode, ChartInitError, ChartRenderError, ClusterChart, CombinedChart, DataValidationError, EChartsLoadError, ExportPreviewModal, GanttChart, GeoChart, LineChart, OldBarChart, OldCalendarHeatmapChart, OldClusterChart, OldGanttChart, OldLineChart, OldPieChart, OldRegressionChart, OldSankeyChart, OldScatterChart, OldStackedBarChart, PieChart, RegressionChart, SankeyChart, ScatterChart, TransformError, assertValidation, clusterPointsToScatterData, createChartError, darkTheme, extractPoints, isChartError, isRecoverableError, lightTheme, performKMeansClustering, safeAsync, safeSync, useChartErrorHandler, useChartEvents, useChartInstance, useChartOptions, useChartResize, useECharts, useFullHDExport, validateChartData, validateChartProps, validateDimensions, validateFieldMapping, validateInDevelopment, validateTheme, withChartErrorBoundary };
+export { BarChart, BaseChart, CalendarHeatmapChart, ChartError, ChartErrorBoundary, ChartErrorCode, ChartInitError, ChartRenderError, ClusterChart, CombinedChart, DataValidationError, EChartsLoadError, ExportPreviewModal, GanttChart, GeoChart, LineChart, OldBarChart, OldCalendarHeatmapChart, OldClusterChart, OldGanttChart, OldLineChart, OldPieChart, OldRegressionChart, OldSankeyChart, OldScatterChart, OldStackedBarChart, PieChart, RegressionChart, SankeyChart, ScatterChart, StackedAreaChart, TransformError, assertValidation, clusterPointsToScatterData, createChartError, darkTheme, extractPoints, isChartError, isRecoverableError, lightTheme, performKMeansClustering, safeAsync, safeSync, useChartErrorHandler, useChartEvents, useChartInstance, useChartOptions, useChartResize, useECharts, useFullHDExport, validateChartData, validateChartProps, validateDimensions, validateFieldMapping, validateInDevelopment, validateTheme, withChartErrorBoundary };

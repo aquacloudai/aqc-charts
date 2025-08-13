@@ -37,6 +37,7 @@ export { buildLineChartOption } from './chart-builders/line-chart';
 export { buildBarChartOption } from './chart-builders/bar-chart';
 export { buildPieChartOption } from './chart-builders/pie-chart';
 export { buildScatterChartOption } from './chart-builders/scatter-chart';
+export { buildStackedAreaChartOption } from './chart-builders/stacked-area-chart';
 export { buildGanttChartOption } from './chart-builders/gantt-chart';
 export { buildCombinedChartOption } from './chart-builders/combined-chart';
 

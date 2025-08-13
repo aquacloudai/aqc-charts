@@ -1,5 +1,5 @@
 import type { EChartsOption } from 'echarts/types/dist/shared';
-import type { AxisConfig, LegendConfig, TooltipConfig, ChartLogo } from '@/types';
+import type { AxisConfig, LegendConfig, TooltipConfig } from '@/types';
 import { COLOR_PALETTES } from './color-palettes';
 import { createLogoGraphic } from './logo';
 

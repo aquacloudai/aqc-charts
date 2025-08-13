@@ -6,6 +6,7 @@ import { LineChartPage } from './pages/LineChartPage';
 import { BarChartPage } from './pages/BarChartPage';
 import { PieChartPage } from './pages/PieChartPage';
 import { ScatterChartPage } from './pages/ScatterChartPage';
+import { StackedAreaChartPage } from './pages/StackedAreaChartPage';
 import { CombinedChartPage } from './pages/CombinedChartPage';
 import { ClusterChartPage } from './pages/ClusterChartPage';
 import { CalendarChartPage } from './pages/CalendarChartPage';
@@ -113,6 +114,16 @@ function App() {
             path="/scatter"
             element={
               <ScatterChartPage
+                theme={theme}
+                palette={palette}
+                setPalette={setPalette}
+              />
+            }
+          />
+          <Route
+            path="/stacked-area"
+            element={
+              <StackedAreaChartPage
                 theme={theme}
                 palette={palette}
                 setPalette={setPalette}

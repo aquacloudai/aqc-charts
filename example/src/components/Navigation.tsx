@@ -11,6 +11,7 @@ const chartTypes = [
   { path: '/bar', label: 'Bar Charts', icon: '📊' },
   { path: '/pie', label: 'Pie Charts', icon: '🥧' },
   { path: '/scatter', label: 'Scatter Charts', icon: '🔹' },
+  { path: '/stacked-area', label: 'Stacked Area', icon: '⛰️' },
   { path: '/combined', label: 'Combined Charts', icon: '🎯' },
   { path: '/cluster', label: 'Cluster Charts', icon: '🔬' },
   { path: '/calendar', label: 'Calendar Heatmap', icon: '📅' },

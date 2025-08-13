@@ -62,6 +62,7 @@ export const Overview: React.FC<OverviewProps> = ({ theme }) => {
             { icon: '📊', title: 'Bar Charts', desc: 'Categorical data comparison' },
             { icon: '🥧', title: 'Pie Charts', desc: 'Part-to-whole relationships' },
             { icon: '🔹', title: 'Scatter Charts', desc: 'Correlation and distribution' },
+            { icon: '⛰️', title: 'Stacked Area', desc: 'Cumulative data visualization' },
             { icon: '🎯', title: 'Combined Charts', desc: 'Mixed visualizations' },
             { icon: '🔬', title: 'Cluster Charts', desc: 'Pattern recognition' },
             { icon: '📅', title: 'Calendar Heatmap', desc: 'Time-based patterns' },
