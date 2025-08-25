@@ -70,6 +70,59 @@ const departmentData = [
   { quarter: 'Q4 2023', department: 'Sales', revenue: 450000, employees: 44 },
 ];
 
+// Test data with missing values to demonstrate proper alignment
+const missingDataTestSeries = [
+  {
+    name: 'Complete Series',
+    data: [
+      { month: 'Jan', value: 100 },
+      { month: 'Feb', value: 120 },
+      { month: 'Mar', value: 110 },
+      { month: 'Apr', value: 130 },
+      { month: 'May', value: 125 },
+      { month: 'Jun', value: 140 },
+    ]
+  },
+  {
+    name: 'Series with Gaps',
+    data: [
+      { month: 'Jan', value: 80 },
+      { month: 'Mar', value: 95 }, // Missing Feb
+      { month: 'May', value: 105 }, // Missing Apr
+      { month: 'Jun', value: 115 },
+    ]
+  },
+  {
+    name: 'Sparse Series',
+    data: [
+      { month: 'Feb', value: 60 }, // Missing Jan
+      { month: 'Apr', value: 75 }, // Missing Mar
+      { month: 'Jun', value: 90 }, // Missing May
+    ]
+  }
+];
+
+// Test data using grouped approach with missing values
+const groupedMissingData = [
+  // Product A: missing Mar and May
+  { month: 'Jan', product: 'Product A', sales: 150 },
+  { month: 'Feb', product: 'Product A', sales: 180 },
+  { month: 'Apr', product: 'Product A', sales: 200 },
+  { month: 'Jun', product: 'Product A', sales: 220 },
+  
+  // Product B: missing Feb and Apr
+  { month: 'Jan', product: 'Product B', sales: 120 },
+  { month: 'Mar', product: 'Product B', sales: 140 },
+  { month: 'May', product: 'Product B', sales: 160 },
+  { month: 'Jun', product: 'Product B', sales: 175 },
+  
+  // Product C: missing Jan and Jun
+  { month: 'Feb', product: 'Product C', sales: 90 },
+  { month: 'Mar', product: 'Product C', sales: 110 },
+  { month: 'Apr', product: 'Product C', sales: 125 },
+  { month: 'May', product: 'Product C', sales: 135 },
+];
+
 interface LineChartExampleProps {
   theme: 'light' | 'dark';
   colorPalette: readonly string[];
@@ -741,6 +794,158 @@ export function LineChartExample({ theme, colorPalette, onInteraction }: LineCha
         }}>
           <strong>🎯 Multiple Y-Axes:</strong> Temperature scale (-10°C to 40°C) on left, Sales scale ($0 to $50k) on right.
           This allows comparing metrics with different scales on the same chart.
+        </div>
+      </div>
+
+      {/* Example 10: Missing Data Alignment Test - Explicit Series */}
+      <div style={{ marginBottom: '40px' }}>
+        <h4 style={{
+          color: theme === 'dark' ? '#fff' : '#333',
+          marginBottom: '20px',
+          fontSize: '18px',
+          fontWeight: '600'
+        }}>
+          🔧 Missing Data Alignment Test - Explicit Series
+        </h4>
+        <p style={{
+          color: theme === 'dark' ? '#ccc' : '#666',
+          marginBottom: '20px',
+          fontSize: '14px',
+          lineHeight: 1.5
+        }}>
+          <strong>Tests the missing data alignment fix:</strong> Multiple series with different sets of x-axis values.
+          The chart should properly align all data points and show gaps where data is missing.
+        </p>
+        <LineChart
+          series={missingDataTestSeries}
+          data={[]} // Required but not used when series is provided
+          xField="month"
+          yField="value"
+          title="Missing Data Alignment - Explicit Series Format"
+          subtitle="Series with different data points should align properly"
+          height={400}
+          theme={theme}
+          colorPalette={colorPalette}
+          smooth={false}
+          strokeWidth={2}
+          showPoints={true}
+          pointSize={6}
+          legend={{
+            show: true,
+            position: 'top',
+            orientation: 'horizontal'
+          }}
+          tooltip={{
+            show: true,
+            trigger: 'axis'
+          }}
+          xAxis={{
+            type: 'category',
+            label: 'Month'
+          }}
+          yAxis={{
+            label: 'Value',
+            grid: true
+          }}
+          onDataPointClick={(data) => {
+            onInteraction?.(`Clicked ${data.seriesName} at ${data.axisValue}: ${data.value}`);
+          }}
+          responsive
+        />
+        <div style={{ 
+          marginTop: '15px',
+          padding: '12px',
+          backgroundColor: theme === 'dark' ? '#1e40af' : '#eff6ff',
+          borderRadius: '6px',
+          fontSize: '13px',
+          border: `1px solid ${theme === 'dark' ? '#3b82f6' : '#bfdbfe'}`
+        }}>
+          <strong>🎯 Expected Result:</strong> All series should be properly aligned with the x-axis showing all months (Jan-Jun).
+          "Series with Gaps" should show gaps at Feb and Apr. "Sparse Series" should show gaps at Jan, Mar, and May.
+        </div>
+      </div>
+
+      {/* Example 11: Missing Data Alignment Test - Grouped Data */}
+      <div style={{ marginBottom: '40px' }}>
+        <h4 style={{
+          color: theme === 'dark' ? '#fff' : '#333',
+          marginBottom: '20px',
+          fontSize: '18px',
+          fontWeight: '600'
+        }}>
+          🔧 Missing Data Alignment Test - Grouped Data (seriesField)
+        </h4>
+        <p style={{
+          color: theme === 'dark' ? '#ccc' : '#666',
+          marginBottom: '20px',
+          fontSize: '14px',
+          lineHeight: 1.5
+        }}>
+          <strong>Tests grouped data with missing values:</strong> Using seriesField to group data where each product has different months of data.
+          This was the main issue reported - misaligned data points on x-axis.
+        </p>
+        <LineChart
+          data={groupedMissingData}
+          xField="month"
+          yField="sales"
+          seriesField="product"
+          title="Missing Data Alignment - Grouped Data Format"
+          subtitle="Products with different data availability should align properly"
+          height={400}
+          theme={theme}
+          colorPalette={colorPalette}
+          smooth={true}
+          strokeWidth={2}
+          showPoints={true}
+          pointSize={6}
+          seriesConfig={{
+            'Product A': {
+              color: '#ef4444',
+              strokeStyle: 'solid',
+            },
+            'Product B': {
+              color: '#3b82f6',
+              strokeStyle: 'dashed',
+            },
+            'Product C': {
+              color: '#10b981',
+              strokeStyle: 'dotted',
+            }
+          }}
+          legend={{
+            show: true,
+            position: 'top',
+            orientation: 'horizontal'
+          }}
+          tooltip={{
+            show: true,
+            trigger: 'axis'
+          }}
+          xAxis={{
+            type: 'category',
+            label: 'Month'
+          }}
+          yAxis={{
+            label: 'Sales',
+            format: '{value}',
+            grid: true
+          }}
+          onDataPointClick={(data) => {
+            onInteraction?.(`Clicked ${data.seriesName} at ${data.axisValue}: ${data.value} sales`);
+          }}
+          responsive
+        />
+        <div style={{ 
+          marginTop: '15px',
+          padding: '12px',
+          backgroundColor: theme === 'dark' ? '#166534' : '#f0fdf4',
+          borderRadius: '6px',
+          fontSize: '13px',
+          border: `1px solid ${theme === 'dark' ? '#22c55e' : '#bbf7d0'}`
+        }}>
+          <strong>✅ Fix Applied:</strong> The chart now uses data alignment logic to ensure all products show on the same x-axis scale.
+          Product A is missing Mar & May, Product B is missing Feb & Apr, Product C is missing Jan & Jun.
+          All data points should align correctly with their respective months.
         </div>
       </div>
     </>

@@ -1,11 +1,12 @@
 import type { EChartsOption } from 'echarts/types/dist/shared';
-import type { LineChartProps } from '@/types';
+import type { LineChartProps, DataPoint } from '@/types';
 import type { AxisConfig } from '@/types/config';
 
 import {
   isObjectData,
   groupDataByField,
   mapStrokeStyleToECharts,
+  alignSeriesData,
 } from '../data-processing';
 import {
   buildBaseOption,
@@ -23,42 +24,88 @@ export function buildLineChartOption(props: LineChartProps): EChartsOption {
   let xAxisData: any[] = [];
   
   if (props.series && props.data) {
-    // Multiple series provided explicitly
-    series = props.series.map((s) => ({
-      name: s.name,
-      type: 'line',
-      data: isObjectData(s.data) && props.yField 
-        ? s.data.map(item => item[props.yField as string])
-        : s.data,
-      smooth: s.smooth ?? props.smooth,
-      lineStyle: { 
-        width: s.strokeWidth ?? props.strokeWidth,
-        type: mapStrokeStyleToECharts(s.strokeStyle ?? props.strokeStyle)
-      },
-      itemStyle: { color: s.color },
-      areaStyle: (s.showArea ?? props.showArea) ? { opacity: props.areaOpacity || 0.3 } : undefined,
-      symbol: (s.showPoints ?? props.showPoints) !== false ? (s.pointShape ?? props.pointShape ?? 'circle') : 'none',
-      symbolSize: s.pointSize ?? props.pointSize ?? 4,
-      yAxisIndex: s.yAxisIndex ?? 0, // Default to first y-axis
-    }));
-    
-    // Extract x-axis data from first series
-    if (props.series && props.series[0] && isObjectData(props.series[0].data) && props.xField) {
-      xAxisData = props.series[0].data.map(item => (item as any)[props.xField as string]);
+    // Multiple series provided explicitly - use data alignment
+    if (props.xField && props.yField && props.series[0]?.data && isObjectData(props.series[0].data)) {
+      // Prepare data for alignment
+      const seriesDataForAlignment = props.series.map(s => ({
+        name: s.name,
+        data: s.data as readonly DataPoint[],
+        xField: props.xField as string,
+        yField: props.yField as string,
+      }));
+
+      // Align the data
+      const { xAxisData: alignedXAxisData, alignedSeries } = alignSeriesData(seriesDataForAlignment);
+      xAxisData = [...alignedXAxisData];
+
+      // Create series with aligned data
+      series = props.series.map((s, index) => ({
+        name: s.name,
+        type: 'line',
+        data: alignedSeries[index]?.alignedData || [],
+        smooth: s.smooth ?? props.smooth,
+        lineStyle: { 
+          width: s.strokeWidth ?? props.strokeWidth,
+          type: mapStrokeStyleToECharts(s.strokeStyle ?? props.strokeStyle)
+        },
+        itemStyle: { color: s.color },
+        areaStyle: (s.showArea ?? props.showArea) ? { opacity: props.areaOpacity || 0.3 } : undefined,
+        symbol: (s.showPoints ?? props.showPoints) !== false ? (s.pointShape ?? props.pointShape ?? 'circle') : 'none',
+        symbolSize: s.pointSize ?? props.pointSize ?? 4,
+        yAxisIndex: s.yAxisIndex ?? 0, // Default to first y-axis
+      }));
+    } else {
+      // Fallback to original logic for non-object data or missing field mappings
+      series = props.series.map((s) => ({
+        name: s.name,
+        type: 'line',
+        data: isObjectData(s.data) && props.yField 
+          ? s.data.map(item => item[props.yField as string])
+          : s.data,
+        smooth: s.smooth ?? props.smooth,
+        lineStyle: { 
+          width: s.strokeWidth ?? props.strokeWidth,
+          type: mapStrokeStyleToECharts(s.strokeStyle ?? props.strokeStyle)
+        },
+        itemStyle: { color: s.color },
+        areaStyle: (s.showArea ?? props.showArea) ? { opacity: props.areaOpacity || 0.3 } : undefined,
+        symbol: (s.showPoints ?? props.showPoints) !== false ? (s.pointShape ?? props.pointShape ?? 'circle') : 'none',
+        symbolSize: s.pointSize ?? props.pointSize ?? 4,
+        yAxisIndex: s.yAxisIndex ?? 0, // Default to first y-axis
+      }));
+      
+      // Extract x-axis data from first series (original logic)
+      if (props.series && props.series[0] && isObjectData(props.series[0].data) && props.xField) {
+        xAxisData = props.series[0].data.map(item => (item as any)[props.xField as string]);
+      }
     }
   } else if (props.data) {
     // Single series from main data
     if (isObjectData(props.data)) {
       // Object data format
       if (props.seriesField) {
-        // Group by series field
+        // Group by series field and use data alignment
         const groups = groupDataByField(props.data, props.seriesField);
-        series = Object.entries(groups).map(([name, groupData]) => {
+        
+        // Prepare data for alignment
+        const seriesDataForAlignment = Object.entries(groups).map(([name, groupData]) => ({
+          name,
+          data: groupData,
+          xField: props.xField as string,
+          yField: props.yField as string,
+        }));
+
+        // Align the data
+        const { xAxisData: alignedXAxisData, alignedSeries } = alignSeriesData(seriesDataForAlignment);
+        xAxisData = [...alignedXAxisData];
+
+        // Create series with aligned data
+        series = Object.entries(groups).map(([name], index) => {
           const seriesSpecificConfig = props.seriesConfig?.[name] || {};
           return {
             name,
             type: 'line',
-            data: groupData.map(item => item[props.yField as string]),
+            data: alignedSeries[index]?.alignedData || [],
             smooth: seriesSpecificConfig.smooth ?? props.smooth,
             lineStyle: { 
               width: seriesSpecificConfig.strokeWidth ?? props.strokeWidth,
@@ -74,26 +121,28 @@ export function buildLineChartOption(props: LineChartProps): EChartsOption {
             yAxisIndex: seriesSpecificConfig.yAxisIndex ?? 0, // Default to first y-axis
           };
         });
-        // Extract unique X values while preserving original data order
-        const seen = new Set();
-        xAxisData = [];
-        for (const item of props.data) {
-          const value = item[props.xField as string];
-          if (value != null && !seen.has(value)) {
-            seen.add(value);
-            xAxisData.push(value);
-          }
-        }
       } else {
         // Single series
         if (Array.isArray(props.yField)) {
-          // Multiple y fields = multiple series
-          series = props.yField.map(field => {
+          // Multiple y fields = multiple series - use data alignment
+          const seriesDataForAlignment = props.yField.map(field => ({
+            name: field,
+            data: props.data! as readonly DataPoint[],
+            xField: props.xField as string,
+            yField: field,
+          }));
+
+          // Align the data
+          const { xAxisData: alignedXAxisData, alignedSeries } = alignSeriesData(seriesDataForAlignment);
+          xAxisData = [...alignedXAxisData];
+
+          // Create series with aligned data
+          series = props.yField.map((field, index) => {
             const seriesSpecificConfig = props.seriesConfig?.[field] || {};
             return {
               name: field,
               type: 'line',
-              data: props.data!.map((item: any) => item[field]),
+              data: alignedSeries[index]?.alignedData || [],
               smooth: seriesSpecificConfig.smooth ?? props.smooth,
               lineStyle: { 
                 width: seriesSpecificConfig.strokeWidth ?? props.strokeWidth,

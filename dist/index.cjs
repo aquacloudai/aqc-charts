@@ -1181,6 +1181,45 @@ function mapStrokeStyleToECharts(strokeStyle) {
 		default: return "solid";
 	}
 }
+/**
+* Aligns multiple series data to ensure all series have data points for every x-axis value.
+* Missing data points are filled with null values to maintain proper alignment.
+* 
+* @param seriesDataList - Array of series data to align
+* @returns Object containing unified x-axis values and aligned series data
+*/
+function alignSeriesData(seriesDataList) {
+	if (seriesDataList.length === 0) return {
+		xAxisData: [],
+		alignedSeries: []
+	};
+	const allXValues = new Map();
+	let indexCounter = 0;
+	seriesDataList.forEach((seriesData) => {
+		seriesData.data.forEach((item) => {
+			const xValue = item[seriesData.xField];
+			if (xValue != null && !allXValues.has(xValue)) allXValues.set(xValue, indexCounter++);
+		});
+	});
+	const sortedXValues = Array.from(allXValues.entries()).sort((a, b) => a[1] - b[1]).map(([value]) => value);
+	const alignedSeries = seriesDataList.map((seriesData) => {
+		const dataMap = new Map();
+		seriesData.data.forEach((item) => {
+			const xValue = item[seriesData.xField];
+			const yValue = item[seriesData.yField];
+			if (xValue != null && yValue != null) dataMap.set(xValue, yValue);
+		});
+		const alignedData = sortedXValues.map((xValue) => dataMap.get(xValue) ?? null);
+		return {
+			name: seriesData.name,
+			alignedData
+		};
+	});
+	return {
+		xAxisData: sortedXValues,
+		alignedSeries
+	};
+}
 
 //#endregion
 //#region src/utils/base-options.ts
@@ -1386,7 +1425,31 @@ function buildLineChartOption(props) {
 	const baseOption = buildBaseOption(props);
 	let series = [];
 	let xAxisData = [];
-	if (props.series && props.data) {
+	if (props.series && props.data) if (props.xField && props.yField && props.series[0]?.data && isObjectData(props.series[0].data)) {
+		const seriesDataForAlignment = props.series.map((s) => ({
+			name: s.name,
+			data: s.data,
+			xField: props.xField,
+			yField: props.yField
+		}));
+		const { xAxisData: alignedXAxisData, alignedSeries } = alignSeriesData(seriesDataForAlignment);
+		xAxisData = [...alignedXAxisData];
+		series = props.series.map((s, index) => ({
+			name: s.name,
+			type: "line",
+			data: alignedSeries[index]?.alignedData || [],
+			smooth: s.smooth ?? props.smooth,
+			lineStyle: {
+				width: s.strokeWidth ?? props.strokeWidth,
+				type: mapStrokeStyleToECharts(s.strokeStyle ?? props.strokeStyle)
+			},
+			itemStyle: { color: s.color },
+			areaStyle: s.showArea ?? props.showArea ? { opacity: props.areaOpacity || .3 } : void 0,
+			symbol: (s.showPoints ?? props.showPoints) !== false ? s.pointShape ?? props.pointShape ?? "circle" : "none",
+			symbolSize: s.pointSize ?? props.pointSize ?? 4,
+			yAxisIndex: s.yAxisIndex ?? 0
+		}));
+	} else {
 		series = props.series.map((s) => ({
 			name: s.name,
 			type: "line",
@@ -1403,14 +1466,23 @@ function buildLineChartOption(props) {
 			yAxisIndex: s.yAxisIndex ?? 0
 		}));
 		if (props.series && props.series[0] && isObjectData(props.series[0].data) && props.xField) xAxisData = props.series[0].data.map((item) => item[props.xField]);
-	} else if (props.data) if (isObjectData(props.data)) if (props.seriesField) {
+	}
+	else if (props.data) if (isObjectData(props.data)) if (props.seriesField) {
 		const groups = groupDataByField(props.data, props.seriesField);
-		series = Object.entries(groups).map(([name, groupData]) => {
+		const seriesDataForAlignment = Object.entries(groups).map(([name, groupData]) => ({
+			name,
+			data: groupData,
+			xField: props.xField,
+			yField: props.yField
+		}));
+		const { xAxisData: alignedXAxisData, alignedSeries } = alignSeriesData(seriesDataForAlignment);
+		xAxisData = [...alignedXAxisData];
+		series = Object.entries(groups).map(([name], index) => {
 			const seriesSpecificConfig = props.seriesConfig?.[name] || {};
 			return {
 				name,
 				type: "line",
-				data: groupData.map((item) => item[props.yField]),
+				data: alignedSeries[index]?.alignedData || [],
 				smooth: seriesSpecificConfig.smooth ?? props.smooth,
 				lineStyle: {
 					width: seriesSpecificConfig.strokeWidth ?? props.strokeWidth,
@@ -1423,35 +1495,35 @@ function buildLineChartOption(props) {
 				yAxisIndex: seriesSpecificConfig.yAxisIndex ?? 0
 			};
 		});
-		const seen = new Set();
-		xAxisData = [];
-		for (const item of props.data) {
-			const value = item[props.xField];
-			if (value != null && !seen.has(value)) {
-				seen.add(value);
-				xAxisData.push(value);
-			}
-		}
 	} else {
-		if (Array.isArray(props.yField)) series = props.yField.map((field) => {
-			const seriesSpecificConfig = props.seriesConfig?.[field] || {};
-			return {
+		if (Array.isArray(props.yField)) {
+			const seriesDataForAlignment = props.yField.map((field) => ({
 				name: field,
-				type: "line",
-				data: props.data.map((item) => item[field]),
-				smooth: seriesSpecificConfig.smooth ?? props.smooth,
-				lineStyle: {
-					width: seriesSpecificConfig.strokeWidth ?? props.strokeWidth,
-					type: mapStrokeStyleToECharts(seriesSpecificConfig.strokeStyle ?? props.strokeStyle)
-				},
-				itemStyle: seriesSpecificConfig.color ? { color: seriesSpecificConfig.color } : void 0,
-				areaStyle: seriesSpecificConfig.showArea ?? props.showArea ? { opacity: seriesSpecificConfig.areaOpacity ?? (props.areaOpacity || .3) } : void 0,
-				symbol: (seriesSpecificConfig.showPoints ?? props.showPoints) !== false ? seriesSpecificConfig.pointShape ?? props.pointShape ?? "circle" : "none",
-				symbolSize: seriesSpecificConfig.pointSize ?? props.pointSize ?? 4,
-				yAxisIndex: seriesSpecificConfig.yAxisIndex ?? 0
-			};
-		});
-		else series = [{
+				data: props.data,
+				xField: props.xField,
+				yField: field
+			}));
+			const { xAxisData: alignedXAxisData, alignedSeries } = alignSeriesData(seriesDataForAlignment);
+			xAxisData = [...alignedXAxisData];
+			series = props.yField.map((field, index) => {
+				const seriesSpecificConfig = props.seriesConfig?.[field] || {};
+				return {
+					name: field,
+					type: "line",
+					data: alignedSeries[index]?.alignedData || [],
+					smooth: seriesSpecificConfig.smooth ?? props.smooth,
+					lineStyle: {
+						width: seriesSpecificConfig.strokeWidth ?? props.strokeWidth,
+						type: mapStrokeStyleToECharts(seriesSpecificConfig.strokeStyle ?? props.strokeStyle)
+					},
+					itemStyle: seriesSpecificConfig.color ? { color: seriesSpecificConfig.color } : void 0,
+					areaStyle: seriesSpecificConfig.showArea ?? props.showArea ? { opacity: seriesSpecificConfig.areaOpacity ?? (props.areaOpacity || .3) } : void 0,
+					symbol: (seriesSpecificConfig.showPoints ?? props.showPoints) !== false ? seriesSpecificConfig.pointShape ?? props.pointShape ?? "circle" : "none",
+					symbolSize: seriesSpecificConfig.pointSize ?? props.pointSize ?? 4,
+					yAxisIndex: seriesSpecificConfig.yAxisIndex ?? 0
+				};
+			});
+		} else series = [{
 			type: "line",
 			data: props.data.map((item) => item[props.yField]),
 			smooth: props.smooth,

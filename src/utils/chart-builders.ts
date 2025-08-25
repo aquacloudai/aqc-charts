@@ -22,6 +22,7 @@ export {
   groupDataByField,
   detectDataType,
   mapStrokeStyleToECharts,
+  alignSeriesData,
 } from './data-processing';
 export {
   buildBaseOption,
