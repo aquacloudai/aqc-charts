@@ -294,7 +294,7 @@ function loadScript(src, name, timeout = 3e4) {
 async function loadECharts(options = {}) {
 	if (isLoaded && window.echarts && window.ecStat) return window.echarts;
 	if (loadingPromise) return loadingPromise;
-	const { version = "5.6.0", retryAttempts = 3, retryDelay = 1e3, timeout = 3e4 } = options;
+	const { version = "6.0.0", retryAttempts = 3, retryDelay = 1e3, timeout = 3e4 } = options;
 	loadingPromise = safeAsync(async () => {
 		if (window.echarts && window.ecStat) {
 			isLoaded = true;

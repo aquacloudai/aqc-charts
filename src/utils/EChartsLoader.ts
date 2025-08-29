@@ -112,7 +112,7 @@ export async function loadECharts(options: EChartsLoadingOptions = {}): Promise<
   }
 
   const {
-    version = '5.6.0',
+    version = '6.0.0',
     retryAttempts = 3,
     retryDelay = 1000,
     timeout = 30000
