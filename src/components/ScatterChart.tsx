@@ -3,6 +3,7 @@ import type { EChartsType } from 'echarts/core';
 import type { ScatterChartProps, ErgonomicChartRef } from '@/types';
 import { useECharts } from '@/hooks/useECharts';
 import { buildScatterChartOption } from '@/utils/chart-builders';
+import { filterDOMProps } from '@/utils/domProps';
 
 /**
  * Ergonomic ScatterChart component with intuitive props
@@ -113,6 +114,9 @@ const ScatterChart = forwardRef<ErgonomicChartRef, ScatterChartProps>(({
   
   ...restProps
 }, ref) => {
+  
+  // Filter out chart-specific props to prevent DOM warnings
+  const domProps = filterDOMProps(restProps);
   
   // Build ECharts option from ergonomic props
   const chartOption = useMemo(() => {
@@ -301,10 +305,13 @@ const ScatterChart = forwardRef<ErgonomicChartRef, ScatterChartProps>(({
     );
   }
   
-  // Container style
+  // Container style with minimum dimensions fallback
   const containerStyle = useMemo(() => ({
     width,
     height,
+    // Add min dimensions when using percentage width to prevent zero-size containers
+    minWidth: typeof width === 'string' && width.includes('%') ? '300px' : undefined,
+    minHeight: '300px', // Always ensure minimum height
     position: 'relative' as const,
     ...style,
   }), [width, height, style]);
@@ -313,7 +320,7 @@ const ScatterChart = forwardRef<ErgonomicChartRef, ScatterChartProps>(({
     <div
       className={`aqc-charts-container ${className || ''}`}
       style={containerStyle}
-      {...restProps}
+      {...domProps}
     >
       {/* Chart container */}
       <div

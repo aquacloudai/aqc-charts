@@ -3,6 +3,7 @@ import type { EChartsType } from 'echarts/core';
 import type { RegressionChartProps, ErgonomicChartRef } from '@/types';
 import { useECharts } from '@/hooks/useECharts';
 import { buildRegressionChartOption } from '@/utils/chart-builders';
+import { filterDOMProps } from '@/utils/domProps';
 
 /**
  * Ergonomic RegressionChart component with intuitive props
@@ -119,6 +120,7 @@ const RegressionChart = forwardRef<ErgonomicChartRef, RegressionChartProps>(({
   
   ...restProps
 }, ref) => {
+  const domProps = filterDOMProps(restProps);
   
   // Build ECharts option from ergonomic props
   const chartOption = useMemo(() => {
@@ -329,7 +331,7 @@ const RegressionChart = forwardRef<ErgonomicChartRef, RegressionChartProps>(({
     <div
       className={`aqc-charts-container ${className || ''}`}
       style={containerStyle}
-      {...restProps}
+      {...domProps}
     >
       {/* Chart container */}
       <div

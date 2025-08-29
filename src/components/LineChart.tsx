@@ -3,6 +3,7 @@ import type { EChartsType } from 'echarts/core';
 import type { LineChartProps, ErgonomicChartRef } from '@/types';
 import { useECharts } from '@/hooks/useECharts';
 import { buildLineChartOption } from '@/utils/chart-builders';
+import { filterDOMProps } from '@/utils/domProps';
 
 /**
  * Ergonomic LineChart component with intuitive props
@@ -110,6 +111,9 @@ const LineChart = forwardRef<ErgonomicChartRef, LineChartProps>(({
   
   ...restProps
 }, ref) => {
+  
+  // Filter out chart-specific props from restProps to avoid React DOM warnings
+  const domProps = filterDOMProps(restProps);
   
   // Build ECharts option from ergonomic props
   const chartOption = useMemo(() => {
@@ -375,10 +379,13 @@ const LineChart = forwardRef<ErgonomicChartRef, LineChartProps>(({
     );
   }
   
-  // Container style
+  // Container style with minimum dimensions fallback
   const containerStyle = useMemo(() => ({
     width,
     height,
+    // Add min dimensions when using percentage width to prevent zero-size containers
+    minWidth: typeof width === 'string' && width.includes('%') ? '300px' : undefined,
+    minHeight: '300px', // Always ensure minimum height
     position: 'relative' as const,
     ...style,
   }), [width, height, style]);
@@ -387,7 +394,7 @@ const LineChart = forwardRef<ErgonomicChartRef, LineChartProps>(({
     <div
       className={`aqc-charts-container ${className || ''}`}
       style={containerStyle}
-      {...restProps}
+      {...domProps}
     >
       {/* Chart container */}
       <div

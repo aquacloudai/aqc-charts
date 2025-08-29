@@ -59,13 +59,28 @@ export function useChartInstance({
         );
       }
 
-      // Check container dimensions
-      const rect = containerRef.current.getBoundingClientRect();
+      // Check container dimensions - if zero, wait a bit for layout to complete
+      let rect = containerRef.current.getBoundingClientRect();
       if (rect.width === 0 || rect.height === 0) {
-        console.warn('AQC Charts: Container has zero dimensions, chart may not render properly', {
-          width: rect.width,
-          height: rect.height
-        });
+        // Wait a short time for CSS/layout to apply, then check again
+        await new Promise(resolve => setTimeout(resolve, 50));
+        
+        // Check again after waiting
+        if (!containerRef.current) {
+          throw new ChartInitError(
+            new Error('Container element was removed during dimension check'),
+            { phase: 'dimension-check' }
+          );
+        }
+        
+        rect = containerRef.current.getBoundingClientRect();
+        if (rect.width === 0 || rect.height === 0) {
+          console.warn('AQC Charts: Container still has zero dimensions after layout delay', {
+            width: rect.width,
+            height: rect.height,
+            suggestion: 'Consider setting explicit width/height on the chart or its parent container'
+          });
+        }
       }
 
       // Create new instance without built-in theme

@@ -340,11 +340,17 @@ function useChartInstance({ containerRef, onChartReady }) {
 			const echarts = await loadECharts();
 			disposeChart();
 			if (!containerRef.current) throw new ChartInitError(new Error("Container element was removed during initialization"), { phase: "post-load" });
-			const rect = containerRef.current.getBoundingClientRect();
-			if (rect.width === 0 || rect.height === 0) console.warn("AQC Charts: Container has zero dimensions, chart may not render properly", {
-				width: rect.width,
-				height: rect.height
-			});
+			let rect = containerRef.current.getBoundingClientRect();
+			if (rect.width === 0 || rect.height === 0) {
+				await new Promise((resolve) => setTimeout(resolve, 50));
+				if (!containerRef.current) throw new ChartInitError(new Error("Container element was removed during dimension check"), { phase: "dimension-check" });
+				rect = containerRef.current.getBoundingClientRect();
+				if (rect.width === 0 || rect.height === 0) console.warn("AQC Charts: Container still has zero dimensions after layout delay", {
+					width: rect.width,
+					height: rect.height,
+					suggestion: "Consider setting explicit width/height on the chart or its parent container"
+				});
+			}
 			const chart = echarts.init(containerRef.current, void 0, {
 				renderer: "canvas",
 				useDirtyRect: true
@@ -3213,6 +3219,17 @@ function buildSankeyChartOption(props) {
 }
 
 //#endregion
+//#region src/utils/domProps.ts
+const filterDOMProps = (props) => {
+	const { data, series, seriesField, categoryField, valueField, xField, yField, nameField, sizeField, colorField, seriesConfig, theme, colorPalette, backgroundColor, title, subtitle, titlePosition, logo, smooth, strokeWidth, strokeStyle, showPoints, pointSize, pointShape, showArea, areaOpacity, areaGradient, orientation, barWidth, barGap, borderRadius, stack, stackType, showPercentage, showLabels, showAbsoluteValues, showPercentageLabels, xAxis, yAxis, legend, tooltip, sortBy, sortOrder, animate, animationDuration, customOption, responsive, maintainAspectRatio, onChartReady, onDataPointClick, onDataPointHover, zoom, pan, brush, radius, startAngle, roseType, labelPosition, showValues, showPercentages, labelFormat, selectedMode, emphasis, pointOpacity, showTrendline, trendlineType, stacked, opacity, disabled, grouped,...filteredProps } = props;
+	const domProps = {};
+	Object.keys(filteredProps).forEach((key) => {
+		if (key === "id" || key === "className" || key === "style" || key.startsWith("data-") || key.startsWith("aria-") || key === "role" || key === "tabIndex" || key === "onClick" || key === "onMouseEnter" || key === "onMouseLeave" || key === "onFocus" || key === "onBlur" || key === "onKeyDown" || key === "onKeyUp" || key === "onKeyPress") domProps[key] = filteredProps[key];
+	});
+	return domProps;
+};
+
+//#endregion
 //#region src/components/LineChart.tsx
 /**
 * Ergonomic LineChart component with intuitive props
@@ -3252,6 +3269,7 @@ function buildSankeyChartOption(props) {
 * />
 */
 const LineChart = forwardRef(({ width = "100%", height = 400, className, style, data, xField = "x", yField = "y", seriesField, series, seriesConfig, theme = "light", colorPalette, backgroundColor, title, subtitle, titlePosition = "center", logo, smooth = false, strokeWidth = 2, strokeStyle = "solid", showPoints = true, pointSize = 4, pointShape = "circle", showArea = false, areaOpacity = .3, areaGradient = false, xAxis, yAxis, legend, tooltip, zoom = false, pan = false, brush = false, loading = false, disabled: _disabled = false, animate = true, animationDuration, onChartReady, onDataPointClick, onDataPointHover, customOption, responsive: _responsive = true,...restProps }, ref) => {
+	const domProps = filterDOMProps(restProps);
 	const chartOption = useMemo(() => {
 		return buildLineChartOption({
 			data: data || void 0,
@@ -3502,6 +3520,8 @@ const LineChart = forwardRef(({ width = "100%", height = 400, className, style, 
 	const containerStyle = useMemo(() => ({
 		width,
 		height,
+		minWidth: typeof width === "string" && width.includes("%") ? "300px" : void 0,
+		minHeight: "300px",
 		position: "relative",
 		...style
 	}), [
@@ -3512,7 +3532,7 @@ const LineChart = forwardRef(({ width = "100%", height = 400, className, style, 
 	return /* @__PURE__ */ jsxs("div", {
 		className: `aqc-charts-container ${className || ""}`,
 		style: containerStyle,
-		...restProps,
+		...domProps,
 		children: [/* @__PURE__ */ jsx("div", {
 			ref: containerRef,
 			style: {
@@ -3601,6 +3621,7 @@ LineChart.displayName = "LineChart";
 * />
 */
 const BarChart = forwardRef(({ width = "100%", height = 400, className, style, data, categoryField = "category", valueField = "value", seriesField, series, theme = "light", colorPalette, backgroundColor, title, subtitle, titlePosition = "center", logo, orientation = "vertical", barWidth, barGap, borderRadius = 0, stack = false, stackType = "normal", showPercentage = false, showLabels = false, showAbsoluteValues = false, showPercentageLabels = false, xAxis, yAxis, legend, tooltip, sortBy = "none", sortOrder = "asc", loading = false, disabled: _disabled = false, animate = true, animationDuration, onChartReady, onDataPointClick, onDataPointHover, customOption, responsive: _responsive = true,...restProps }, ref) => {
+	const domProps = filterDOMProps(restProps);
 	const chartOption = useMemo(() => {
 		return buildBarChartOption({
 			data: data || void 0,
@@ -3848,6 +3869,8 @@ const BarChart = forwardRef(({ width = "100%", height = 400, className, style, d
 	const containerStyle = useMemo(() => ({
 		width,
 		height,
+		minWidth: typeof width === "string" && width.includes("%") ? "300px" : void 0,
+		minHeight: "300px",
 		position: "relative",
 		...style
 	}), [
@@ -3858,7 +3881,7 @@ const BarChart = forwardRef(({ width = "100%", height = 400, className, style, d
 	return /* @__PURE__ */ jsxs("div", {
 		className: `aqc-charts-container ${className || ""}`,
 		style: containerStyle,
-		...restProps,
+		...domProps,
 		children: [/* @__PURE__ */ jsx("div", {
 			ref: containerRef,
 			style: {
@@ -3939,6 +3962,7 @@ BarChart.displayName = "BarChart";
 * />
 */
 const PieChart = forwardRef(({ width = "100%", height = 400, className, style, data, nameField = "name", valueField = "value", theme = "light", colorPalette, backgroundColor, title, subtitle, titlePosition = "center", radius = 75, startAngle = 90, roseType = false, showLabels = true, labelPosition = "outside", showValues = false, showPercentages = true, labelFormat, legend, tooltip, selectedMode = false, emphasis = true, loading = false, disabled: _disabled = false, animate = true, animationDuration, onChartReady, onDataPointClick, onDataPointHover, customOption, responsive: _responsive = true,...restProps }, ref) => {
+	const domProps = filterDOMProps(restProps);
 	const chartOption = useMemo(() => {
 		return buildPieChartOption({
 			data,
@@ -4129,6 +4153,8 @@ const PieChart = forwardRef(({ width = "100%", height = 400, className, style, d
 	const containerStyle = useMemo(() => ({
 		width,
 		height,
+		minWidth: typeof width === "string" && width.includes("%") ? "300px" : void 0,
+		minHeight: "300px",
 		position: "relative",
 		...style
 	}), [
@@ -4139,7 +4165,7 @@ const PieChart = forwardRef(({ width = "100%", height = 400, className, style, d
 	return /* @__PURE__ */ jsxs("div", {
 		className: `aqc-charts-container ${className || ""}`,
 		style: containerStyle,
-		...restProps,
+		...domProps,
 		children: [/* @__PURE__ */ jsx("div", {
 			ref: containerRef,
 			style: {
@@ -4232,6 +4258,7 @@ PieChart.displayName = "PieChart";
 * />
 */
 const ScatterChart = forwardRef(({ width = "100%", height = 400, className, style, data, xField = "x", yField = "y", sizeField, colorField, seriesField, series, theme = "light", colorPalette, backgroundColor, title, subtitle, titlePosition = "center", pointSize = 10, pointShape = "circle", pointOpacity = .8, xAxis, yAxis, legend, tooltip, showTrendline = false, trendlineType = "linear", loading = false, disabled: _disabled = false, animate = true, animationDuration, onChartReady, onDataPointClick, onDataPointHover, customOption, responsive: _responsive = true,...restProps }, ref) => {
+	const domProps = filterDOMProps(restProps);
 	const chartOption = useMemo(() => {
 		const optionProps = {
 			data: data || [],
@@ -4405,6 +4432,8 @@ const ScatterChart = forwardRef(({ width = "100%", height = 400, className, styl
 	const containerStyle = useMemo(() => ({
 		width,
 		height,
+		minWidth: typeof width === "string" && width.includes("%") ? "300px" : void 0,
+		minHeight: "300px",
 		position: "relative",
 		...style
 	}), [
@@ -4415,7 +4444,7 @@ const ScatterChart = forwardRef(({ width = "100%", height = 400, className, styl
 	return /* @__PURE__ */ jsxs("div", {
 		className: `aqc-charts-container ${className || ""}`,
 		style: containerStyle,
-		...restProps,
+		...domProps,
 		children: [/* @__PURE__ */ jsx("div", {
 			ref: containerRef,
 			style: {
@@ -4798,6 +4827,7 @@ StackedAreaChart.displayName = "StackedAreaChart";
 * />
 */
 const CombinedChart = forwardRef(({ width = "100%", height = 400, className, style, data, xField = "x", series = [], theme = "light", colorPalette, backgroundColor, title, subtitle, titlePosition = "center", xAxis, yAxis = [{ type: "value" }], legend, tooltip, zoom = false, pan = false, brush = false, loading = false, disabled: _disabled = false, animate = true, animationDuration, onChartReady, onDataPointClick, onDataPointHover, customOption, responsive: _responsive = true,...restProps }, ref) => {
+	const domProps = filterDOMProps(restProps);
 	const chartOption = useMemo(() => {
 		return buildCombinedChartOption({
 			data: data || [],
@@ -4961,7 +4991,7 @@ const CombinedChart = forwardRef(({ width = "100%", height = 400, className, sty
 	return /* @__PURE__ */ jsxs("div", {
 		className: `aqc-charts-container ${className || ""}`,
 		style: containerStyle,
-		...restProps,
+		...domProps,
 		children: [/* @__PURE__ */ jsx("div", {
 			ref: containerRef,
 			style: {
@@ -5036,6 +5066,7 @@ CombinedChart.displayName = "CombinedChart";
 * />
 */
 const ClusterChart = forwardRef(({ width = "100%", height = 400, className, style, data, xField = "x", yField = "y", nameField, clusterCount = 6, clusterMethod = "kmeans", theme = "light", colorPalette, backgroundColor, title, subtitle, titlePosition = "center", pointSize = 15, pointOpacity = .8, showClusterCenters = false, centerSymbol = "diamond", centerSize = 20, clusterColors, showVisualMap = true, visualMapPosition = "left", xAxis, yAxis, legend, tooltip, loading = false, disabled: _disabled = false, animate = true, animationDuration, onChartReady, onDataPointClick, onDataPointHover, customOption, responsive: _responsive = true,...restProps }, ref) => {
+	const domProps = filterDOMProps(restProps);
 	const dataKey = useMemo(() => JSON.stringify(data), [data]);
 	const chartOption = useMemo(() => {
 		const optionProps = {
@@ -5224,7 +5255,7 @@ const ClusterChart = forwardRef(({ width = "100%", height = 400, className, styl
 	return /* @__PURE__ */ jsxs("div", {
 		className: `aqc-charts-container ${className || ""}`,
 		style: containerStyle,
-		...restProps,
+		...domProps,
 		children: [/* @__PURE__ */ jsx("div", {
 			ref: containerRef,
 			style: {
@@ -5303,6 +5334,7 @@ ClusterChart.displayName = "ClusterChart";
 * />
 */
 const CalendarHeatmapChart = forwardRef(({ width = "100%", height = 400, className, style, data, dateField = "date", valueField = "value", theme = "light", colorPalette, backgroundColor, title, subtitle, titlePosition = "center", year, range, startOfWeek = "sunday", cellSize, colorScale, showWeekLabel = true, showMonthLabel = true, showYearLabel = true, valueFormat, showValues = false, cellBorderColor, cellBorderWidth, splitNumber, orient = "horizontal", monthGap, yearGap, legend, tooltip, loading = false, disabled: _disabled = false, animate = true, animationDuration, onChartReady, onDataPointClick, onDataPointHover, customOption, responsive: _responsive = true,...restProps }, ref) => {
+	const domProps = filterDOMProps(restProps);
 	const chartOption = useMemo(() => {
 		return buildCalendarHeatmapOption({
 			data: data || [],
@@ -5499,7 +5531,7 @@ const CalendarHeatmapChart = forwardRef(({ width = "100%", height = 400, classNa
 	return /* @__PURE__ */ jsxs("div", {
 		className: `aqc-charts-container ${className || ""}`,
 		style: containerStyle,
-		...restProps,
+		...domProps,
 		children: [/* @__PURE__ */ jsx("div", {
 			ref: containerRef,
 			style: {
@@ -5930,6 +5962,7 @@ SankeyChart.displayName = "SankeyChart";
 * />
 */
 const GanttChart = forwardRef(({ width = "100%", height = 600, className, style, data, idField = "id", nameField = "name", categoryField = "category", startTimeField = "startTime", endTimeField = "endTime", colorField = "color", statusField = "status", priorityField = "priority", progressField = "progress", assigneeField = "assignee", tasks, categories, theme = "light", colorPalette, backgroundColor, title, subtitle, titlePosition = "center", categoryWidth = 120, taskHeight = .6, categorySpacing = 2, groupSpacing = 8, taskBarStyle, statusStyles, priorityStyles, categoryLabelStyle, showCategoryLabels = true, categoryColors, timelineStyle, timeRange, timeFormat, dataZoom = true, allowPan = true, allowZoom = true, initialZoomLevel, draggable = false, resizable = false, selectable = false, showTaskTooltips = true, showDependencies = false, showMilestones = false, milestoneStyle, todayMarker = false, showProgress = false, showTaskProgress = true, progressStyle, groupByCategory = false, groupByAssignee = false, filterByStatus, filterByPriority, sortBy, sortOrder = "asc", legend, tooltip, loading = false, disabled: _disabled = false, animate = true, animationDuration, onChartReady, onDataPointClick, onDataPointHover, onTaskClick, onTaskDrag: _onTaskDrag, onTaskResize: _onTaskResize, onCategoryClick, onTimeRangeChange, customOption, responsive: _responsive = true,...restProps }, ref) => {
+	const domProps = filterDOMProps(restProps);
 	const chartOption = useMemo(() => {
 		return buildGanttChartOption({
 			data: data || void 0,
@@ -6268,7 +6301,7 @@ const GanttChart = forwardRef(({ width = "100%", height = 600, className, style,
 	return /* @__PURE__ */ jsxs("div", {
 		className: `aqc-charts-container ${className || ""}`,
 		style: containerStyle,
-		...restProps,
+		...domProps,
 		children: [/* @__PURE__ */ jsx("div", {
 			ref: containerRef,
 			style: {
@@ -6353,6 +6386,7 @@ GanttChart.displayName = "GanttChart";
 * />
 */
 const RegressionChart = forwardRef(({ width = "100%", height = 400, className, style, data, xField = "x", yField = "y", method = "linear", order = 2, theme = "light", colorPalette, backgroundColor, title, subtitle, titlePosition = "center", pointSize = 8, pointShape = "circle", pointOpacity = .7, showPoints = true, lineWidth = 2, lineStyle = "solid", lineColor, lineOpacity = 1, showLine = true, showEquation = false, equationPosition = "top-right", showRSquared = true, equationFormatter, xAxis, yAxis, legend, tooltip, pointsLabel = "Data Points", regressionLabel = "Regression Line", loading = false, disabled: _disabled = false, animate = true, animationDuration, onChartReady, onDataPointClick, onDataPointHover, customOption, responsive: _responsive = true,...restProps }, ref) => {
+	const domProps = filterDOMProps(restProps);
 	const chartOption = useMemo(() => {
 		return buildRegressionChartOption({
 			data: data || [],
@@ -6558,7 +6592,7 @@ const RegressionChart = forwardRef(({ width = "100%", height = 400, className, s
 	return /* @__PURE__ */ jsxs("div", {
 		className: `aqc-charts-container ${className || ""}`,
 		style: containerStyle,
-		...restProps,
+		...domProps,
 		children: [/* @__PURE__ */ jsx("div", {
 			ref: containerRef,
 			style: {

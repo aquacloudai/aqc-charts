@@ -3,6 +3,7 @@ import type { EChartsType } from 'echarts/core';
 import type { CalendarHeatmapProps, ErgonomicChartRef } from '@/types';
 import { useECharts } from '@/hooks/useECharts';
 import { buildCalendarHeatmapOption } from '@/utils/chart-builders';
+import { filterDOMProps } from '@/utils/domProps';
 
 /**
  * Ergonomic CalendarHeatmapChart component with intuitive props
@@ -110,6 +111,7 @@ const CalendarHeatmapChart = forwardRef<ErgonomicChartRef, CalendarHeatmapProps>
   
   ...restProps
 }, ref) => {
+  const domProps = filterDOMProps(restProps);
   
   // Build ECharts option from ergonomic props
   const chartOption = useMemo(() => {
@@ -315,7 +317,7 @@ const CalendarHeatmapChart = forwardRef<ErgonomicChartRef, CalendarHeatmapProps>
     <div
       className={`aqc-charts-container ${className || ''}`}
       style={containerStyle}
-      {...restProps}
+      {...domProps}
     >
       {/* Chart container */}
       <div

@@ -3,6 +3,7 @@ import type { EChartsType } from 'echarts/core';
 import type { CombinedChartProps, ErgonomicChartRef } from '@/types';
 import { useECharts } from '@/hooks/useECharts';
 import { buildCombinedChartOption } from '@/utils/chart-builders';
+import { filterDOMProps } from '@/utils/domProps';
 
 /**
  * Combined Chart component that can mix line and bar series in the same visualization
@@ -87,6 +88,9 @@ const CombinedChart = forwardRef<ErgonomicChartRef, CombinedChartProps>(({
   
   ...restProps
 }, ref) => {
+  
+  // Filter out chart-specific props to prevent DOM warnings
+  const domProps = filterDOMProps(restProps);
   
   // Build ECharts option from ergonomic props
   const chartOption = useMemo(() => {
@@ -266,7 +270,7 @@ const CombinedChart = forwardRef<ErgonomicChartRef, CombinedChartProps>(({
     <div
       className={`aqc-charts-container ${className || ''}`}
       style={containerStyle}
-      {...restProps}
+      {...domProps}
     >
       {/* Chart container */}
       <div

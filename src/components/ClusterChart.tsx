@@ -3,6 +3,7 @@ import type { EChartsType } from 'echarts/core';
 import type { ClusterChartProps, ErgonomicChartRef } from '@/types';
 import { useECharts } from '@/hooks/useECharts';
 import { buildClusterChartOption } from '@/utils/chart-builders';
+import { filterDOMProps } from '@/utils/domProps';
 
 /**
  * Ergonomic ClusterChart component with intuitive props
@@ -99,6 +100,7 @@ const ClusterChart = forwardRef<ErgonomicChartRef, ClusterChartProps>(({
   
   ...restProps
 }, ref) => {
+  const domProps = filterDOMProps(restProps);
   
   // Build ECharts option from ergonomic props
   // Use JSON.stringify for data to ensure deep comparison for memoization stability
@@ -304,7 +306,7 @@ const ClusterChart = forwardRef<ErgonomicChartRef, ClusterChartProps>(({
     <div
       className={`aqc-charts-container ${className || ''}`}
       style={containerStyle}
-      {...restProps}
+      {...domProps}
     >
       {/* Chart container */}
       <div

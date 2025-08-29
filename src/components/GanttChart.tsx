@@ -3,6 +3,7 @@ import type { EChartsType } from 'echarts/core';
 import type { GanttChartProps, ErgonomicChartRef, GanttTask, GanttCategory } from '@/types';
 import { useECharts } from '@/hooks/useECharts';
 import { buildGanttChartOption } from '@/utils/chart-builders';
+import { filterDOMProps } from '@/utils/domProps';
 
 /**
  * Ergonomic GanttChart component with extensive customization options
@@ -183,6 +184,7 @@ const GanttChart = forwardRef<ErgonomicChartRef, GanttChartProps>(({
   
   ...restProps
 }, ref) => {
+  const domProps = filterDOMProps(restProps);
   
   // Build ECharts option from ergonomic props
   const chartOption = useMemo(() => {
@@ -467,7 +469,7 @@ const GanttChart = forwardRef<ErgonomicChartRef, GanttChartProps>(({
     <div
       className={`aqc-charts-container ${className || ''}`}
       style={containerStyle}
-      {...restProps}
+      {...domProps}
     >
       {/* Chart container */}
       <div

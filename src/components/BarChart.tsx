@@ -3,6 +3,7 @@ import type { EChartsType } from 'echarts/core';
 import type { BarChartProps, ErgonomicChartRef } from '@/types';
 import { useECharts } from '@/hooks/useECharts';
 import { buildBarChartOption } from '@/utils/chart-builders';
+import { filterDOMProps } from '@/utils/domProps';
 
 /**
  * Ergonomic BarChart component with intuitive props
@@ -121,6 +122,9 @@ const BarChart = forwardRef<ErgonomicChartRef, BarChartProps>(({
   
   ...restProps
 }, ref) => {
+  
+  // Filter out chart-specific props from restProps to avoid React DOM warnings
+  const domProps = filterDOMProps(restProps);
   
   // Build ECharts option from ergonomic props
   const chartOption = useMemo(() => {
@@ -384,10 +388,13 @@ const BarChart = forwardRef<ErgonomicChartRef, BarChartProps>(({
     );
   }
   
-  // Container style
+  // Container style with minimum dimensions fallback
   const containerStyle = useMemo(() => ({
     width,
     height,
+    // Add min dimensions when using percentage width to prevent zero-size containers
+    minWidth: typeof width === 'string' && width.includes('%') ? '300px' : undefined,
+    minHeight: '300px', // Always ensure minimum height
     position: 'relative' as const,
     ...style,
   }), [width, height, style]);
@@ -396,7 +403,7 @@ const BarChart = forwardRef<ErgonomicChartRef, BarChartProps>(({
     <div
       className={`aqc-charts-container ${className || ''}`}
       style={containerStyle}
-      {...restProps}
+      {...domProps}
     >
       {/* Chart container */}
       <div
