@@ -147,10 +147,10 @@ Component.displayName = 'Component';
 
 ```json
 {
-  "react": "^18.2.0",           # React framework
-  "react-dom": "^18.2.0",      # React DOM
-  "echarts": "^5.6.0",         # Apache ECharts
-  "echarts-stat": "^1.2.0"     # ECharts statistical extensions
+  "react": "^19.1.0",           # React framework
+  "react-dom": "^19.1.0",      # React DOM
+  "echarts": "6.0.0",          # Apache ECharts v6
+  "echarts-stat": "1.2.0"      # ECharts statistical extensions
 }
 ```
 
