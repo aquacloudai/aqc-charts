@@ -24,7 +24,8 @@ const defaultProps: CombinedChartProps = {
 describe('CombinedChart', () => {
   it('renders without error', () => {
     render(<CombinedChart {...defaultProps} />);
-    expect(screen.getByRole('generic')).toBeInTheDocument();
+    const container = document.querySelector('.aqc-charts-container');
+    expect(container).toBeInTheDocument();
   });
 
   it('renders with custom dimensions', () => {
@@ -36,7 +37,7 @@ describe('CombinedChart', () => {
       />
     );
     
-    const container = screen.getByRole('generic');
+    const container = document.querySelector('.aqc-charts-container');
     expect(container).toHaveStyle({ width: '500px', height: '300px' });
   });
 
@@ -54,7 +55,8 @@ describe('CombinedChart', () => {
     };
 
     render(<CombinedChart {...propsWithDualAxes} />);
-    expect(screen.getByRole('generic')).toBeInTheDocument();
+    const container = document.querySelector('.aqc-charts-container');
+    expect(container).toBeInTheDocument();
   });
 
   it('handles line styling options', () => {
@@ -78,7 +80,8 @@ describe('CombinedChart', () => {
     };
 
     render(<CombinedChart {...propsWithLineStyling} />);
-    expect(screen.getByRole('generic')).toBeInTheDocument();
+    const container = document.querySelector('.aqc-charts-container');
+    expect(container).toBeInTheDocument();
   });
 
   it('handles bar styling options', () => {
@@ -97,7 +100,8 @@ describe('CombinedChart', () => {
     };
 
     render(<CombinedChart {...propsWithBarStyling} />);
-    expect(screen.getByRole('generic')).toBeInTheDocument();
+    const container = document.querySelector('.aqc-charts-container');
+    expect(container).toBeInTheDocument();
   });
 
   it('handles stacked bars with lines', () => {
@@ -118,7 +122,8 @@ describe('CombinedChart', () => {
     };
 
     render(<CombinedChart {...propsWithStacking} />);
-    expect(screen.getByRole('generic')).toBeInTheDocument();
+    const container = document.querySelector('.aqc-charts-container');
+    expect(container).toBeInTheDocument();
   });
 
   it('renders with title and subtitle', () => {
@@ -129,7 +134,8 @@ describe('CombinedChart', () => {
         subtitle="Monthly data comparison"
       />
     );
-    expect(screen.getByRole('generic')).toBeInTheDocument();
+    const container = document.querySelector('.aqc-charts-container');
+    expect(container).toBeInTheDocument();
   });
 
   it('handles loading state', () => {
@@ -151,7 +157,8 @@ describe('CombinedChart', () => {
       />
     );
 
-    expect(screen.getByRole('generic')).toBeInTheDocument();
+    const container = document.querySelector('.aqc-charts-container');
+    expect(container).toBeInTheDocument();
   });
 
   it('handles zoom and pan features', () => {
@@ -163,7 +170,8 @@ describe('CombinedChart', () => {
         brush
       />
     );
-    expect(screen.getByRole('generic')).toBeInTheDocument();
+    const container = document.querySelector('.aqc-charts-container');
+    expect(container).toBeInTheDocument();
   });
 
   it('handles custom colors', () => {
@@ -177,7 +185,8 @@ describe('CombinedChart', () => {
     };
 
     render(<CombinedChart {...propsWithColors} />);
-    expect(screen.getByRole('generic')).toBeInTheDocument();
+    const container = document.querySelector('.aqc-charts-container');
+    expect(container).toBeInTheDocument();
   });
 
   it('handles custom axis configuration', () => {
@@ -200,12 +209,14 @@ describe('CombinedChart', () => {
     };
 
     render(<CombinedChart {...propsWithCustomAxes} />);
-    expect(screen.getByRole('generic')).toBeInTheDocument();
+    const container = document.querySelector('.aqc-charts-container');
+    expect(container).toBeInTheDocument();
   });
 
   it('handles theme variations', () => {
     render(<CombinedChart {...defaultProps} theme="dark" />);
-    expect(screen.getByRole('generic')).toBeInTheDocument();
+    const container = document.querySelector('.aqc-charts-container');
+    expect(container).toBeInTheDocument();
   });
 
   it('handles animation settings', () => {
@@ -216,6 +227,7 @@ describe('CombinedChart', () => {
         animationDuration={1000}
       />
     );
-    expect(screen.getByRole('generic')).toBeInTheDocument();
+    const container = document.querySelector('.aqc-charts-container');
+    expect(container).toBeInTheDocument();
   });
 });

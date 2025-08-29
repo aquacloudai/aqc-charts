@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **NPM Release Pipeline**: Automated NPM publishing under `@aquacloud_ai/aqc-charts` organization
+  - Added GitHub Actions workflow for automated releases on git tags
+  - Configured scoped package publishing with public access
+  - Added comprehensive release documentation in `RELEASE.md`
+  - Updated package name to `@aquacloud_ai/aqc-charts` for organization scoping
+
+### Changed
+- **ECharts v6 Upgrade**: Updated from ECharts 5.6.0 to 6.0.0
+  - Enhanced default theme with improved colors and spacing
+  - Matrix coordinate system support for declarative layouts
+  - Enhanced chord charts with gradient colors
+  - Beeswarm charts support with jitter functionality
+  - Broken axis visualization with torn-paper effects
+  - Improved stock trading chart features
+  - Updated CDN loader to use ECharts 6.0.0 by default
+  - Maintained full backward compatibility with existing API
+
 ### Fixed
 - **DOM Prop Filtering**: Fixed React warnings about unknown DOM properties being passed to HTML elements
   - Created `filterDOMProps` utility in `src/utils/domProps.ts` to filter chart-specific props from DOM elements
