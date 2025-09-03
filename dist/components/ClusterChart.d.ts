@@ -1,3 +1,4 @@
+import React from 'react';
 import type { ClusterChartProps, ErgonomicChartRef } from '@/types';
 /**
  * Ergonomic ClusterChart component with intuitive props
@@ -32,6 +33,6 @@ import type { ClusterChartProps, ErgonomicChartRef } from '@/types';
  *   visualMapPosition="right"
  * />
  */
-declare const ClusterChart: import("react").ForwardRefExoticComponent<ClusterChartProps & import("react").RefAttributes<ErgonomicChartRef>>;
+declare const ClusterChart: React.ForwardRefExoticComponent<ClusterChartProps & React.RefAttributes<ErgonomicChartRef>>;
 export { ClusterChart };
 //# sourceMappingURL=ClusterChart.d.ts.map

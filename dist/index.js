@@ -599,6 +599,132 @@ function useECharts({ option, theme, loading: externalLoading = false, notMerge 
 }
 
 //#endregion
+//#region src/hooks/useLegendDoubleClick.ts
+function useLegendDoubleClick({ chartInstance, onLegendDoubleClick, onSeriesDoubleClick, delay: delay$1 = 300, enableAutoSelection = false }) {
+	const clickTimeout = useRef(null);
+	const lastClickTime = useRef(0);
+	const lastClickedItem = useRef(null);
+	const lastClickType = useRef(null);
+	const selectedLegends = useRef(new Set());
+	const allLegendsVisible = useRef(true);
+	const handleItemClick = useCallback((params, event, type = "legend") => {
+		if (!chartInstance) return;
+		if (!onLegendDoubleClick && !onSeriesDoubleClick && !enableAutoSelection) return;
+		const itemName = type === "series" ? params.seriesName || params.name : params.name;
+		const currentTime = Date.now();
+		const isShiftClick = event?.shiftKey === true;
+		const option = chartInstance.getOption();
+		const legends = option.legend;
+		let legendData = [];
+		if (Array.isArray(legends) && legends.length > 0) legendData = legends[0].data || [];
+		else if (legends && !Array.isArray(legends)) legendData = legends.data || [];
+		if (legendData.length === 0) {
+			const series = option.series;
+			if (Array.isArray(series)) legendData = series.map((s) => s.name).filter(Boolean);
+		}
+		const allLegendNames = legendData.map((item) => typeof item === "string" ? item : item.name).filter(Boolean);
+		if (isShiftClick && enableAutoSelection) {
+			if (clickTimeout.current) {
+				clearTimeout(clickTimeout.current);
+				clickTimeout.current = null;
+			}
+			if (selectedLegends.current.has(itemName)) {
+				selectedLegends.current.delete(itemName);
+				chartInstance.dispatchAction({
+					type: "legendUnSelect",
+					name: itemName
+				});
+			} else {
+				selectedLegends.current.add(itemName);
+				if (allLegendsVisible.current) {
+					for (const name of allLegendNames) if (name !== itemName) chartInstance.dispatchAction({
+						type: "legendUnSelect",
+						name
+					});
+					allLegendsVisible.current = false;
+				}
+				chartInstance.dispatchAction({
+					type: "legendSelect",
+					name: itemName
+				});
+			}
+			if (selectedLegends.current.size === 0) {
+				for (const name of allLegendNames) chartInstance.dispatchAction({
+					type: "legendSelect",
+					name
+				});
+				allLegendsVisible.current = true;
+			}
+			return;
+		}
+		if (clickTimeout.current) {
+			clearTimeout(clickTimeout.current);
+			clickTimeout.current = null;
+		}
+		if (lastClickedItem.current === itemName && lastClickType.current === type && currentTime - lastClickTime.current < delay$1) {
+			if (type === "legend") onLegendDoubleClick?.(itemName, chartInstance);
+			else onSeriesDoubleClick?.(itemName, chartInstance);
+			if (enableAutoSelection) if (allLegendsVisible.current) {
+				selectedLegends.current.clear();
+				selectedLegends.current.add(itemName);
+				for (const name of allLegendNames) if (name !== itemName) chartInstance.dispatchAction({
+					type: "legendUnSelect",
+					name
+				});
+				chartInstance.dispatchAction({
+					type: "legendSelect",
+					name: itemName
+				});
+				allLegendsVisible.current = false;
+			} else {
+				selectedLegends.current.clear();
+				for (const name of allLegendNames) chartInstance.dispatchAction({
+					type: "legendSelect",
+					name
+				});
+				allLegendsVisible.current = true;
+			}
+			lastClickTime.current = 0;
+			lastClickedItem.current = null;
+			lastClickType.current = null;
+		} else {
+			lastClickTime.current = currentTime;
+			lastClickedItem.current = itemName;
+			lastClickType.current = type;
+			clickTimeout.current = setTimeout(() => {
+				lastClickTime.current = 0;
+				lastClickedItem.current = null;
+				lastClickType.current = null;
+				clickTimeout.current = null;
+			}, delay$1);
+		}
+	}, [
+		chartInstance,
+		onLegendDoubleClick,
+		onSeriesDoubleClick,
+		delay$1,
+		enableAutoSelection
+	]);
+	const handleLegendClick = useCallback((params, event) => {
+		handleItemClick(params, event, "legend");
+	}, [handleItemClick]);
+	const handleSeriesClick = useCallback((params, event) => {
+		handleItemClick(params, event, "series");
+	}, [handleItemClick]);
+	const cleanup = useCallback(() => {
+		if (clickTimeout.current) {
+			clearTimeout(clickTimeout.current);
+			clickTimeout.current = null;
+		}
+	}, []);
+	return {
+		handleLegendClick,
+		handleSeriesClick,
+		cleanup
+	};
+}
+
+//#endregion
 //#region src/utils/validation.ts
 /**
 * Create a validation result
@@ -800,7 +926,7 @@ const removeLogoFromOption = (option) => {
 
 //#endregion
 //#region src/components/BaseChart.tsx
-const BaseChart = forwardRef(({ title, width = "100%", height = 400, theme = "light", loading: externalLoading = false, notMerge = false, lazyUpdate = true, logo, onChartReady, onClick, onDoubleClick, onMouseOver, onMouseOut, onDataZoom, onBrush, className = "", style = {}, option, renderer: _renderer = "canvas", locale: _locale = "en",...restProps }, ref) => {
+const BaseChart = forwardRef(({ title, width = "100%", height = 400, theme = "light", loading: externalLoading = false, notMerge = false, lazyUpdate = true, logo, onChartReady, onClick, onDoubleClick, onMouseOver, onMouseOut, onDataZoom, onBrush, onLegendDoubleClick, onSeriesDoubleClick, legendDoubleClickDelay = 300, enableLegendDoubleClickSelection = false, className = "", style = {}, option, renderer: _renderer = "canvas", locale: _locale = "en",...restProps }, ref) => {
 	useMemo(() => {
 		try {
 			const dimensionResult = validateDimensions(width, height);
@@ -860,12 +986,26 @@ const BaseChart = forwardRef(({ title, width = "100%", height = 400, theme = "li
 		onChartReady
 	});
 	const chart = getEChartsInstance();
+	const { handleLegendClick, handleSeriesClick, cleanup: cleanupLegendDoubleClick } = useLegendDoubleClick({
+		chartInstance: chart,
+		onLegendDoubleClick,
+		onSeriesDoubleClick,
+		delay: legendDoubleClickDelay,
+		enableAutoSelection: enableLegendDoubleClickSelection
+	});
 	useEffect(() => {
 		if (!chart) return;
 		const eventHandlers = [];
 		if (onClick) {
 			const handler = (params) => {
 				onClick(params, chart);
+			};
+			chart.on("click", handler);
+			eventHandlers.push(["click", handler]);
+		}
+		if (onSeriesDoubleClick || enableLegendDoubleClickSelection) {
+			const handler = (params) => {
+				handleSeriesClick(params);
 			};
 			chart.on("click", handler);
 			eventHandlers.push(["click", handler]);
@@ -905,9 +1045,45 @@ const BaseChart = forwardRef(({ title, width = "100%", height = 400, theme = "li
 			chart.on("brush", handler);
 			eventHandlers.push(["brush", handler]);
 		}
+		if (onLegendDoubleClick || enableLegendDoubleClickSelection) {
+			const handler = (params) => {
+				handleLegendClick(params);
+			};
+			chart.on("legendselectchanged", handler);
+			eventHandlers.push(["legendselectchanged", handler]);
+			const containerElement = chart.getDom();
+			if (containerElement) {
+				let pendingLegendClick = null;
+				const mouseHandler = (event) => {
+					const target = event.target;
+					if (target && target.closest(".echarts-legend") && pendingLegendClick) {
+						handleLegendClick({ name: pendingLegendClick }, event);
+						pendingLegendClick = null;
+					}
+				};
+				const legendHandler = (params) => {
+					pendingLegendClick = params.name;
+					setTimeout(() => {
+						pendingLegendClick = null;
+					}, 100);
+				};
+				chart.on("legendselectchanged", legendHandler);
+				containerElement.addEventListener("click", mouseHandler);
+				eventHandlers.push(["legendselectchanged", legendHandler]);
+				eventHandlers.push(["DOM:click", {
+					element: containerElement,
+					handler: mouseHandler
+				}]);
+			}
+		}
 		onChartReady?.(chart);
 		return () => {
-			for (const [event, handler] of eventHandlers) chart.off(event, handler);
+			for (const [event, handler] of eventHandlers) if (event.startsWith("DOM:")) {
+				const { element, handler: domHandler } = handler;
+				const eventType = event.replace("DOM:", "");
+				element.removeEventListener(eventType, domHandler);
+			} else chart.off(event, handler);
+			cleanupLegendDoubleClick();
 		};
 	}, [
 		chart,
@@ -917,7 +1093,13 @@ const BaseChart = forwardRef(({ title, width = "100%", height = 400, theme = "li
 		onMouseOut,
 		onDataZoom,
 		onBrush,
-		onChartReady
+		onChartReady,
+		handleLegendClick,
+		handleSeriesClick,
+		cleanupLegendDoubleClick,
+		onLegendDoubleClick,
+		onSeriesDoubleClick,
+		enableLegendDoubleClickSelection
 	]);
 	useEffect(() => {
 		if (chart) if (externalLoading) chart.showLoading();
@@ -1939,6 +2121,11 @@ function buildStackedAreaChartOption(props) {
 					}]
 				} }
 			},
+			emphasis: {
+				focus: "series",
+				areaStyle: { opacity: Math.min((props.opacity ?? .7) + .2, 1) }
+			},
+			triggerLineEvent: true,
 			symbol: (s.showPoints ?? props.showPoints) !== false ? s.pointShape ?? props.pointShape ?? "circle" : "none",
 			symbolSize: s.pointSize ?? props.pointSize ?? 4,
 			yAxisIndex: s.yAxisIndex ?? 0,
@@ -2028,6 +2215,11 @@ function buildStackedAreaChartOption(props) {
 						}]
 					} }
 				},
+				emphasis: {
+					focus: "series",
+					areaStyle: { opacity: Math.min((props.opacity ?? .7) + .2, 1) }
+				},
+				triggerLineEvent: true,
 				symbol: (seriesSpecificConfig.showPoints ?? props.showPoints) !== false ? seriesSpecificConfig.pointShape ?? props.pointShape ?? "circle" : "none",
 				symbolSize: seriesSpecificConfig.pointSize ?? props.pointSize ?? 4,
 				yAxisIndex: seriesSpecificConfig.yAxisIndex ?? 0,
@@ -2059,6 +2251,11 @@ function buildStackedAreaChartOption(props) {
 					}]
 				} }
 			},
+			emphasis: {
+				focus: "series",
+				areaStyle: { opacity: Math.min((props.opacity ?? .7) + .2, 1) }
+			},
+			triggerLineEvent: true,
 			symbol: props.showPoints !== false ? props.pointShape || "circle" : "none",
 			symbolSize: props.pointSize || 4,
 			stack: props.stacked ? "Total" : void 0
@@ -2090,6 +2287,11 @@ function buildStackedAreaChartOption(props) {
 				}]
 			} }
 		},
+		emphasis: {
+			focus: "series",
+			areaStyle: { opacity: Math.min((props.opacity ?? .7) + .2, 1) }
+		},
+		triggerLineEvent: true,
 		symbol: props.showPoints !== false ? props.pointShape || "circle" : "none",
 		symbolSize: props.pointSize || 4,
 		stack: props.stacked ? "Total" : void 0
@@ -3221,10 +3423,9 @@ function buildSankeyChartOption(props) {
 //#endregion
 //#region src/utils/domProps.ts
 const filterDOMProps = (props) => {
-	const { data, series, seriesField, categoryField, valueField, xField, yField, nameField, sizeField, colorField, seriesConfig, theme, colorPalette, backgroundColor, title, subtitle, titlePosition, logo, smooth, strokeWidth, strokeStyle, showPoints, pointSize, pointShape, showArea, areaOpacity, areaGradient, orientation, barWidth, barGap, borderRadius, stack, stackType, showPercentage, showLabels, showAbsoluteValues, showPercentageLabels, xAxis, yAxis, legend, tooltip, sortBy, sortOrder, animate, animationDuration, customOption, responsive, maintainAspectRatio, onChartReady, onDataPointClick, onDataPointHover, zoom, pan, brush, radius, startAngle, roseType, labelPosition, showValues, showPercentages, labelFormat, selectedMode, emphasis, pointOpacity, showTrendline, trendlineType, stacked, opacity, disabled, grouped,...filteredProps } = props;
 	const domProps = {};
-	Object.keys(filteredProps).forEach((key) => {
-		if (key === "id" || key === "className" || key === "style" || key.startsWith("data-") || key.startsWith("aria-") || key === "role" || key === "tabIndex" || key === "onClick" || key === "onMouseEnter" || key === "onMouseLeave" || key === "onFocus" || key === "onBlur" || key === "onKeyDown" || key === "onKeyUp" || key === "onKeyPress") domProps[key] = filteredProps[key];
+	Object.keys(props).forEach((key) => {
+		if (key === "id" || key === "className" || key === "style" || key.startsWith("data-") || key.startsWith("aria-") || key === "role" || key === "tabIndex" || key === "onClick" || key === "onMouseEnter" || key === "onMouseLeave" || key === "onFocus" || key === "onBlur" || key === "onKeyDown" || key === "onKeyUp" || key === "onKeyPress") domProps[key] = props[key];
 	});
 	return domProps;
 };
@@ -3268,7 +3469,7 @@ const filterDOMProps = (props) => {
 *   yField="value"
 * />
 */
-const LineChart = forwardRef(({ width = "100%", height = 400, className, style, data, xField = "x", yField = "y", seriesField, series, seriesConfig, theme = "light", colorPalette, backgroundColor, title, subtitle, titlePosition = "center", logo, smooth = false, strokeWidth = 2, strokeStyle = "solid", showPoints = true, pointSize = 4, pointShape = "circle", showArea = false, areaOpacity = .3, areaGradient = false, xAxis, yAxis, legend, tooltip, zoom = false, pan = false, brush = false, loading = false, disabled: _disabled = false, animate = true, animationDuration, onChartReady, onDataPointClick, onDataPointHover, customOption, responsive: _responsive = true,...restProps }, ref) => {
+const LineChart = forwardRef(({ width = "100%", height = 400, className, style, data, xField = "x", yField = "y", seriesField, series, seriesConfig, theme = "light", colorPalette, backgroundColor, title, subtitle, titlePosition = "center", logo, smooth = false, strokeWidth = 2, strokeStyle = "solid", showPoints = true, pointSize = 4, pointShape = "circle", showArea = false, areaOpacity = .3, areaGradient = false, xAxis, yAxis, legend, tooltip, zoom = false, pan = false, brush = false, loading = false, disabled: _disabled = false, animate = true, animationDuration, onChartReady, onDataPointClick, onDataPointHover, onLegendDoubleClick, onSeriesDoubleClick, legendDoubleClickDelay, enableLegendDoubleClickSelection = true, customOption, responsive: _responsive = true,...restProps }, ref) => {
 	const domProps = filterDOMProps(restProps);
 	const chartOption = useMemo(() => {
 		return buildLineChartOption({
@@ -3343,6 +3544,20 @@ const LineChart = forwardRef(({ width = "100%", height = 400, className, style, 
 		animationDuration,
 		customOption
 	]);
+	const { containerRef, loading: chartLoading, error, getEChartsInstance, resize, showLoading, hideLoading } = useECharts({
+		option: chartOption,
+		theme,
+		loading,
+		onChartReady
+	});
+	const chartInstance = getEChartsInstance();
+	const { handleLegendClick, handleSeriesClick } = useLegendDoubleClick({
+		chartInstance,
+		onLegendDoubleClick,
+		onSeriesDoubleClick,
+		delay: legendDoubleClickDelay || 300,
+		enableAutoSelection: enableLegendDoubleClickSelection || true
+	});
 	const chartEvents = useMemo(() => {
 		const events = {};
 		if (onDataPointClick) events.click = (params, chart) => {
@@ -3351,21 +3566,47 @@ const LineChart = forwardRef(({ width = "100%", height = 400, className, style, 
 				event: params
 			});
 		};
+		if (onSeriesDoubleClick || enableLegendDoubleClickSelection) {
+			const existingClick = events.click;
+			events.click = (params, chart) => {
+				if (existingClick) existingClick(params, chart);
+				handleSeriesClick(params);
+			};
+		} else if (!onDataPointClick) events.click = (params) => {
+			handleSeriesClick(params);
+		};
 		if (onDataPointHover) events.mouseover = (params, chart) => {
 			onDataPointHover(params, {
 				chart,
 				event: params
 			});
 		};
-		return Object.keys(events).length > 0 ? events : void 0;
-	}, [onDataPointClick, onDataPointHover]);
-	const { containerRef, loading: chartLoading, error, getEChartsInstance, resize, showLoading, hideLoading } = useECharts({
-		option: chartOption,
-		theme,
-		loading,
-		events: chartEvents,
-		onChartReady
-	});
+		if (onLegendDoubleClick || enableLegendDoubleClickSelection) events.legendselectchanged = (params) => {
+			handleLegendClick(params);
+		};
+		return events;
+	}, [
+		onDataPointClick,
+		onDataPointHover,
+		onLegendDoubleClick,
+		onSeriesDoubleClick,
+		enableLegendDoubleClickSelection,
+		handleLegendClick,
+		handleSeriesClick
+	]);
+	useEffect(() => {
+		if (!chartInstance || Object.keys(chartEvents).length === 0) return;
+		const eventHandlers = [];
+		Object.entries(chartEvents).forEach(([event, handler]) => {
+			chartInstance.on(event, handler);
+			eventHandlers.push([event, handler]);
+		});
+		return () => {
+			eventHandlers.forEach(([event, handler]) => {
+				chartInstance.off(event, handler);
+			});
+		};
+	}, [chartInstance, chartEvents]);
 	const exportImage = (format = "png", opts) => {
 		const chart = getEChartsInstance();
 		if (!chart) return "";
@@ -3620,7 +3861,7 @@ LineChart.displayName = "LineChart";
 *   valueField="value"
 * />
 */
-const BarChart = forwardRef(({ width = "100%", height = 400, className, style, data, categoryField = "category", valueField = "value", seriesField, series, theme = "light", colorPalette, backgroundColor, title, subtitle, titlePosition = "center", logo, orientation = "vertical", barWidth, barGap, borderRadius = 0, stack = false, stackType = "normal", showPercentage = false, showLabels = false, showAbsoluteValues = false, showPercentageLabels = false, xAxis, yAxis, legend, tooltip, sortBy = "none", sortOrder = "asc", loading = false, disabled: _disabled = false, animate = true, animationDuration, onChartReady, onDataPointClick, onDataPointHover, customOption, responsive: _responsive = true,...restProps }, ref) => {
+const BarChart = forwardRef(({ width = "100%", height = 400, className, style, data, categoryField = "category", valueField = "value", seriesField, series, theme = "light", colorPalette, backgroundColor, title, subtitle, titlePosition = "center", logo, orientation = "vertical", barWidth, barGap, borderRadius = 0, stack = false, stackType = "normal", showPercentage = false, showLabels = false, showAbsoluteValues = false, showPercentageLabels = false, xAxis, yAxis, legend, tooltip, sortBy = "none", sortOrder = "asc", loading = false, disabled: _disabled = false, animate = true, animationDuration, onChartReady, onDataPointClick, onDataPointHover, onLegendDoubleClick, onSeriesDoubleClick, legendDoubleClickDelay, enableLegendDoubleClickSelection = true, customOption, responsive: _responsive = true,...restProps }, ref) => {
 	const domProps = filterDOMProps(restProps);
 	const chartOption = useMemo(() => {
 		return buildBarChartOption({
@@ -3693,6 +3934,20 @@ const BarChart = forwardRef(({ width = "100%", height = 400, className, style, d
 		animationDuration,
 		customOption
 	]);
+	const { containerRef, loading: chartLoading, error, getEChartsInstance, resize, showLoading, hideLoading } = useECharts({
+		option: chartOption,
+		theme,
+		loading,
+		onChartReady
+	});
+	const chartInstance = getEChartsInstance();
+	const { handleLegendClick, handleSeriesClick } = useLegendDoubleClick({
+		chartInstance,
+		onLegendDoubleClick,
+		onSeriesDoubleClick,
+		delay: legendDoubleClickDelay || 300,
+		enableAutoSelection: enableLegendDoubleClickSelection || false
+	});
 	const chartEvents = useMemo(() => {
 		const events = {};
 		if (onDataPointClick) events.click = (params, chart) => {
@@ -3701,21 +3956,47 @@ const BarChart = forwardRef(({ width = "100%", height = 400, className, style, d
 				event: params
 			});
 		};
+		if (onSeriesDoubleClick || enableLegendDoubleClickSelection) {
+			const existingClick = events.click;
+			events.click = (params, chart) => {
+				if (existingClick) existingClick(params, chart);
+				handleSeriesClick(params);
+			};
+		} else if (!onDataPointClick) events.click = (params) => {
+			handleSeriesClick(params);
+		};
 		if (onDataPointHover) events.mouseover = (params, chart) => {
 			onDataPointHover(params, {
 				chart,
 				event: params
 			});
 		};
-		return Object.keys(events).length > 0 ? events : void 0;
-	}, [onDataPointClick, onDataPointHover]);
-	const { containerRef, loading: chartLoading, error, getEChartsInstance, resize, showLoading, hideLoading } = useECharts({
-		option: chartOption,
-		theme,
-		loading,
-		events: chartEvents,
-		onChartReady
-	});
+		if (onLegendDoubleClick || enableLegendDoubleClickSelection) events.legendselectchanged = (params) => {
+			handleLegendClick(params);
+		};
+		return events;
+	}, [
+		onDataPointClick,
+		onDataPointHover,
+		onLegendDoubleClick,
+		onSeriesDoubleClick,
+		enableLegendDoubleClickSelection,
+		handleLegendClick,
+		handleSeriesClick
+	]);
+	useEffect(() => {
+		if (!chartInstance || Object.keys(chartEvents).length === 0) return;
+		const eventHandlers = [];
+		Object.entries(chartEvents).forEach(([event, handler]) => {
+			chartInstance.on(event, handler);
+			eventHandlers.push([event, handler]);
+		});
+		return () => {
+			eventHandlers.forEach(([event, handler]) => {
+				chartInstance.off(event, handler);
+			});
+		};
+	}, [chartInstance, chartEvents]);
 	const exportImage = (format = "png", opts) => {
 		const chart = getEChartsInstance();
 		if (!chart) return "";
@@ -3961,7 +4242,7 @@ BarChart.displayName = "BarChart";
 *   showLabels
 * />
 */
-const PieChart = forwardRef(({ width = "100%", height = 400, className, style, data, nameField = "name", valueField = "value", theme = "light", colorPalette, backgroundColor, title, subtitle, titlePosition = "center", radius = 75, startAngle = 90, roseType = false, showLabels = true, labelPosition = "outside", showValues = false, showPercentages = true, labelFormat, legend, tooltip, selectedMode = false, emphasis = true, loading = false, disabled: _disabled = false, animate = true, animationDuration, onChartReady, onDataPointClick, onDataPointHover, customOption, responsive: _responsive = true,...restProps }, ref) => {
+const PieChart = forwardRef(({ width = "100%", height = 400, className, style, data, nameField = "name", valueField = "value", theme = "light", colorPalette, backgroundColor, title, subtitle, titlePosition = "center", radius = 75, startAngle = 90, roseType = false, showLabels = true, labelPosition = "outside", showValues = false, showPercentages = true, labelFormat, legend, tooltip, selectedMode = false, emphasis = true, loading = false, disabled: _disabled = false, animate = true, animationDuration, onChartReady, onDataPointClick, onDataPointHover, onLegendDoubleClick, onSeriesDoubleClick, legendDoubleClickDelay, enableLegendDoubleClickSelection = true, customOption, responsive: _responsive = true,...restProps }, ref) => {
 	const domProps = filterDOMProps(restProps);
 	const chartOption = useMemo(() => {
 		return buildPieChartOption({
@@ -4016,6 +4297,20 @@ const PieChart = forwardRef(({ width = "100%", height = 400, className, style, d
 		animationDuration,
 		customOption
 	]);
+	const { containerRef, loading: chartLoading, error, getEChartsInstance, resize, showLoading, hideLoading } = useECharts({
+		option: chartOption,
+		theme,
+		loading,
+		onChartReady
+	});
+	const chartInstance = getEChartsInstance();
+	const { handleLegendClick, handleSeriesClick } = useLegendDoubleClick({
+		chartInstance,
+		onLegendDoubleClick,
+		onSeriesDoubleClick,
+		delay: legendDoubleClickDelay || 300,
+		enableAutoSelection: enableLegendDoubleClickSelection
+	});
 	const chartEvents = useMemo(() => {
 		const events = {};
 		if (onDataPointClick) events.click = (params, chart) => {
@@ -4024,21 +4319,55 @@ const PieChart = forwardRef(({ width = "100%", height = 400, className, style, d
 				event: params
 			});
 		};
+		if (onSeriesDoubleClick || enableLegendDoubleClickSelection) {
+			const existingClick = events.click;
+			events.click = (params, chart) => {
+				if (existingClick) existingClick(params, chart);
+				const enhancedParams = {
+					...params,
+					seriesName: params.name
+				};
+				handleSeriesClick(enhancedParams);
+			};
+		} else if (!onDataPointClick) events.click = (params, _chart) => {
+			const enhancedParams = {
+				...params,
+				seriesName: params.name
+			};
+			handleSeriesClick(enhancedParams);
+		};
 		if (onDataPointHover) events.mouseover = (params, chart) => {
 			onDataPointHover(params, {
 				chart,
 				event: params
 			});
 		};
-		return Object.keys(events).length > 0 ? events : void 0;
-	}, [onDataPointClick, onDataPointHover]);
-	const { containerRef, loading: chartLoading, error, getEChartsInstance, resize, showLoading, hideLoading } = useECharts({
-		option: chartOption,
-		theme,
-		loading,
-		events: chartEvents,
-		onChartReady
-	});
+		if (onLegendDoubleClick || enableLegendDoubleClickSelection) events.legendselectchanged = (params) => {
+			handleLegendClick(params);
+		};
+		return events;
+	}, [
+		onDataPointClick,
+		onDataPointHover,
+		onLegendDoubleClick,
+		onSeriesDoubleClick,
+		enableLegendDoubleClickSelection,
+		handleLegendClick,
+		handleSeriesClick
+	]);
+	useEffect(() => {
+		if (!chartInstance || Object.keys(chartEvents).length === 0) return;
+		const eventHandlers = [];
+		Object.entries(chartEvents).forEach(([event, handler]) => {
+			chartInstance.on(event, handler);
+			eventHandlers.push([event, handler]);
+		});
+		return () => {
+			eventHandlers.forEach(([event, handler]) => {
+				chartInstance.off(event, handler);
+			});
+		};
+	}, [chartInstance, chartEvents]);
 	const exportImage = (format = "png") => {
 		const chart = getEChartsInstance();
 		if (!chart) return "";
@@ -4257,7 +4586,7 @@ PieChart.displayName = "PieChart";
 *   yField="y"
 * />
 */
-const ScatterChart = forwardRef(({ width = "100%", height = 400, className, style, data, xField = "x", yField = "y", sizeField, colorField, seriesField, series, theme = "light", colorPalette, backgroundColor, title, subtitle, titlePosition = "center", pointSize = 10, pointShape = "circle", pointOpacity = .8, xAxis, yAxis, legend, tooltip, showTrendline = false, trendlineType = "linear", loading = false, disabled: _disabled = false, animate = true, animationDuration, onChartReady, onDataPointClick, onDataPointHover, customOption, responsive: _responsive = true,...restProps }, ref) => {
+const ScatterChart = forwardRef(({ width = "100%", height = 400, className, style, data, xField = "x", yField = "y", sizeField, colorField, seriesField, series, theme = "light", colorPalette, backgroundColor, title, subtitle, titlePosition = "center", pointSize = 10, pointShape = "circle", pointOpacity = .8, xAxis, yAxis, legend, tooltip, showTrendline = false, trendlineType = "linear", loading = false, disabled: _disabled = false, animate = true, animationDuration, onChartReady, onDataPointClick, onDataPointHover, onLegendDoubleClick, onSeriesDoubleClick, legendDoubleClickDelay, enableLegendDoubleClickSelection = true, customOption, responsive: _responsive = true,...restProps }, ref) => {
 	const domProps = filterDOMProps(restProps);
 	const chartOption = useMemo(() => {
 		const optionProps = {
@@ -4315,6 +4644,20 @@ const ScatterChart = forwardRef(({ width = "100%", height = 400, className, styl
 		animationDuration,
 		customOption
 	]);
+	const { containerRef, loading: chartLoading, error, getEChartsInstance, resize, showLoading, hideLoading } = useECharts({
+		option: chartOption,
+		theme,
+		loading,
+		onChartReady
+	});
+	const chartInstance = getEChartsInstance();
+	const { handleLegendClick, handleSeriesClick } = useLegendDoubleClick({
+		chartInstance,
+		onLegendDoubleClick,
+		onSeriesDoubleClick,
+		delay: legendDoubleClickDelay || 300,
+		enableAutoSelection: enableLegendDoubleClickSelection
+	});
 	const chartEvents = useMemo(() => {
 		const events = {};
 		if (onDataPointClick) events.click = (params, chart) => {
@@ -4323,21 +4666,47 @@ const ScatterChart = forwardRef(({ width = "100%", height = 400, className, styl
 				event: params
 			});
 		};
+		if (onSeriesDoubleClick || enableLegendDoubleClickSelection) {
+			const existingClick = events.click;
+			events.click = (params, chart) => {
+				if (existingClick) existingClick(params, chart);
+				handleSeriesClick(params);
+			};
+		} else if (!onDataPointClick) events.click = (params) => {
+			handleSeriesClick(params);
+		};
 		if (onDataPointHover) events.mouseover = (params, chart) => {
 			onDataPointHover(params, {
 				chart,
 				event: params
 			});
 		};
-		return Object.keys(events).length > 0 ? events : void 0;
-	}, [onDataPointClick, onDataPointHover]);
-	const { containerRef, loading: chartLoading, error, getEChartsInstance, resize, showLoading, hideLoading } = useECharts({
-		option: chartOption,
-		theme,
-		loading,
-		events: chartEvents,
-		onChartReady
-	});
+		if (onLegendDoubleClick || enableLegendDoubleClickSelection) events.legendselectchanged = (params) => {
+			handleLegendClick(params);
+		};
+		return events;
+	}, [
+		onDataPointClick,
+		onDataPointHover,
+		onLegendDoubleClick,
+		onSeriesDoubleClick,
+		enableLegendDoubleClickSelection,
+		handleLegendClick,
+		handleSeriesClick
+	]);
+	useEffect(() => {
+		if (!chartInstance || Object.keys(chartEvents).length === 0) return;
+		const eventHandlers = [];
+		Object.entries(chartEvents).forEach(([event, handler]) => {
+			chartInstance.on(event, handler);
+			eventHandlers.push([event, handler]);
+		});
+		return () => {
+			eventHandlers.forEach(([event, handler]) => {
+				chartInstance.off(event, handler);
+			});
+		};
+	}, [chartInstance, chartEvents]);
 	const exportImage = (format = "png") => {
 		const chart = getEChartsInstance();
 		if (!chart) return "";
@@ -4485,7 +4854,8 @@ ScatterChart.displayName = "ScatterChart";
 
 //#endregion
 //#region src/components/StackedAreaChart.tsx
-const StackedAreaChart = forwardRef(({ width = "100%", height = 400, className, style, data, xField = "x", yField = "y", seriesField, series, seriesConfig, theme = "light", colorPalette, backgroundColor, title, subtitle, titlePosition = "center", logo, stacked = true, stackType = "normal", opacity = .7, smooth = false, strokeWidth = 2, strokeStyle = "solid", showPoints = false, pointSize = 4, pointShape = "circle", areaOpacity = .3, areaGradient = true, xAxis, yAxis, legend, tooltip, zoom = false, pan = false, brush = false, loading = false, disabled: _disabled = false, animate = true, animationDuration, onChartReady, onDataPointClick, onDataPointHover, customOption, responsive: _responsive = true,...restProps }, ref) => {
+const StackedAreaChart = forwardRef(({ width = "100%", height = 400, className, style, data, xField = "x", yField = "y", seriesField, series, seriesConfig, theme = "light", colorPalette, backgroundColor, title, subtitle, titlePosition = "center", logo, stacked = true, stackType = "normal", opacity = .7, smooth = false, strokeWidth = 2, strokeStyle = "solid", showPoints = false, pointSize = 4, pointShape = "circle", areaOpacity = .3, areaGradient = true, xAxis, yAxis, legend, tooltip, zoom = false, pan = false, brush = false, loading = false, disabled: _disabled = false, animate = true, animationDuration, onChartReady, onDataPointClick, onDataPointHover, onLegendDoubleClick, onSeriesDoubleClick, legendDoubleClickDelay, enableLegendDoubleClickSelection = true, customOption, responsive: _responsive = true,...restProps }, ref) => {
+	const domProps = filterDOMProps(restProps);
 	const chartOption = useMemo(() => {
 		return buildStackedAreaChartOption({
 			data: data || void 0,
@@ -4563,6 +4933,20 @@ const StackedAreaChart = forwardRef(({ width = "100%", height = 400, className, 
 		animationDuration,
 		customOption
 	]);
+	const { containerRef, loading: chartLoading, error, getEChartsInstance, resize, showLoading, hideLoading } = useECharts({
+		option: chartOption,
+		theme,
+		loading,
+		onChartReady
+	});
+	const chartInstance = getEChartsInstance();
+	const { handleLegendClick, handleSeriesClick } = useLegendDoubleClick({
+		chartInstance,
+		onLegendDoubleClick,
+		onSeriesDoubleClick,
+		delay: legendDoubleClickDelay || 300,
+		enableAutoSelection: enableLegendDoubleClickSelection
+	});
 	const chartEvents = useMemo(() => {
 		const events = {};
 		if (onDataPointClick) events.click = (params, chart) => {
@@ -4571,21 +4955,69 @@ const StackedAreaChart = forwardRef(({ width = "100%", height = 400, className, 
 				event: params
 			});
 		};
+		if (onSeriesDoubleClick || enableLegendDoubleClickSelection) {
+			const existingClick = events.click;
+			events.click = (params, chart) => {
+				if (existingClick) existingClick(params, chart);
+				const activeChart = chart || chartInstance;
+				if (activeChart) try {
+					const option = activeChart.getOption();
+					const enhancedParams = {
+						...params,
+						seriesName: params.seriesName || params.name || option.series?.[params.seriesIndex]?.name
+					};
+					handleSeriesClick(enhancedParams);
+				} catch (_error) {
+					handleSeriesClick(params);
+				}
+				else handleSeriesClick(params);
+			};
+		} else if (!onDataPointClick) events.click = (params, chart) => {
+			const activeChart = chart || chartInstance;
+			if (activeChart) try {
+				const option = activeChart.getOption();
+				const enhancedParams = {
+					...params,
+					seriesName: params.seriesName || params.name || option.series?.[params.seriesIndex]?.name
+				};
+				handleSeriesClick(enhancedParams);
+			} catch (_error) {
+				handleSeriesClick(params);
+			}
+			else handleSeriesClick(params);
+		};
 		if (onDataPointHover) events.mouseover = (params, chart) => {
 			onDataPointHover(params, {
 				chart,
 				event: params
 			});
 		};
-		return Object.keys(events).length > 0 ? events : void 0;
-	}, [onDataPointClick, onDataPointHover]);
-	const { containerRef, loading: chartLoading, error, getEChartsInstance, resize, showLoading, hideLoading } = useECharts({
-		option: chartOption,
-		theme,
-		loading,
-		events: chartEvents,
-		onChartReady
-	});
+		if (onLegendDoubleClick || enableLegendDoubleClickSelection) events.legendselectchanged = (params) => {
+			handleLegendClick(params);
+		};
+		return events;
+	}, [
+		onDataPointClick,
+		onDataPointHover,
+		onLegendDoubleClick,
+		onSeriesDoubleClick,
+		enableLegendDoubleClickSelection,
+		handleLegendClick,
+		handleSeriesClick
+	]);
+	useEffect(() => {
+		if (!chartInstance || Object.keys(chartEvents).length === 0) return;
+		const eventHandlers = [];
+		Object.entries(chartEvents).forEach(([event, handler]) => {
+			chartInstance.on(event, handler);
+			eventHandlers.push([event, handler]);
+		});
+		return () => {
+			eventHandlers.forEach(([event, handler]) => {
+				chartInstance.off(event, handler);
+			});
+		};
+	}, [chartInstance, chartEvents]);
 	const exportImage = (format = "png", opts) => {
 		const chart = getEChartsInstance();
 		if (!chart) return "";
@@ -4752,7 +5184,7 @@ const StackedAreaChart = forwardRef(({ width = "100%", height = 400, className, 
 	return /* @__PURE__ */ jsxs("div", {
 		className: `aqc-charts-container ${className || ""}`,
 		style: containerStyle,
-		...restProps,
+		...domProps,
 		children: [/* @__PURE__ */ jsx("div", {
 			ref: containerRef,
 			style: {
@@ -4826,7 +5258,7 @@ StackedAreaChart.displayName = "StackedAreaChart";
 *   ]}
 * />
 */
-const CombinedChart = forwardRef(({ width = "100%", height = 400, className, style, data, xField = "x", series = [], theme = "light", colorPalette, backgroundColor, title, subtitle, titlePosition = "center", xAxis, yAxis = [{ type: "value" }], legend, tooltip, zoom = false, pan = false, brush = false, loading = false, disabled: _disabled = false, animate = true, animationDuration, onChartReady, onDataPointClick, onDataPointHover, customOption, responsive: _responsive = true,...restProps }, ref) => {
+const CombinedChart = forwardRef(({ width = "100%", height = 400, className, style, data, xField = "x", series = [], theme = "light", colorPalette, backgroundColor, title, subtitle, titlePosition = "center", xAxis, yAxis = [{ type: "value" }], legend, tooltip, zoom = false, pan = false, brush = false, loading = false, disabled: _disabled = false, animate = true, animationDuration, onChartReady, onDataPointClick, onDataPointHover, onLegendDoubleClick, onSeriesDoubleClick, legendDoubleClickDelay, enableLegendDoubleClickSelection = true, customOption, responsive: _responsive = true,...restProps }, ref) => {
 	const domProps = filterDOMProps(restProps);
 	const chartOption = useMemo(() => {
 		return buildCombinedChartOption({
@@ -4871,6 +5303,20 @@ const CombinedChart = forwardRef(({ width = "100%", height = 400, className, sty
 		animationDuration,
 		customOption
 	]);
+	const { containerRef, loading: chartLoading, error, getEChartsInstance, resize, showLoading, hideLoading } = useECharts({
+		option: chartOption,
+		theme,
+		loading,
+		onChartReady
+	});
+	const chartInstance = getEChartsInstance();
+	const { handleLegendClick, handleSeriesClick } = useLegendDoubleClick({
+		chartInstance,
+		onLegendDoubleClick,
+		onSeriesDoubleClick,
+		delay: legendDoubleClickDelay || 300,
+		enableAutoSelection: enableLegendDoubleClickSelection || false
+	});
 	const chartEvents = useMemo(() => {
 		const events = {};
 		if (onDataPointClick) events.click = (params, chart) => {
@@ -4879,21 +5325,47 @@ const CombinedChart = forwardRef(({ width = "100%", height = 400, className, sty
 				event: params
 			});
 		};
+		if (onSeriesDoubleClick || enableLegendDoubleClickSelection) {
+			const existingClick = events.click;
+			events.click = (params, chart) => {
+				if (existingClick) existingClick(params, chart);
+				handleSeriesClick(params);
+			};
+		} else if (!onDataPointClick) events.click = (params) => {
+			handleSeriesClick(params);
+		};
 		if (onDataPointHover) events.mouseover = (params, chart) => {
 			onDataPointHover(params, {
 				chart,
 				event: params
 			});
 		};
-		return Object.keys(events).length > 0 ? events : void 0;
-	}, [onDataPointClick, onDataPointHover]);
-	const { containerRef, loading: chartLoading, error, getEChartsInstance, resize, showLoading, hideLoading } = useECharts({
-		option: chartOption,
-		theme,
-		loading,
-		events: chartEvents,
-		onChartReady
-	});
+		if (onLegendDoubleClick || enableLegendDoubleClickSelection) events.legendselectchanged = (params) => {
+			handleLegendClick(params);
+		};
+		return events;
+	}, [
+		onDataPointClick,
+		onDataPointHover,
+		onLegendDoubleClick,
+		onSeriesDoubleClick,
+		enableLegendDoubleClickSelection,
+		handleLegendClick,
+		handleSeriesClick
+	]);
+	useEffect(() => {
+		if (!chartInstance || Object.keys(chartEvents).length === 0) return;
+		const eventHandlers = [];
+		Object.entries(chartEvents).forEach(([event, handler]) => {
+			chartInstance.on(event, handler);
+			eventHandlers.push([event, handler]);
+		});
+		return () => {
+			eventHandlers.forEach(([event, handler]) => {
+				chartInstance.off(event, handler);
+			});
+		};
+	}, [chartInstance, chartEvents]);
 	const exportImage = (format = "png") => {
 		const chart = getEChartsInstance();
 		if (!chart) return "";
@@ -5065,7 +5537,7 @@ CombinedChart.displayName = "CombinedChart";
 *   visualMapPosition="right"
 * />
 */
-const ClusterChart = forwardRef(({ width = "100%", height = 400, className, style, data, xField = "x", yField = "y", nameField, clusterCount = 6, clusterMethod = "kmeans", theme = "light", colorPalette, backgroundColor, title, subtitle, titlePosition = "center", pointSize = 15, pointOpacity = .8, showClusterCenters = false, centerSymbol = "diamond", centerSize = 20, clusterColors, showVisualMap = true, visualMapPosition = "left", xAxis, yAxis, legend, tooltip, loading = false, disabled: _disabled = false, animate = true, animationDuration, onChartReady, onDataPointClick, onDataPointHover, customOption, responsive: _responsive = true,...restProps }, ref) => {
+const ClusterChart = forwardRef(({ width = "100%", height = 400, className, style, data, xField = "x", yField = "y", nameField, clusterCount = 6, clusterMethod = "kmeans", theme = "light", colorPalette, backgroundColor, title, subtitle, titlePosition = "center", pointSize = 15, pointOpacity = .8, showClusterCenters = false, centerSymbol = "diamond", centerSize = 20, clusterColors, showVisualMap = true, visualMapPosition = "left", xAxis, yAxis, legend, tooltip, loading = false, disabled: _disabled = false, animate = true, animationDuration, onChartReady, onDataPointClick, onDataPointHover, onLegendDoubleClick, onSeriesDoubleClick, legendDoubleClickDelay, enableLegendDoubleClickSelection = true, customOption, responsive: _responsive = true,...restProps }, ref) => {
 	const domProps = filterDOMProps(restProps);
 	const dataKey = useMemo(() => JSON.stringify(data), [data]);
 	const chartOption = useMemo(() => {
@@ -5127,6 +5599,20 @@ const ClusterChart = forwardRef(({ width = "100%", height = 400, className, styl
 		animationDuration,
 		customOption
 	]);
+	const { containerRef, loading: chartLoading, error, getEChartsInstance, resize, showLoading, hideLoading } = useECharts({
+		option: chartOption,
+		theme,
+		loading,
+		onChartReady
+	});
+	const chartInstance = getEChartsInstance();
+	const { handleLegendClick, handleSeriesClick } = useLegendDoubleClick({
+		chartInstance,
+		onLegendDoubleClick,
+		onSeriesDoubleClick,
+		delay: legendDoubleClickDelay || 300,
+		enableAutoSelection: enableLegendDoubleClickSelection
+	});
 	const chartEvents = useMemo(() => {
 		const events = {};
 		if (onDataPointClick) events.click = (params, chart) => {
@@ -5135,21 +5621,47 @@ const ClusterChart = forwardRef(({ width = "100%", height = 400, className, styl
 				event: params
 			});
 		};
+		if (onSeriesDoubleClick || enableLegendDoubleClickSelection) {
+			const existingClick = events.click;
+			events.click = (params, chart) => {
+				if (existingClick) existingClick(params, chart);
+				handleSeriesClick(params);
+			};
+		} else if (!onDataPointClick) events.click = (params) => {
+			handleSeriesClick(params);
+		};
 		if (onDataPointHover) events.mouseover = (params, chart) => {
 			onDataPointHover(params, {
 				chart,
 				event: params
 			});
 		};
-		return Object.keys(events).length > 0 ? events : void 0;
-	}, [onDataPointClick, onDataPointHover]);
-	const { containerRef, loading: chartLoading, error, getEChartsInstance, resize, showLoading, hideLoading } = useECharts({
-		option: chartOption,
-		theme,
-		loading,
-		events: chartEvents,
-		onChartReady
-	});
+		if (onLegendDoubleClick || enableLegendDoubleClickSelection) events.legendselectchanged = (params) => {
+			handleLegendClick(params);
+		};
+		return events;
+	}, [
+		onDataPointClick,
+		onDataPointHover,
+		onLegendDoubleClick,
+		onSeriesDoubleClick,
+		enableLegendDoubleClickSelection,
+		handleLegendClick,
+		handleSeriesClick
+	]);
+	useEffect(() => {
+		if (!chartInstance || Object.keys(chartEvents).length === 0) return;
+		const eventHandlers = [];
+		Object.entries(chartEvents).forEach(([event, handler]) => {
+			chartInstance.on(event, handler);
+			eventHandlers.push([event, handler]);
+		});
+		return () => {
+			eventHandlers.forEach(([event, handler]) => {
+				chartInstance.off(event, handler);
+			});
+		};
+	}, [chartInstance, chartEvents]);
 	const exportImage = (format = "png") => {
 		const chart = getEChartsInstance();
 		if (!chart) return "";
@@ -5333,7 +5845,7 @@ ClusterChart.displayName = "ClusterChart";
 *   showWeekLabel={false}
 * />
 */
-const CalendarHeatmapChart = forwardRef(({ width = "100%", height = 400, className, style, data, dateField = "date", valueField = "value", theme = "light", colorPalette, backgroundColor, title, subtitle, titlePosition = "center", year, range, startOfWeek = "sunday", cellSize, colorScale, showWeekLabel = true, showMonthLabel = true, showYearLabel = true, valueFormat, showValues = false, cellBorderColor, cellBorderWidth, splitNumber, orient = "horizontal", monthGap, yearGap, legend, tooltip, loading = false, disabled: _disabled = false, animate = true, animationDuration, onChartReady, onDataPointClick, onDataPointHover, customOption, responsive: _responsive = true,...restProps }, ref) => {
+const CalendarHeatmapChart = forwardRef(({ width = "100%", height = 400, className, style, data, dateField = "date", valueField = "value", theme = "light", colorPalette, backgroundColor, title, subtitle, titlePosition = "center", year, range, startOfWeek = "sunday", cellSize, colorScale, showWeekLabel = true, showMonthLabel = true, showYearLabel = true, valueFormat, showValues = false, cellBorderColor, cellBorderWidth, splitNumber, orient = "horizontal", monthGap, yearGap, legend, tooltip, loading = false, disabled: _disabled = false, animate = true, animationDuration, onChartReady, onDataPointClick, onDataPointHover, onLegendDoubleClick, onSeriesDoubleClick, legendDoubleClickDelay, enableLegendDoubleClickSelection = true, customOption, responsive: _responsive = true,...restProps }, ref) => {
 	const domProps = filterDOMProps(restProps);
 	const chartOption = useMemo(() => {
 		return buildCalendarHeatmapOption({
@@ -5400,6 +5912,20 @@ const CalendarHeatmapChart = forwardRef(({ width = "100%", height = 400, classNa
 		animationDuration,
 		customOption
 	]);
+	const { containerRef, loading: chartLoading, error, getEChartsInstance, resize, showLoading, hideLoading } = useECharts({
+		option: chartOption,
+		theme,
+		loading,
+		onChartReady
+	});
+	const chartInstance = getEChartsInstance();
+	const { handleLegendClick, handleSeriesClick } = useLegendDoubleClick({
+		chartInstance,
+		onLegendDoubleClick,
+		onSeriesDoubleClick,
+		delay: legendDoubleClickDelay || 300,
+		enableAutoSelection: enableLegendDoubleClickSelection
+	});
 	const chartEvents = useMemo(() => {
 		const events = {};
 		if (onDataPointClick) events.click = (params, chart) => {
@@ -5408,21 +5934,47 @@ const CalendarHeatmapChart = forwardRef(({ width = "100%", height = 400, classNa
 				event: params
 			});
 		};
+		if (onSeriesDoubleClick || enableLegendDoubleClickSelection) {
+			const existingClick = events.click;
+			events.click = (params, chart) => {
+				if (existingClick) existingClick(params, chart);
+				handleSeriesClick(params);
+			};
+		} else if (!onDataPointClick) events.click = (params) => {
+			handleSeriesClick(params);
+		};
 		if (onDataPointHover) events.mouseover = (params, chart) => {
 			onDataPointHover(params, {
 				chart,
 				event: params
 			});
 		};
-		return Object.keys(events).length > 0 ? events : void 0;
-	}, [onDataPointClick, onDataPointHover]);
-	const { containerRef, loading: chartLoading, error, getEChartsInstance, resize, showLoading, hideLoading } = useECharts({
-		option: chartOption,
-		theme,
-		loading,
-		events: chartEvents,
-		onChartReady
-	});
+		if (onLegendDoubleClick || enableLegendDoubleClickSelection) events.legendselectchanged = (params) => {
+			handleLegendClick(params);
+		};
+		return events;
+	}, [
+		onDataPointClick,
+		onDataPointHover,
+		onLegendDoubleClick,
+		onSeriesDoubleClick,
+		enableLegendDoubleClickSelection,
+		handleLegendClick,
+		handleSeriesClick
+	]);
+	useEffect(() => {
+		if (!chartInstance || Object.keys(chartEvents).length === 0) return;
+		const eventHandlers = [];
+		Object.entries(chartEvents).forEach(([event, handler]) => {
+			chartInstance.on(event, handler);
+			eventHandlers.push([event, handler]);
+		});
+		return () => {
+			eventHandlers.forEach(([event, handler]) => {
+				chartInstance.off(event, handler);
+			});
+		};
+	}, [chartInstance, chartEvents]);
 	const exportImage = (format = "png") => {
 		const chart = getEChartsInstance();
 		if (!chart) return "";
@@ -5627,7 +6179,8 @@ CalendarHeatmapChart.displayName = "CalendarHeatmapChart";
 *   showLinkLabels
 * />
 */
-const SankeyChart = forwardRef(({ width = "100%", height = 400, className, style, data, sourceField = "source", targetField = "target", valueField = "value", nodeNameField, nodes, links, theme = "light", colorPalette, backgroundColor, title, subtitle, titlePosition = "center", layout = "none", orient = "horizontal", nodeAlign = "justify", nodeGap = 8, nodeWidth = 20, iterations = 32, nodeColors, showNodeValues = false, nodeLabels = true, nodeLabelPosition, linkColors, linkOpacity = .6, linkCurveness = .5, showLinkLabels = false, focusMode = "adjacency", blurScope, legend, tooltip, loading = false, disabled: _disabled = false, animate = true, animationDuration, onChartReady, onDataPointClick, onDataPointHover, customOption, responsive: _responsive = true,...restProps }, ref) => {
+const SankeyChart = forwardRef(({ width = "100%", height = 400, className, style, data, sourceField = "source", targetField = "target", valueField = "value", nodeNameField, nodes, links, theme = "light", colorPalette, backgroundColor, title, subtitle, titlePosition = "center", layout = "none", orient = "horizontal", nodeAlign = "justify", nodeGap = 8, nodeWidth = 20, iterations = 32, nodeColors, showNodeValues = false, nodeLabels = true, nodeLabelPosition, linkColors, linkOpacity = .6, linkCurveness = .5, showLinkLabels = false, focusMode = "adjacency", blurScope, legend, tooltip, loading = false, disabled: _disabled = false, animate = true, animationDuration, onChartReady, onDataPointClick, onDataPointHover, onLegendDoubleClick, onSeriesDoubleClick, legendDoubleClickDelay, enableLegendDoubleClickSelection = true, customOption, responsive: _responsive = true,...restProps }, ref) => {
+	const domProps = filterDOMProps(restProps);
 	const chartOption = useMemo(() => {
 		return buildSankeyChartOption({
 			data: data || void 0,
@@ -5701,6 +6254,20 @@ const SankeyChart = forwardRef(({ width = "100%", height = 400, className, style
 		animationDuration,
 		customOption
 	]);
+	const { containerRef, loading: chartLoading, error, getEChartsInstance, resize, showLoading, hideLoading } = useECharts({
+		option: chartOption,
+		theme,
+		loading,
+		onChartReady
+	});
+	const chartInstance = getEChartsInstance();
+	const { handleLegendClick, handleSeriesClick } = useLegendDoubleClick({
+		chartInstance,
+		onLegendDoubleClick,
+		onSeriesDoubleClick,
+		delay: legendDoubleClickDelay || 300,
+		enableAutoSelection: enableLegendDoubleClickSelection
+	});
 	const chartEvents = useMemo(() => {
 		const events = {};
 		if (onDataPointClick) events.click = (params, chart) => {
@@ -5709,21 +6276,47 @@ const SankeyChart = forwardRef(({ width = "100%", height = 400, className, style
 				event: params
 			});
 		};
+		if (onSeriesDoubleClick || enableLegendDoubleClickSelection) {
+			const existingClick = events.click;
+			events.click = (params, chart) => {
+				if (existingClick) existingClick(params, chart);
+				handleSeriesClick(params);
+			};
+		} else if (!onDataPointClick) events.click = (params) => {
+			handleSeriesClick(params);
+		};
 		if (onDataPointHover) events.mouseover = (params, chart) => {
 			onDataPointHover(params, {
 				chart,
 				event: params
 			});
 		};
-		return Object.keys(events).length > 0 ? events : void 0;
-	}, [onDataPointClick, onDataPointHover]);
-	const { containerRef, loading: chartLoading, error, getEChartsInstance, resize, showLoading, hideLoading } = useECharts({
-		option: chartOption,
-		theme,
-		loading,
-		events: chartEvents,
-		onChartReady
-	});
+		if (onLegendDoubleClick || enableLegendDoubleClickSelection) events.legendselectchanged = (params) => {
+			handleLegendClick(params);
+		};
+		return events;
+	}, [
+		onDataPointClick,
+		onDataPointHover,
+		onLegendDoubleClick,
+		onSeriesDoubleClick,
+		enableLegendDoubleClickSelection,
+		handleLegendClick,
+		handleSeriesClick
+	]);
+	useEffect(() => {
+		if (!chartInstance || Object.keys(chartEvents).length === 0) return;
+		const eventHandlers = [];
+		Object.entries(chartEvents).forEach(([event, handler]) => {
+			chartInstance.on(event, handler);
+			eventHandlers.push([event, handler]);
+		});
+		return () => {
+			eventHandlers.forEach(([event, handler]) => {
+				chartInstance.off(event, handler);
+			});
+		};
+	}, [chartInstance, chartEvents]);
 	const exportImage = (format = "png") => {
 		const chart = getEChartsInstance();
 		if (!chart) return "";
@@ -5851,7 +6444,7 @@ const SankeyChart = forwardRef(({ width = "100%", height = 400, className, style
 	return /* @__PURE__ */ jsxs("div", {
 		className: `aqc-charts-container ${className || ""}`,
 		style: containerStyle,
-		...restProps,
+		...domProps,
 		children: [/* @__PURE__ */ jsx("div", {
 			ref: containerRef,
 			style: {
@@ -5961,7 +6554,7 @@ SankeyChart.displayName = "SankeyChart";
 *   onTaskClick={(task) => alert('Task clicked: ' + task.name)}
 * />
 */
-const GanttChart = forwardRef(({ width = "100%", height = 600, className, style, data, idField = "id", nameField = "name", categoryField = "category", startTimeField = "startTime", endTimeField = "endTime", colorField = "color", statusField = "status", priorityField = "priority", progressField = "progress", assigneeField = "assignee", tasks, categories, theme = "light", colorPalette, backgroundColor, title, subtitle, titlePosition = "center", categoryWidth = 120, taskHeight = .6, categorySpacing = 2, groupSpacing = 8, taskBarStyle, statusStyles, priorityStyles, categoryLabelStyle, showCategoryLabels = true, categoryColors, timelineStyle, timeRange, timeFormat, dataZoom = true, allowPan = true, allowZoom = true, initialZoomLevel, draggable = false, resizable = false, selectable = false, showTaskTooltips = true, showDependencies = false, showMilestones = false, milestoneStyle, todayMarker = false, showProgress = false, showTaskProgress = true, progressStyle, groupByCategory = false, groupByAssignee = false, filterByStatus, filterByPriority, sortBy, sortOrder = "asc", legend, tooltip, loading = false, disabled: _disabled = false, animate = true, animationDuration, onChartReady, onDataPointClick, onDataPointHover, onTaskClick, onTaskDrag: _onTaskDrag, onTaskResize: _onTaskResize, onCategoryClick, onTimeRangeChange, customOption, responsive: _responsive = true,...restProps }, ref) => {
+const GanttChart = forwardRef(({ width = "100%", height = 600, className, style, data, idField = "id", nameField = "name", categoryField = "category", startTimeField = "startTime", endTimeField = "endTime", colorField = "color", statusField = "status", priorityField = "priority", progressField = "progress", assigneeField = "assignee", tasks, categories, theme = "light", colorPalette, backgroundColor, title, subtitle, titlePosition = "center", categoryWidth = 120, taskHeight = .6, categorySpacing = 2, groupSpacing = 8, taskBarStyle, statusStyles, priorityStyles, categoryLabelStyle, showCategoryLabels = true, categoryColors, timelineStyle, timeRange, timeFormat, dataZoom = true, allowPan = true, allowZoom = true, initialZoomLevel, draggable = false, resizable = false, selectable = false, showTaskTooltips = true, showDependencies = false, showMilestones = false, milestoneStyle, todayMarker = false, showProgress = false, showTaskProgress = true, progressStyle, groupByCategory = false, groupByAssignee = false, filterByStatus, filterByPriority, sortBy, sortOrder = "asc", legend, tooltip, loading = false, disabled: _disabled = false, animate = true, animationDuration, onChartReady, onDataPointClick, onDataPointHover, onLegendDoubleClick, legendDoubleClickDelay, enableLegendDoubleClickSelection, onTaskClick, onTaskDrag: _onTaskDrag, onTaskResize: _onTaskResize, onCategoryClick, onTimeRangeChange, customOption, responsive: _responsive = true,...restProps }, ref) => {
 	const domProps = filterDOMProps(restProps);
 	const chartOption = useMemo(() => {
 		return buildGanttChartOption({
@@ -6084,6 +6677,19 @@ const GanttChart = forwardRef(({ width = "100%", height = 600, className, style,
 		animationDuration,
 		customOption
 	]);
+	const { containerRef, loading: chartLoading, error, getEChartsInstance, resize, showLoading, hideLoading } = useECharts({
+		option: chartOption,
+		theme,
+		loading,
+		onChartReady
+	});
+	const chartInstance = getEChartsInstance();
+	const { handleLegendClick } = useLegendDoubleClick({
+		chartInstance,
+		onLegendDoubleClick,
+		delay: legendDoubleClickDelay || 300,
+		enableAutoSelection: enableLegendDoubleClickSelection || false
+	});
 	const chartEvents = useMemo(() => {
 		const events = {};
 		if (onDataPointClick || onTaskClick) events.click = (params, chart) => {
@@ -6116,20 +6722,32 @@ const GanttChart = forwardRef(({ width = "100%", height = 600, className, style,
 				event: params
 			});
 		};
-		return Object.keys(events).length > 0 ? events : void 0;
+		if (onLegendDoubleClick || enableLegendDoubleClickSelection) events.legendselectchanged = (params) => {
+			handleLegendClick(params);
+		};
+		return events;
 	}, [
 		onDataPointClick,
 		onDataPointHover,
+		onLegendDoubleClick,
+		enableLegendDoubleClickSelection,
+		handleLegendClick,
 		onTaskClick,
 		onCategoryClick
 	]);
-	const { containerRef, loading: chartLoading, error, getEChartsInstance, resize, showLoading, hideLoading } = useECharts({
-		option: chartOption,
-		theme,
-		loading,
-		events: chartEvents,
-		onChartReady
-	});
+	useEffect(() => {
+		if (!chartInstance || Object.keys(chartEvents).length === 0) return;
+		const eventHandlers = [];
+		Object.entries(chartEvents).forEach(([event, handler]) => {
+			chartInstance.on(event, handler);
+			eventHandlers.push([event, handler]);
+		});
+		return () => {
+			eventHandlers.forEach(([event, handler]) => {
+				chartInstance.off(event, handler);
+			});
+		};
+	}, [chartInstance, chartEvents]);
 	const exportImage = (format = "png") => {
 		const chart = getEChartsInstance();
 		if (!chart) return "";
@@ -6385,7 +7003,7 @@ GanttChart.displayName = "GanttChart";
 *   showRSquared={true}
 * />
 */
-const RegressionChart = forwardRef(({ width = "100%", height = 400, className, style, data, xField = "x", yField = "y", method = "linear", order = 2, theme = "light", colorPalette, backgroundColor, title, subtitle, titlePosition = "center", pointSize = 8, pointShape = "circle", pointOpacity = .7, showPoints = true, lineWidth = 2, lineStyle = "solid", lineColor, lineOpacity = 1, showLine = true, showEquation = false, equationPosition = "top-right", showRSquared = true, equationFormatter, xAxis, yAxis, legend, tooltip, pointsLabel = "Data Points", regressionLabel = "Regression Line", loading = false, disabled: _disabled = false, animate = true, animationDuration, onChartReady, onDataPointClick, onDataPointHover, customOption, responsive: _responsive = true,...restProps }, ref) => {
+const RegressionChart = forwardRef(({ width = "100%", height = 400, className, style, data, xField = "x", yField = "y", method = "linear", order = 2, theme = "light", colorPalette, backgroundColor, title, subtitle, titlePosition = "center", pointSize = 8, pointShape = "circle", pointOpacity = .7, showPoints = true, lineWidth = 2, lineStyle = "solid", lineColor, lineOpacity = 1, showLine = true, showEquation = false, equationPosition = "top-right", showRSquared = true, equationFormatter, xAxis, yAxis, legend, tooltip, pointsLabel = "Data Points", regressionLabel = "Regression Line", loading = false, disabled: _disabled = false, animate = true, animationDuration, onChartReady, onDataPointClick, onDataPointHover, onLegendDoubleClick, onSeriesDoubleClick, legendDoubleClickDelay, enableLegendDoubleClickSelection = true, customOption, responsive: _responsive = true,...restProps }, ref) => {
 	const domProps = filterDOMProps(restProps);
 	const chartOption = useMemo(() => {
 		return buildRegressionChartOption({
@@ -6458,6 +7076,20 @@ const RegressionChart = forwardRef(({ width = "100%", height = 400, className, s
 		animationDuration,
 		customOption
 	]);
+	const { containerRef, loading: chartLoading, error, getEChartsInstance, resize, showLoading, hideLoading } = useECharts({
+		option: chartOption,
+		theme,
+		loading,
+		onChartReady
+	});
+	const chartInstance = getEChartsInstance();
+	const { handleLegendClick, handleSeriesClick } = useLegendDoubleClick({
+		chartInstance,
+		onLegendDoubleClick,
+		onSeriesDoubleClick,
+		delay: legendDoubleClickDelay || 300,
+		enableAutoSelection: enableLegendDoubleClickSelection
+	});
 	const chartEvents = useMemo(() => {
 		const events = {};
 		if (onDataPointClick) events.click = (params, chart) => {
@@ -6466,21 +7098,47 @@ const RegressionChart = forwardRef(({ width = "100%", height = 400, className, s
 				event: params
 			});
 		};
+		if (onSeriesDoubleClick || enableLegendDoubleClickSelection) {
+			const existingClick = events.click;
+			events.click = (params, chart) => {
+				if (existingClick) existingClick(params, chart);
+				handleSeriesClick(params);
+			};
+		} else if (!onDataPointClick) events.click = (params) => {
+			handleSeriesClick(params);
+		};
 		if (onDataPointHover) events.mouseover = (params, chart) => {
 			onDataPointHover(params, {
 				chart,
 				event: params
 			});
 		};
-		return Object.keys(events).length > 0 ? events : void 0;
-	}, [onDataPointClick, onDataPointHover]);
-	const { containerRef, loading: chartLoading, error, getEChartsInstance, resize, showLoading, hideLoading } = useECharts({
-		option: chartOption,
-		theme,
-		loading,
-		events: chartEvents,
-		onChartReady
-	});
+		if (onLegendDoubleClick || enableLegendDoubleClickSelection) events.legendselectchanged = (params) => {
+			handleLegendClick(params);
+		};
+		return events;
+	}, [
+		onDataPointClick,
+		onDataPointHover,
+		onLegendDoubleClick,
+		onSeriesDoubleClick,
+		enableLegendDoubleClickSelection,
+		handleLegendClick,
+		handleSeriesClick
+	]);
+	useEffect(() => {
+		if (!chartInstance || Object.keys(chartEvents).length === 0) return;
+		const eventHandlers = [];
+		Object.entries(chartEvents).forEach(([event, handler]) => {
+			chartInstance.on(event, handler);
+			eventHandlers.push([event, handler]);
+		});
+		return () => {
+			eventHandlers.forEach(([event, handler]) => {
+				chartInstance.off(event, handler);
+			});
+		};
+	}, [chartInstance, chartEvents]);
 	const exportImage = (format = "png") => {
 		const chart = getEChartsInstance();
 		if (!chart) return "";
@@ -6633,7 +7291,7 @@ RegressionChart.displayName = "RegressionChart";
 
 //#endregion
 //#region src/components/GeoChart.tsx
-const GeoChart = forwardRef(({ data, mapName, mapUrl, mapType = "geojson", mapSpecialAreas, chartType = "map", nameField = "name", valueField = "value", visualMap = {}, geo, roam = true, scaleLimit, itemStyle, showLabels = false, labelPosition = "inside", tooltip, toolbox, additionalSeries = [], grid, xAxis, yAxis, onSelectChanged, onMapLoad, onMapError, title,...restProps }, ref) => {
+const GeoChart = forwardRef(({ data, mapName, mapUrl, mapType = "geojson", mapSpecialAreas, chartType = "map", nameField = "name", valueField = "value", visualMap = {}, geo, roam = true, scaleLimit, itemStyle, showLabels = false, labelPosition = "inside", tooltip, toolbox, additionalSeries = [], grid, xAxis, yAxis, onSelectChanged, onMapLoad, onMapError, onLegendDoubleClick, onSeriesDoubleClick, legendDoubleClickDelay, enableLegendDoubleClickSelection, title,...restProps }, ref) => {
 	const [isMapLoaded, setIsMapLoaded] = useState(false);
 	const registeredMapsRef = useRef(new Set());
 	const stableOnMapLoad = useCallback(() => {
@@ -6865,6 +7523,10 @@ const GeoChart = forwardRef(({ data, mapName, mapUrl, mapType = "geojson", mapSp
 		option: chartOption,
 		theme: validTheme,
 		onChartReady: handleChartReady,
+		...onLegendDoubleClick && { onLegendDoubleClick },
+		...onSeriesDoubleClick && { onSeriesDoubleClick },
+		...legendDoubleClickDelay !== void 0 && { legendDoubleClickDelay },
+		...enableLegendDoubleClickSelection !== void 0 && { enableLegendDoubleClickSelection },
 		...title && { title },
 		...filteredProps
 	});

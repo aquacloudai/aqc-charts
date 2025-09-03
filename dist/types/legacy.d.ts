@@ -38,6 +38,10 @@ export interface BaseChartProps {
     readonly onMouseOut?: (params: unknown, chart: import('echarts/core').EChartsType) => void;
     readonly onDataZoom?: (params: unknown, chart: import('echarts/core').EChartsType) => void;
     readonly onBrush?: (params: unknown, chart: import('echarts/core').EChartsType) => void;
+    readonly onLegendDoubleClick?: (legendName: string, chart: import('echarts/core').EChartsType) => void;
+    readonly onSeriesDoubleClick?: (seriesName: string, chart: import('echarts/core').EChartsType) => void;
+    readonly legendDoubleClickDelay?: number;
+    readonly enableLegendDoubleClickSelection?: boolean;
     readonly className?: string;
     readonly style?: React.CSSProperties;
     readonly option: import('echarts/types/dist/shared').EChartsOption;

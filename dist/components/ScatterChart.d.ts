@@ -1,3 +1,4 @@
+import React from 'react';
 import type { ScatterChartProps, ErgonomicChartRef } from '@/types';
 /**
  * Ergonomic ScatterChart component with intuitive props
@@ -50,6 +51,6 @@ import type { ScatterChartProps, ErgonomicChartRef } from '@/types';
  *   yField="y"
  * />
  */
-declare const ScatterChart: import("react").ForwardRefExoticComponent<ScatterChartProps & import("react").RefAttributes<ErgonomicChartRef>>;
+declare const ScatterChart: React.ForwardRefExoticComponent<ScatterChartProps & React.RefAttributes<ErgonomicChartRef>>;
 export { ScatterChart };
 //# sourceMappingURL=ScatterChart.d.ts.map

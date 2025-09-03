@@ -30,6 +30,10 @@ export interface BaseErgonomicChartProps {
     readonly onChartReady?: (chart: EChartsType) => void;
     readonly onDataPointClick?: (data: any, event: any) => void;
     readonly onDataPointHover?: (data: any, event: any) => void;
+    readonly onLegendDoubleClick?: (legendName: string, chart: EChartsType) => void;
+    readonly onSeriesDoubleClick?: (seriesName: string, chart: EChartsType) => void;
+    readonly legendDoubleClickDelay?: number;
+    readonly enableLegendDoubleClickSelection?: boolean;
     readonly customOption?: Record<string, any> | undefined;
 }
 export interface DataPoint {

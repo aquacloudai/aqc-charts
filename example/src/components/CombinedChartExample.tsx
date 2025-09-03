@@ -177,6 +177,22 @@ export const CombinedChartExample: React.FC = () => {
             Monthly sales data as bars with temperature as a line chart, using dual Y-axes for different scales.
           </p>
           
+          <div style={{ 
+            backgroundColor: '#dbeafe',
+            border: '1px solid #3b82f6',
+            borderRadius: '6px',
+            padding: '12px',
+            marginBottom: '20px',
+            fontSize: '13px'
+          }}>
+            <strong>🎯 Try the Legend Double-Click Feature:</strong>
+            <ul style={{ margin: '8px 0 0 0', paddingLeft: '16px', lineHeight: '1.5' }}>
+              <li><strong>Single click</strong> legend items to show/hide series (normal behavior)</li>
+              <li><strong>Double click</strong> any legend item to show ONLY that series (hides all others)</li>
+              <li>Perfect for charts with many series to focus on individual data!</li>
+            </ul>
+          </div>
+          
           <CombinedChart
             data={salesTempData}
             xField="month"
@@ -225,6 +241,7 @@ export const CombinedChartExample: React.FC = () => {
               show: true,
               position: 'top'
             }}
+            enableLegendDoubleClickSelection={true}
           />
           
           <div style={{ 
@@ -248,6 +265,8 @@ export const CombinedChartExample: React.FC = () => {
     { name: 'Sales (Units)', position: 'left' },
     { name: 'Temperature (°C)', position: 'right' }
   ]}
+  // NEW: Legend double-click functionality
+  enableLegendDoubleClickSelection={true}
 />`}
             </pre>
           </div>

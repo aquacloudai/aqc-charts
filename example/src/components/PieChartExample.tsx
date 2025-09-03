@@ -89,6 +89,7 @@ export function PieChartExample({ theme, colorPalette, onInteraction }: PieChart
             nameField="platform"
             valueField="revenue"
             title="Revenue by Platform"
+            enableLegendDoubleClickSelection={true}
             height={300}
             theme={theme}
             colorPalette={colorPalette}

@@ -1,7 +1,8 @@
-import { forwardRef, useMemo, useImperativeHandle } from 'react';
+import React, { forwardRef, useMemo, useImperativeHandle, useEffect } from 'react';
 import type { EChartsType } from 'echarts/core';
 import type { BarChartProps, ErgonomicChartRef } from '@/types';
 import { useECharts } from '@/hooks/useECharts';
+import { useLegendDoubleClick } from '@/hooks/useLegendDoubleClick';
 import { buildBarChartOption } from '@/utils/chart-builders';
 import { filterDOMProps } from '@/utils/domProps';
 
@@ -58,74 +59,78 @@ const BarChart = forwardRef<ErgonomicChartRef, BarChartProps>(({
   height = 400,
   className,
   style,
-  
+
   // Data and field mappings
   data,
   categoryField = 'category',
   valueField = 'value',
   seriesField,
   series,
-  
+
   // Styling
   theme = 'light',
   colorPalette,
   backgroundColor,
-  
+
   // Title
   title,
   subtitle,
   titlePosition = 'center',
-  
+
   // Logo
   logo,
-  
+
   // Bar styling
   orientation = 'vertical',
   barWidth,
   barGap,
   borderRadius = 0,
-  
+
   // Stacking
   stack = false,
   stackType = 'normal',
   showPercentage = false,
-  
+
   // Label visibility
   showLabels = false,
   showAbsoluteValues = false,
   showPercentageLabels = false,
-  
+
   // Configuration
   xAxis,
   yAxis,
   legend,
   tooltip,
-  
+
   // Sorting
   sortBy = 'none',
   sortOrder = 'asc',
-  
+
   // States
   loading = false,
   disabled: _disabled = false,
   animate = true,
   animationDuration,
-  
+
   // Events
   onChartReady,
   onDataPointClick,
   onDataPointHover,
-  
+  onLegendDoubleClick,
+  onSeriesDoubleClick,
+  legendDoubleClickDelay,
+  enableLegendDoubleClickSelection = true,
+
   // Advanced
   customOption,
   responsive: _responsive = true,
-  
+
   ...restProps
 }, ref) => {
-  
+
   // Filter out chart-specific props from restProps to avoid React DOM warnings
   const domProps = filterDOMProps(restProps);
-  
+
   // Build ECharts option from ergonomic props
   const chartOption = useMemo(() => {
     return buildBarChartOption({
@@ -173,27 +178,8 @@ const BarChart = forwardRef<ErgonomicChartRef, BarChartProps>(({
     sortBy, sortOrder, animate, animationDuration,
     customOption
   ]);
-  
-  // Handle data point interactions
-  const chartEvents = useMemo(() => {
-    const events: Record<string, any> = {};
-    
-    if (onDataPointClick) {
-      events.click = (params: any, chart: EChartsType) => {
-        onDataPointClick(params, { chart, event: params });
-      };
-    }
-    
-    if (onDataPointHover) {
-      events.mouseover = (params: any, chart: EChartsType) => {
-        onDataPointHover(params, { chart, event: params });
-      };
-    }
-    
-    return Object.keys(events).length > 0 ? events : undefined;
-  }, [onDataPointClick, onDataPointHover]);
 
-  // Use our refactored hook with events included
+  // Use our refactored hook
   const {
     containerRef,
     loading: chartLoading,
@@ -206,21 +192,94 @@ const BarChart = forwardRef<ErgonomicChartRef, BarChartProps>(({
     option: chartOption,
     theme,
     loading,
-    events: chartEvents,
     onChartReady,
   });
-  
+
+  // Get chart instance for legend double-click functionality
+  const chartInstance = getEChartsInstance();
+
+  // Setup legend and series double-click handling
+  const { handleLegendClick, handleSeriesClick } = useLegendDoubleClick({
+    chartInstance,
+    onLegendDoubleClick,
+    onSeriesDoubleClick,
+    delay: legendDoubleClickDelay || 300,
+    enableAutoSelection: enableLegendDoubleClickSelection || false,
+  });
+
+  // Handle data point interactions and legend events
+  const chartEvents = useMemo(() => {
+    const events: Record<string, any> = {};
+
+    if (onDataPointClick) {
+      events.click = (params: any, chart: EChartsType) => {
+        onDataPointClick(params, { chart, event: params });
+      };
+    }
+
+    // Add series double-click detection via click event
+    if (onSeriesDoubleClick || enableLegendDoubleClickSelection) {
+      const existingClick = events.click;
+      events.click = (params: any, chart: EChartsType) => {
+        // Call existing click handler first
+        if (existingClick) {
+          existingClick(params, chart);
+        }
+        // Then handle series double-click
+        handleSeriesClick(params);
+      };
+    } else if (!onDataPointClick) {
+      // If no existing click handler, add series double-click handler only
+      events.click = (params: any) => {
+        handleSeriesClick(params);
+      };
+    }
+
+    if (onDataPointHover) {
+      events.mouseover = (params: any, chart: EChartsType) => {
+        onDataPointHover(params, { chart, event: params });
+      };
+    }
+
+    // Add legend double-click detection via legendselectchanged event
+    if (onLegendDoubleClick || enableLegendDoubleClickSelection) {
+      events.legendselectchanged = (params: any) => {
+        handleLegendClick(params);
+      };
+    }
+
+    return events;
+  }, [onDataPointClick, onDataPointHover, onLegendDoubleClick, onSeriesDoubleClick, enableLegendDoubleClickSelection, handleLegendClick, handleSeriesClick]);
+
+  // Apply events to chart instance
+  useEffect(() => {
+    if (!chartInstance || Object.keys(chartEvents).length === 0) return;
+
+    const eventHandlers: Array<[string, (...args: unknown[]) => void]> = [];
+
+    Object.entries(chartEvents).forEach(([event, handler]) => {
+      chartInstance.on(event, handler);
+      eventHandlers.push([event, handler]);
+    });
+
+    return () => {
+      eventHandlers.forEach(([event, handler]) => {
+        chartInstance.off(event, handler);
+      });
+    };
+  }, [chartInstance, chartEvents]);
+
   // Export image functionality with logo support
   const exportImage = (format: 'png' | 'jpeg' | 'svg' = 'png', opts?: { pixelRatio?: number; backgroundColor?: string; excludeComponents?: string[] }): string => {
     const chart = getEChartsInstance();
     if (!chart) return '';
-    
+
     // If logo should only appear on save, temporarily add it
     if (logo?.onSaveOnly) {
       const currentOption = chart.getOption();
       const chartWidth = typeof width === 'number' ? width : 600;
       const chartHeight = typeof height === 'number' ? height : 400;
-      
+
       // Add logo to option
       const logoGraphic = {
         type: 'image',
@@ -235,7 +294,7 @@ const BarChart = forwardRef<ErgonomicChartRef, BarChartProps>(({
         z: 1000,
         silent: true,
       };
-      
+
       const optionWithLogo = {
         ...currentOption,
         graphic: [
@@ -243,30 +302,30 @@ const BarChart = forwardRef<ErgonomicChartRef, BarChartProps>(({
           logoGraphic,
         ],
       };
-      
+
       chart.setOption(optionWithLogo, { notMerge: false, lazyUpdate: false });
-      
+
       const dataURL = chart.getDataURL({
         type: format,
         pixelRatio: opts?.pixelRatio || 2,
         backgroundColor: opts?.backgroundColor || backgroundColor || '#fff',
         ...(opts?.excludeComponents && { excludeComponents: opts.excludeComponents }),
       });
-      
+
       // Remove logo after export
-      const filteredGraphics = Array.isArray(currentOption.graphic) 
+      const filteredGraphics = Array.isArray(currentOption.graphic)
         ? currentOption.graphic.filter((g: any) => g.type !== 'image')
         : (currentOption.graphic && (currentOption.graphic as any).type !== 'image') ? [currentOption.graphic] : [];
-      
+
       const optionWithoutLogo = {
         ...currentOption,
         graphic: filteredGraphics.length > 0 ? filteredGraphics : undefined,
       };
       chart.setOption(optionWithoutLogo, { notMerge: false, lazyUpdate: false });
-      
+
       return dataURL;
     }
-    
+
     // Normal export without temporary logo
     return chart.getDataURL({
       type: format,
@@ -289,33 +348,33 @@ const BarChart = forwardRef<ErgonomicChartRef, BarChartProps>(({
     link.click();
     document.body.removeChild(link);
   };
-  
+
   // Highlight functionality
   const highlight = (dataIndex: number, seriesIndex: number = 0) => {
     const chart = getEChartsInstance();
     if (!chart) return;
-    
+
     chart.dispatchAction({
       type: 'highlight',
       seriesIndex,
       dataIndex,
     });
   };
-  
+
   const clearHighlight = () => {
     const chart = getEChartsInstance();
     if (!chart) return;
-    
+
     chart.dispatchAction({
       type: 'downplay',
     });
   };
-  
+
   // Update data functionality
   const updateData = (newData: readonly any[]) => {
     const chart = getEChartsInstance();
     if (!chart) return;
-    
+
     const newOption = buildBarChartOption({
       data: newData,
       categoryField,
@@ -348,10 +407,10 @@ const BarChart = forwardRef<ErgonomicChartRef, BarChartProps>(({
       animationDuration,
       customOption,
     });
-    
+
     chart.setOption(newOption as any);
   };
-  
+
   // Expose ergonomic API through ref
   useImperativeHandle(ref, () => ({
     getChart: getEChartsInstance,
@@ -364,7 +423,7 @@ const BarChart = forwardRef<ErgonomicChartRef, BarChartProps>(({
     clearHighlight,
     updateData,
   }), [getEChartsInstance, exportImage, saveAsImage, resize, showLoading, hideLoading, highlight, clearHighlight, updateData]);
-  
+
   // Error state
   if (error) {
     return (
@@ -387,7 +446,7 @@ const BarChart = forwardRef<ErgonomicChartRef, BarChartProps>(({
       </div>
     );
   }
-  
+
   // Container style with minimum dimensions fallback
   const containerStyle = useMemo(() => ({
     width,
@@ -398,7 +457,7 @@ const BarChart = forwardRef<ErgonomicChartRef, BarChartProps>(({
     position: 'relative' as const,
     ...style,
   }), [width, height, style]);
-  
+
   return (
     <div
       className={`aqc-charts-container ${className || ''}`}
@@ -413,10 +472,10 @@ const BarChart = forwardRef<ErgonomicChartRef, BarChartProps>(({
           height: '100%',
         }}
       />
-      
+
       {/* Loading overlay */}
       {(chartLoading || loading) && (
-        <div 
+        <div
           className="aqc-charts-loading"
           style={{
             position: 'absolute',

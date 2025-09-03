@@ -1,3 +1,4 @@
+import React from 'react';
 import type { PieChartProps, ErgonomicChartRef } from '@/types';
 /**
  * Ergonomic PieChart component with intuitive props
@@ -38,6 +39,6 @@ import type { PieChartProps, ErgonomicChartRef } from '@/types';
  *   showLabels
  * />
  */
-declare const PieChart: import("react").ForwardRefExoticComponent<PieChartProps & import("react").RefAttributes<ErgonomicChartRef>>;
+declare const PieChart: React.ForwardRefExoticComponent<PieChartProps & React.RefAttributes<ErgonomicChartRef>>;
 export { PieChart };
 //# sourceMappingURL=PieChart.d.ts.map

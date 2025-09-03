@@ -1,8 +1,10 @@
-import { forwardRef, useMemo, useImperativeHandle } from 'react';
+import { forwardRef, useMemo, useImperativeHandle, useEffect } from 'react';
 import type { EChartsType } from 'echarts/core';
 import type { AreaChartProps, ErgonomicChartRef } from '@/types';
 import { useECharts } from '@/hooks/useECharts';
+import { useLegendDoubleClick } from '@/hooks/useLegendDoubleClick';
 import { buildStackedAreaChartOption } from '@/utils/chart-builders';
+import { filterDOMProps } from '@/utils/domProps';
 
 const StackedAreaChart = forwardRef<ErgonomicChartRef, AreaChartProps>(({
   // Chart dimensions
@@ -70,6 +72,10 @@ const StackedAreaChart = forwardRef<ErgonomicChartRef, AreaChartProps>(({
   onChartReady,
   onDataPointClick,
   onDataPointHover,
+  onLegendDoubleClick,
+  onSeriesDoubleClick,
+  legendDoubleClickDelay,
+  enableLegendDoubleClickSelection = true,
   
   // Advanced
   customOption,
@@ -77,6 +83,9 @@ const StackedAreaChart = forwardRef<ErgonomicChartRef, AreaChartProps>(({
   
   ...restProps
 }, ref) => {
+  
+  // Filter out chart-specific props from restProps to avoid React DOM warnings
+  const domProps = filterDOMProps(restProps);
   
   // Build ECharts option from ergonomic props
   const chartOption = useMemo(() => {
@@ -130,26 +139,7 @@ const StackedAreaChart = forwardRef<ErgonomicChartRef, AreaChartProps>(({
     customOption
   ]);
   
-  // Handle data point interactions
-  const chartEvents = useMemo(() => {
-    const events: Record<string, any> = {};
-    
-    if (onDataPointClick) {
-      events.click = (params: any, chart: EChartsType) => {
-        onDataPointClick(params, { chart, event: params });
-      };
-    }
-    
-    if (onDataPointHover) {
-      events.mouseover = (params: any, chart: EChartsType) => {
-        onDataPointHover(params, { chart, event: params });
-      };
-    }
-    
-    return Object.keys(events).length > 0 ? events : undefined;
-  }, [onDataPointClick, onDataPointHover]);
-
-  // Use our refactored hook with events included
+  // Use our refactored hook
   const {
     containerRef,
     loading: chartLoading,
@@ -162,9 +152,117 @@ const StackedAreaChart = forwardRef<ErgonomicChartRef, AreaChartProps>(({
     option: chartOption,
     theme,
     loading,
-    events: chartEvents,
     onChartReady,
   });
+  
+  // Get chart instance for legend double-click functionality
+  const chartInstance = getEChartsInstance();
+
+  // Setup legend and series double-click handling
+  const { handleLegendClick, handleSeriesClick } = useLegendDoubleClick({
+    chartInstance,
+    onLegendDoubleClick,
+    onSeriesDoubleClick,
+    delay: legendDoubleClickDelay || 300,
+    enableAutoSelection: enableLegendDoubleClickSelection,
+  });
+
+  // Handle data point interactions and legend events
+  const chartEvents = useMemo(() => {
+    const events: Record<string, any> = {};
+    
+    if (onDataPointClick) {
+      events.click = (params: any, chart: EChartsType) => {
+        onDataPointClick(params, { chart, event: params });
+      };
+    }
+
+    // Add series double-click detection via click event
+    if (onSeriesDoubleClick || enableLegendDoubleClickSelection) {
+      const existingClick = events.click;
+      events.click = (params: any, chart?: EChartsType) => {
+        // Call existing click handler first
+        if (existingClick) {
+          existingClick(params, chart);
+        }
+        // For stacked area charts, we need to ensure we have a valid series name
+        // Use chartInstance if chart parameter is not available
+        const activeChart = chart || chartInstance;
+        if (activeChart) {
+          try {
+            const option = activeChart.getOption() as any;
+            const enhancedParams = {
+              ...params,
+              seriesName: params.seriesName || params.name || (option.series?.[params.seriesIndex]?.name),
+            };
+            // Then handle series double-click with enhanced params
+            handleSeriesClick(enhancedParams);
+          } catch (_error) {
+            // Fallback if getOption fails
+            handleSeriesClick(params);
+          }
+        } else {
+          // Fallback if no chart available
+          handleSeriesClick(params);
+        }
+      };
+    } else if (!onDataPointClick) {
+      // If no existing click handler, add series double-click handler only
+      events.click = (params: any, chart?: EChartsType) => {
+        // For stacked area charts, we need to ensure we have a valid series name
+        const activeChart = chart || chartInstance;
+        if (activeChart) {
+          try {
+            const option = activeChart.getOption() as any;
+            const enhancedParams = {
+              ...params,
+              seriesName: params.seriesName || params.name || (option.series?.[params.seriesIndex]?.name),
+            };
+            handleSeriesClick(enhancedParams);
+          } catch (_error) {
+            // Fallback if getOption fails
+            handleSeriesClick(params);
+          }
+        } else {
+          // Fallback if no chart available
+          handleSeriesClick(params);
+        }
+      };
+    }
+    
+    if (onDataPointHover) {
+      events.mouseover = (params: any, chart: EChartsType) => {
+        onDataPointHover(params, { chart, event: params });
+      };
+    }
+    
+    // Add legend double-click detection via legendselectchanged event
+    if (onLegendDoubleClick || enableLegendDoubleClickSelection) {
+      events.legendselectchanged = (params: any) => {
+        handleLegendClick(params);
+      };
+    }
+    
+    return events;
+  }, [onDataPointClick, onDataPointHover, onLegendDoubleClick, onSeriesDoubleClick, enableLegendDoubleClickSelection, handleLegendClick, handleSeriesClick]);
+
+  // Apply events to chart instance
+  useEffect(() => {
+    if (!chartInstance || Object.keys(chartEvents).length === 0) return;
+
+    const eventHandlers: Array<[string, (...args: unknown[]) => void]> = [];
+
+    Object.entries(chartEvents).forEach(([event, handler]) => {
+      chartInstance.on(event, handler);
+      eventHandlers.push([event, handler]);
+    });
+
+    return () => {
+      eventHandlers.forEach(([event, handler]) => {
+        chartInstance.off(event, handler);
+      });
+    };
+  }, [chartInstance, chartEvents]);
   
   // Export image functionality with logo support
   const exportImage = (format: 'png' | 'jpeg' | 'svg' = 'png', opts?: { pixelRatio?: number; backgroundColor?: string; excludeComponents?: string[] }): string => {
@@ -359,7 +457,7 @@ const StackedAreaChart = forwardRef<ErgonomicChartRef, AreaChartProps>(({
     <div
       className={`aqc-charts-container ${className || ''}`}
       style={containerStyle}
-      {...restProps}
+      {...domProps}
     >
       {/* Chart container */}
       <div

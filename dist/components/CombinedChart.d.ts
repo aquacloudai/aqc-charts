@@ -1,3 +1,4 @@
+import React from 'react';
 import type { CombinedChartProps, ErgonomicChartRef } from '@/types';
 /**
  * Combined Chart component that can mix line and bar series in the same visualization
@@ -32,6 +33,6 @@ import type { CombinedChartProps, ErgonomicChartRef } from '@/types';
  *   ]}
  * />
  */
-declare const CombinedChart: import("react").ForwardRefExoticComponent<CombinedChartProps & import("react").RefAttributes<ErgonomicChartRef>>;
+declare const CombinedChart: React.ForwardRefExoticComponent<CombinedChartProps & React.RefAttributes<ErgonomicChartRef>>;
 export { CombinedChart };
 //# sourceMappingURL=CombinedChart.d.ts.map

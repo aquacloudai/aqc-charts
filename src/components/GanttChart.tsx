@@ -1,7 +1,8 @@
-import { forwardRef, useMemo, useImperativeHandle } from 'react';
+import React, { forwardRef, useMemo, useImperativeHandle, useEffect } from 'react';
 import type { EChartsType } from 'echarts/core';
 import type { GanttChartProps, ErgonomicChartRef, GanttTask, GanttCategory } from '@/types';
 import { useECharts } from '@/hooks/useECharts';
+import { useLegendDoubleClick } from '@/hooks/useLegendDoubleClick';
 import { buildGanttChartOption } from '@/utils/chart-builders';
 import { filterDOMProps } from '@/utils/domProps';
 
@@ -172,6 +173,9 @@ const GanttChart = forwardRef<ErgonomicChartRef, GanttChartProps>(({
   onChartReady,
   onDataPointClick,
   onDataPointHover,
+  onLegendDoubleClick,
+  legendDoubleClickDelay,
+  enableLegendDoubleClickSelection,
   onTaskClick,
   onTaskDrag: _onTaskDrag,
   onTaskResize: _onTaskResize,
@@ -263,6 +267,33 @@ const GanttChart = forwardRef<ErgonomicChartRef, GanttChartProps>(({
     legend, tooltip, animate, animationDuration, customOption
   ]);
   
+  // Use the ECharts hook
+  const {
+    containerRef,
+    loading: chartLoading,
+    error,
+    getEChartsInstance,
+    resize,
+    showLoading,
+    hideLoading,
+  } = useECharts({
+    option: chartOption,
+    theme,
+    loading,
+    onChartReady,
+  });
+  
+  // Get chart instance for legend double-click functionality
+  const chartInstance = getEChartsInstance();
+
+  // Setup legend double-click handling
+  const { handleLegendClick } = useLegendDoubleClick({
+    chartInstance,
+    onLegendDoubleClick,
+    delay: legendDoubleClickDelay || 300,
+    enableAutoSelection: enableLegendDoubleClickSelection || false,
+  });
+
   // Handle chart interactions
   const chartEvents = useMemo(() => {
     const events: Record<string, any> = {};
@@ -299,25 +330,33 @@ const GanttChart = forwardRef<ErgonomicChartRef, GanttChartProps>(({
       };
     }
     
-    return Object.keys(events).length > 0 ? events : undefined;
-  }, [onDataPointClick, onDataPointHover, onTaskClick, onCategoryClick]);
+    // Add legend double-click detection via legendselectchanged event
+    if (onLegendDoubleClick || enableLegendDoubleClickSelection) {
+      events.legendselectchanged = (params: any) => {
+        handleLegendClick(params);
+      };
+    }
+    
+    return events;
+  }, [onDataPointClick, onDataPointHover, onLegendDoubleClick, enableLegendDoubleClickSelection, handleLegendClick, onTaskClick, onCategoryClick]);
 
-  // Use the ECharts hook
-  const {
-    containerRef,
-    loading: chartLoading,
-    error,
-    getEChartsInstance,
-    resize,
-    showLoading,
-    hideLoading,
-  } = useECharts({
-    option: chartOption,
-    theme,
-    loading,
-    events: chartEvents,
-    onChartReady,
-  });
+  // Apply events to chart instance
+  useEffect(() => {
+    if (!chartInstance || Object.keys(chartEvents).length === 0) return;
+
+    const eventHandlers: Array<[string, (...args: unknown[]) => void]> = [];
+
+    Object.entries(chartEvents).forEach(([event, handler]) => {
+      chartInstance.on(event, handler);
+      eventHandlers.push([event, handler]);
+    });
+
+    return () => {
+      eventHandlers.forEach(([event, handler]) => {
+        chartInstance.off(event, handler);
+      });
+    };
+  }, [chartInstance, chartEvents]);
   
   // Export image functionality
   const exportImage = (format: 'png' | 'jpeg' | 'svg' = 'png'): string => {

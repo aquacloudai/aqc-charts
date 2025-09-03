@@ -96,6 +96,7 @@ export function StackedAreaChartExample({ theme, colorPalette, onInteraction }: 
           title="Monthly Revenue Distribution"
           subtitle="Stacked view of revenue by product line"
           height={400}
+          enableLegendDoubleClickSelection={true}
           theme={theme}
           colorPalette={colorPalette}
           stacked={true}
@@ -103,9 +104,9 @@ export function StackedAreaChartExample({ theme, colorPalette, onInteraction }: 
           smooth
           opacity={0.8}
           areaGradient
-          legend={{ 
-            show: true, 
-            position: 'right', 
+          legend={{
+            show: true,
+            position: 'right',
             align: 'center',
             data: [
               { name: 'product_a', displayName: 'Product A' },
@@ -117,12 +118,12 @@ export function StackedAreaChartExample({ theme, colorPalette, onInteraction }: 
           tooltip={{
             show: true,
             trigger: 'axis',
-            formatter: function(params: any) {
+            formatter: function (params: any) {
               if (!Array.isArray(params)) return '';
-              
+
               let total = 0;
               params.forEach((param: any) => total += param.value);
-              
+
               let result = `<div style="padding: 8px;"><strong>${params[0].axisValue}</strong><br/>`;
               params.forEach((param: any) => {
                 const percentage = ((param.value / total) * 100).toFixed(1);
@@ -176,9 +177,9 @@ export function StackedAreaChartExample({ theme, colorPalette, onInteraction }: 
           stackType="percent"
           smooth
           opacity={0.7}
-          legend={{ 
-            show: true, 
-            position: 'bottom', 
+          legend={{
+            show: true,
+            position: 'bottom',
             align: 'center',
             data: [
               { name: 'engineering', displayName: 'Engineering' },
@@ -265,9 +266,9 @@ export function StackedAreaChartExample({ theme, colorPalette, onInteraction }: 
               strokeWidth: 2,
             }
           }}
-          legend={{ 
-            show: true, 
-            position: 'top', 
+          legend={{
+            show: true,
+            position: 'top',
             orientation: 'horizontal',
             data: [
               { name: 'organic', displayName: 'Organic Search' },
@@ -280,12 +281,12 @@ export function StackedAreaChartExample({ theme, colorPalette, onInteraction }: 
           tooltip={{
             show: true,
             trigger: 'axis',
-            formatter: function(params: any) {
+            formatter: function (params: any) {
               if (!Array.isArray(params)) return '';
-              
+
               let total = 0;
               params.forEach((param: any) => total += param.value);
-              
+
               let result = `<div style="padding: 8px;"><strong>${params[0].axisValue}</strong><br/>`;
               params.forEach((param: any) => {
                 const percentage = ((param.value / total) * 100).toFixed(1);
@@ -340,9 +341,9 @@ export function StackedAreaChartExample({ theme, colorPalette, onInteraction }: 
           smooth
           opacity={0.4} // Lower opacity for overlapping visibility
           areaGradient
-          legend={{ 
-            show: true, 
-            position: 'right', 
+          legend={{
+            show: true,
+            position: 'right',
             align: 'center',
             data: [
               { name: 'heating', displayName: 'Heating 🔥' },
@@ -354,9 +355,9 @@ export function StackedAreaChartExample({ theme, colorPalette, onInteraction }: 
           tooltip={{
             show: true,
             trigger: 'axis',
-            formatter: function(params: any) {
+            formatter: function (params: any) {
               if (!Array.isArray(params)) return '';
-              
+
               let result = `<div style="padding: 8px;"><strong>${params[0].axisValue}</strong><br/>`;
               params.forEach((param: any) => {
                 result += `${param.marker}${param.seriesName}: ${param.value} kWh<br/>`;
@@ -371,14 +372,14 @@ export function StackedAreaChartExample({ theme, colorPalette, onInteraction }: 
           }}
           onDataPointClick={(data) => {
             const season = ['Dec', 'Jan', 'Feb'].includes(data.axisValue as string) ? 'Winter' :
-                          ['Mar', 'Apr', 'May'].includes(data.axisValue as string) ? 'Spring' :
-                          ['Jun', 'Jul', 'Aug'].includes(data.axisValue as string) ? 'Summer' : 'Fall';
+              ['Mar', 'Apr', 'May'].includes(data.axisValue as string) ? 'Spring' :
+                ['Jun', 'Jul', 'Aug'].includes(data.axisValue as string) ? 'Summer' : 'Fall';
             onInteraction?.(`${data.seriesName} consumption in ${data.axisValue} (${season}): ${data.value} kWh`);
           }}
           zoom
           responsive
         />
-        <div style={{ 
+        <div style={{
           marginTop: '15px',
           padding: '12px',
           backgroundColor: theme === 'dark' ? '#1e3a8a' : '#eff6ff',
@@ -421,7 +422,7 @@ export function StackedAreaChartExample({ theme, colorPalette, onInteraction }: 
               smooth: true,
             },
             {
-              name: 'Healthcare', 
+              name: 'Healthcare',
               data: stockSectorData.map(d => ({ date: d.date, value: d.healthcare })),
               color: '#ef4444',
               smooth: true,
@@ -452,20 +453,20 @@ export function StackedAreaChartExample({ theme, colorPalette, onInteraction }: 
           stacked={true}
           stackType="normal"
           opacity={0.7}
-          legend={{ 
-            show: true, 
-            position: 'bottom', 
+          legend={{
+            show: true,
+            position: 'bottom',
             align: 'center'
           }}
           tooltip={{
             show: true,
             trigger: 'axis',
-            formatter: function(params: any) {
+            formatter: function (params: any) {
               if (!Array.isArray(params)) return '';
-              
+
               let total = 0;
               params.forEach((param: any) => total += param.value);
-              
+
               let result = `<div style="padding: 8px;"><strong>${params[0].axisValue}</strong><br/>`;
               params.forEach((param: any) => {
                 const percentage = ((param.value / total) * 100).toFixed(1);
@@ -529,8 +530,8 @@ export function StackedAreaChartExample({ theme, colorPalette, onInteraction }: 
           strokeWidth={3}
           animate
           animationDuration={1500}
-          legend={{ 
-            show: true, 
+          legend={{
+            show: true,
             position: 'top',
             orientation: 'horizontal',
             data: [
@@ -560,8 +561,8 @@ export function StackedAreaChartExample({ theme, colorPalette, onInteraction }: 
             borderRadius: '16px',
             overflow: 'hidden',
             border: `2px solid ${theme === 'dark' ? '#60a5fa' : '#3b82f6'}`,
-            boxShadow: theme === 'dark' 
-              ? '0 25px 50px -12px rgba(59, 130, 246, 0.25)' 
+            boxShadow: theme === 'dark'
+              ? '0 25px 50px -12px rgba(59, 130, 246, 0.25)'
               : '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
           }}
           onChartReady={() => {
@@ -569,18 +570,18 @@ export function StackedAreaChartExample({ theme, colorPalette, onInteraction }: 
           }}
           responsive
         />
-        <div style={{ 
+        <div style={{
           marginTop: '20px',
           padding: '16px',
-          background: theme === 'dark' 
-            ? 'linear-gradient(135deg, #1e3a8a 0%, #3730a3 100%)' 
+          background: theme === 'dark'
+            ? 'linear-gradient(135deg, #1e3a8a 0%, #3730a3 100%)'
             : 'linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%)',
           borderRadius: '12px',
           fontSize: '14px',
           border: `1px solid ${theme === 'dark' ? '#3b82f6' : '#93c5fd'}`,
           boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
         }}>
-          <strong>🎨 Premium Features:</strong> This chart demonstrates gradient backgrounds, smooth animations, 
+          <strong>🎨 Premium Features:</strong> This chart demonstrates gradient backgrounds, smooth animations,
           custom borders, shadow effects, and professional styling suitable for executive dashboards.
         </div>
       </div>

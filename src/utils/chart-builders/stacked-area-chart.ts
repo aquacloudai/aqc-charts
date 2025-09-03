@@ -55,6 +55,13 @@ export function buildStackedAreaChartOption(props: AreaChartProps): EChartsOptio
           }
         })
       },
+      emphasis: {
+        focus: 'series',
+        areaStyle: {
+          opacity: Math.min((props.opacity ?? 0.7) + 0.2, 1),
+        }
+      },
+      triggerLineEvent: true,
       symbol: (s.showPoints ?? props.showPoints) !== false ? (s.pointShape ?? props.pointShape ?? 'circle') : 'none',
       symbolSize: s.pointSize ?? props.pointSize ?? 4,
       yAxisIndex: s.yAxisIndex ?? 0,
@@ -156,6 +163,13 @@ export function buildStackedAreaChartOption(props: AreaChartProps): EChartsOptio
                   }
                 })
               },
+              emphasis: {
+                focus: 'series',
+                areaStyle: {
+                  opacity: Math.min((props.opacity ?? 0.7) + 0.2, 1),
+                }
+              },
+              triggerLineEvent: true,
               symbol: (seriesSpecificConfig.showPoints ?? props.showPoints) !== false ? 
                 (seriesSpecificConfig.pointShape ?? props.pointShape ?? 'circle') : 'none',
               symbolSize: seriesSpecificConfig.pointSize ?? props.pointSize ?? 4,
@@ -191,6 +205,13 @@ export function buildStackedAreaChartOption(props: AreaChartProps): EChartsOptio
                 }
               })
             },
+            emphasis: {
+              focus: 'series',
+              areaStyle: {
+                opacity: Math.min((props.opacity ?? 0.7) + 0.2, 1),
+              }
+            },
+            triggerLineEvent: true,
             symbol: props.showPoints !== false ? (props.pointShape || 'circle') : 'none',
             symbolSize: props.pointSize || 4,
             stack: props.stacked ? 'Total' : undefined,
@@ -229,6 +250,13 @@ export function buildStackedAreaChartOption(props: AreaChartProps): EChartsOptio
             }
           })
         },
+        emphasis: {
+          focus: 'series',
+          areaStyle: {
+            opacity: Math.min((props.opacity ?? 0.7) + 0.2, 1),
+          }
+        },
+        triggerLineEvent: true,
         symbol: props.showPoints !== false ? (props.pointShape || 'circle') : 'none',
         symbolSize: props.pointSize || 4,
         stack: props.stacked ? 'Total' : undefined,

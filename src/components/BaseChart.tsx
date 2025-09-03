@@ -1,6 +1,7 @@
 import { forwardRef, useEffect, useImperativeHandle, useMemo, useCallback } from 'react';
 import type { BaseChartProps, ChartRef } from '@/types';
 import { useECharts } from '@/hooks/useECharts';
+import { useLegendDoubleClick } from '@/hooks/useLegendDoubleClick';
 import { validateDimensions, validateTheme, assertValidation } from '@/utils/validation';
 import { isChartError } from '@/utils/errors';
 import { addLogoToOption, removeLogoFromOption } from '@/utils/logo';
@@ -21,6 +22,10 @@ export const BaseChart = forwardRef<ChartRef, BaseChartProps>(({
     onMouseOut,
     onDataZoom,
     onBrush,
+    onLegendDoubleClick,
+    onSeriesDoubleClick,
+    legendDoubleClickDelay = 300,
+    enableLegendDoubleClickSelection = false,
     className = '',
     style = {},
     option,
@@ -107,15 +112,33 @@ export const BaseChart = forwardRef<ChartRef, BaseChartProps>(({
     // Get chart instance
     const chart = getEChartsInstance();
 
+    // Setup legend and series double-click handling
+    const { handleLegendClick, handleSeriesClick, cleanup: cleanupLegendDoubleClick } = useLegendDoubleClick({
+        chartInstance: chart,
+        onLegendDoubleClick,
+        onSeriesDoubleClick,
+        delay: legendDoubleClickDelay,
+        enableAutoSelection: enableLegendDoubleClickSelection,
+    });
+
     // Setup event listeners
     useEffect(() => {
         if (!chart) return;
 
-        const eventHandlers: Array<[string, (...args: unknown[]) => void]> = [];
+        const eventHandlers: Array<[string, any]> = [];
 
         if (onClick) {
             const handler = (params: unknown) => {
                 onClick(params, chart);
+            };
+            chart.on('click', handler);
+            eventHandlers.push(['click', handler]);
+        }
+
+        // Setup series double-click detection via click event
+        if (onSeriesDoubleClick || enableLegendDoubleClickSelection) {
+            const handler = (params: unknown) => {
+                handleSeriesClick(params);
             };
             chart.on('click', handler);
             eventHandlers.push(['click', handler]);
@@ -161,15 +184,64 @@ export const BaseChart = forwardRef<ChartRef, BaseChartProps>(({
             eventHandlers.push(['brush', handler]);
         }
 
+        // Setup legend double-click detection
+        if (onLegendDoubleClick || enableLegendDoubleClickSelection) {
+            // Listen to legendselectchanged for basic functionality
+            const handler = (params: unknown) => {
+                handleLegendClick(params);
+            };
+            chart.on('legendselectchanged', handler);
+            eventHandlers.push(['legendselectchanged', handler]);
+            
+            // Also listen to raw mouse events on the chart container for shift+click detection
+            const containerElement = chart.getDom();
+            if (containerElement) {
+                let pendingLegendClick: string | null = null;
+                
+                const mouseHandler = (event: MouseEvent) => {
+                    // Check if the click was on a legend item
+                    const target = event.target as HTMLElement;
+                    if (target && target.closest('.echarts-legend') && pendingLegendClick) {
+                        // Re-trigger the handler with the mouse event
+                        handleLegendClick({ name: pendingLegendClick }, event);
+                        pendingLegendClick = null;
+                    }
+                };
+                
+                // Track legend names when they're about to be clicked
+                const legendHandler = (params: any) => {
+                    pendingLegendClick = params.name;
+                    // Clear it after a short delay if no mouse event comes
+                    setTimeout(() => { pendingLegendClick = null; }, 100);
+                };
+                
+                chart.on('legendselectchanged', legendHandler);
+                containerElement.addEventListener('click', mouseHandler);
+                
+                eventHandlers.push(['legendselectchanged', legendHandler]);
+                // Store DOM cleanup separately
+                eventHandlers.push(['DOM:click', { element: containerElement, handler: mouseHandler }]);
+            }
+        }
+
         // Call onChartReady
         onChartReady?.(chart);
 
         return () => {
             for (const [event, handler] of eventHandlers) {
-                chart.off(event, handler);
+                if (event.startsWith('DOM:')) {
+                    // Handle DOM event cleanup
+                    const { element, handler: domHandler } = handler as { element: HTMLElement, handler: EventListener };
+                    const eventType = event.replace('DOM:', '');
+                    element.removeEventListener(eventType, domHandler);
+                } else {
+                    // Handle ECharts event cleanup
+                    chart.off(event, handler as (...args: unknown[]) => void);
+                }
             }
+            cleanupLegendDoubleClick();
         };
-    }, [chart, onClick, onDoubleClick, onMouseOver, onMouseOut, onDataZoom, onBrush, onChartReady]);
+    }, [chart, onClick, onDoubleClick, onMouseOver, onMouseOut, onDataZoom, onBrush, onChartReady, handleLegendClick, handleSeriesClick, cleanupLegendDoubleClick, onLegendDoubleClick, onSeriesDoubleClick, enableLegendDoubleClickSelection]);
 
     // Handle loading state
     useEffect(() => {

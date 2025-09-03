@@ -36,6 +36,10 @@ export const GeoChart = forwardRef<ChartRef, GeoChartProps>(({
   onSelectChanged,
   onMapLoad,
   onMapError,
+  onLegendDoubleClick,
+  onSeriesDoubleClick,
+  legendDoubleClickDelay,
+  enableLegendDoubleClickSelection,
   title,
   ...restProps
 }, ref) => {
@@ -365,6 +369,10 @@ export const GeoChart = forwardRef<ChartRef, GeoChartProps>(({
       option={chartOption}
       theme={validTheme}
       onChartReady={handleChartReady}
+      {...(onLegendDoubleClick && { onLegendDoubleClick })}
+      {...(onSeriesDoubleClick && { onSeriesDoubleClick })}
+      {...(legendDoubleClickDelay !== undefined && { legendDoubleClickDelay })}
+      {...(enableLegendDoubleClickSelection !== undefined && { enableLegendDoubleClickSelection })}
       {...(title && { title })}
       {...filteredProps}
     />

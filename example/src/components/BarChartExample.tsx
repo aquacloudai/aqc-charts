@@ -716,6 +716,7 @@ export function BarChartExample({ theme, colorPalette, onInteraction }: BarChart
           valueField={['high', 'low', 'average', 'precipitation']}
           title="Temperatur og nedbør endring fra forrige år"
           height={450}
+          enableLegendDoubleClickSelection={true}
           theme={theme}
           colorPalette={['#ef4444', '#3b82f6', '#10b981', '#f59e0b']}
           orientation="vertical"

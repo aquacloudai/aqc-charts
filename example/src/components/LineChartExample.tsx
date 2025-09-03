@@ -175,6 +175,7 @@ export function LineChartExample({ theme, colorPalette, onInteraction }: LineCha
           }}
           zoom
           responsive
+          enableLegendDoubleClickSelection
         />
       </div>
 
@@ -268,6 +269,7 @@ export function LineChartExample({ theme, colorPalette, onInteraction }: LineCha
             trigger: 'axis'
           }}
           responsive
+          enableLegendDoubleClickSelection
         />
       </div>
 

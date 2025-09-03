@@ -1,3 +1,4 @@
+import React from 'react';
 import type { CalendarHeatmapProps, ErgonomicChartRef } from '@/types';
 /**
  * Ergonomic CalendarHeatmapChart component with intuitive props
@@ -36,6 +37,6 @@ import type { CalendarHeatmapProps, ErgonomicChartRef } from '@/types';
  *   showWeekLabel={false}
  * />
  */
-declare const CalendarHeatmapChart: import("react").ForwardRefExoticComponent<CalendarHeatmapProps & import("react").RefAttributes<ErgonomicChartRef>>;
+declare const CalendarHeatmapChart: React.ForwardRefExoticComponent<CalendarHeatmapProps & React.RefAttributes<ErgonomicChartRef>>;
 export { CalendarHeatmapChart };
 //# sourceMappingURL=CalendarHeatmapChart.d.ts.map

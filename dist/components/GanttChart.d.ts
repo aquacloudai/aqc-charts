@@ -1,3 +1,4 @@
+import React from 'react';
 import type { GanttChartProps, ErgonomicChartRef } from '@/types';
 /**
  * Ergonomic GanttChart component with extensive customization options
@@ -68,7 +69,7 @@ import type { GanttChartProps, ErgonomicChartRef } from '@/types';
  *   onTaskClick={(task) => alert('Task clicked: ' + task.name)}
  * />
  */
-declare const GanttChart: import("react").ForwardRefExoticComponent<GanttChartProps & import("react").RefAttributes<ErgonomicChartRef>>;
+declare const GanttChart: React.ForwardRefExoticComponent<GanttChartProps & React.RefAttributes<ErgonomicChartRef>>;
 export { GanttChart };
 export type { GanttChartProps };
 //# sourceMappingURL=GanttChart.d.ts.map

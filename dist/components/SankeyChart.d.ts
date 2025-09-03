@@ -1,3 +1,4 @@
+import React from 'react';
 import type { SankeyChartProps, ErgonomicChartRef } from '@/types';
 /**
  * Ergonomic SankeyChart component with intuitive props
@@ -54,6 +55,6 @@ import type { SankeyChartProps, ErgonomicChartRef } from '@/types';
  *   showLinkLabels
  * />
  */
-declare const SankeyChart: import("react").ForwardRefExoticComponent<SankeyChartProps & import("react").RefAttributes<ErgonomicChartRef>>;
+declare const SankeyChart: React.ForwardRefExoticComponent<SankeyChartProps & React.RefAttributes<ErgonomicChartRef>>;
 export { SankeyChart };
 //# sourceMappingURL=SankeyChart.d.ts.map

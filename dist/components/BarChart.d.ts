@@ -1,3 +1,4 @@
+import React from 'react';
 import type { BarChartProps, ErgonomicChartRef } from '@/types';
 /**
  * Ergonomic BarChart component with intuitive props
@@ -46,6 +47,6 @@ import type { BarChartProps, ErgonomicChartRef } from '@/types';
  *   valueField="value"
  * />
  */
-declare const BarChart: import("react").ForwardRefExoticComponent<BarChartProps & import("react").RefAttributes<ErgonomicChartRef>>;
+declare const BarChart: React.ForwardRefExoticComponent<BarChartProps & React.RefAttributes<ErgonomicChartRef>>;
 export { BarChart };
 //# sourceMappingURL=BarChart.d.ts.map

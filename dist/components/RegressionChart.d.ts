@@ -1,3 +1,4 @@
+import React from 'react';
 import type { RegressionChartProps, ErgonomicChartRef } from '@/types';
 /**
  * Ergonomic RegressionChart component with intuitive props
@@ -42,6 +43,6 @@ import type { RegressionChartProps, ErgonomicChartRef } from '@/types';
  *   showRSquared={true}
  * />
  */
-declare const RegressionChart: import("react").ForwardRefExoticComponent<RegressionChartProps & import("react").RefAttributes<ErgonomicChartRef>>;
+declare const RegressionChart: React.ForwardRefExoticComponent<RegressionChartProps & React.RefAttributes<ErgonomicChartRef>>;
 export { RegressionChart };
 //# sourceMappingURL=RegressionChart.d.ts.map

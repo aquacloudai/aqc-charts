@@ -1,3 +1,4 @@
+import React from 'react';
 import type { LineChartProps, ErgonomicChartRef } from '@/types';
 /**
  * Ergonomic LineChart component with intuitive props
@@ -36,6 +37,6 @@ import type { LineChartProps, ErgonomicChartRef } from '@/types';
  *   yField="value"
  * />
  */
-declare const LineChart: import("react").ForwardRefExoticComponent<LineChartProps & import("react").RefAttributes<ErgonomicChartRef>>;
+declare const LineChart: React.ForwardRefExoticComponent<LineChartProps & React.RefAttributes<ErgonomicChartRef>>;
 export { LineChart };
 //# sourceMappingURL=LineChart.d.ts.map

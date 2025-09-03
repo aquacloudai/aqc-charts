@@ -58,6 +58,12 @@ export interface BaseChartProps {
     readonly onMouseOut?: (params: unknown, chart: import('echarts/core').EChartsType) => void;
     readonly onDataZoom?: (params: unknown, chart: import('echarts/core').EChartsType) => void;
     readonly onBrush?: (params: unknown, chart: import('echarts/core').EChartsType) => void;
+    
+    // Legend and series event handlers
+    readonly onLegendDoubleClick?: (legendName: string, chart: import('echarts/core').EChartsType) => void;
+    readonly onSeriesDoubleClick?: (seriesName: string, chart: import('echarts/core').EChartsType) => void;
+    readonly legendDoubleClickDelay?: number; // Default: 300ms
+    readonly enableLegendDoubleClickSelection?: boolean; // Default: false for backward compatibility
 
     // Style props
     readonly className?: string;
