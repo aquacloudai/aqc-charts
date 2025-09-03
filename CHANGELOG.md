@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.2] - 2025-09-03
+
 ### Added
 - **NPM Release Pipeline**: Automated NPM publishing under `@aquacloud_ai/aqc-charts` organization
   - Added GitHub Actions workflow for automated releases on git tags
@@ -51,6 +53,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Dimension Safety**: Charts now have minimum dimension fallbacks to prevent rendering issues
 - **Initialization**: Improved chart initialization timing to handle dynamic container sizing
 - **Type Safety**: All changes maintain existing TypeScript interfaces and prop contracts
+
+- **Code Quality Improvements**: Fixed linting issues for release readiness
+  - Resolved duplicate condition warnings in if-else-if chains across chart components
+  - Fixed unused variable warnings by prefixing with underscore
+  - Simplified DOM prop filtering implementation
+  - Maintained all functionality while improving code quality
 
 ### Breaking Changes
 None - all changes are backward compatible.
