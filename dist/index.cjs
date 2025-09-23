@@ -1995,43 +1995,140 @@ function buildBarChartOption(props) {
 
 //#endregion
 //#region src/utils/chart-builders/pie-chart.ts
+function wrapLongText(text, maxLength = 25) {
+	if (!text || text.length <= maxLength) return text;
+	const words = text.split(/(\s+|[-–—])/);
+	const lines = [];
+	let currentLine = "";
+	for (const word of words) {
+		const testLine = currentLine + word;
+		if (testLine.length <= maxLength) currentLine = testLine;
+		else if (currentLine) {
+			lines.push(currentLine.trim());
+			currentLine = word;
+		} else {
+			lines.push(word);
+			currentLine = "";
+		}
+	}
+	if (currentLine) lines.push(currentLine.trim());
+	return lines.join("\n");
+}
 function buildPieChartOption(props) {
 	const baseOption = buildBaseOption(props);
+	const isDark = props.theme === "dark";
 	let data = [];
+	const wrapLength = props.labelWrapLength || 25;
 	if (props.data && isObjectData(props.data)) if (props.nameField && props.valueField) data = props.data.map((item) => ({
-		name: item[props.nameField],
-		value: item[props.valueField]
+		name: wrapLongText(item[props.nameField], wrapLength),
+		value: item[props.valueField],
+		originalName: item[props.nameField]
 	}));
 	else {
 		const firstItem = props.data[0];
 		if (firstItem) {
 			const keys = Object.keys(firstItem);
 			data = props.data.map((item) => ({
-				name: item[keys[0]],
-				value: item[keys[1]]
+				name: wrapLongText(item[keys[0]], wrapLength),
+				value: item[keys[1]],
+				originalName: item[keys[0]]
 			}));
 		}
 	}
-	else if (props.data) data = [...props.data];
+	else if (props.data) data = props.data.map((item) => ({
+		...item,
+		name: wrapLongText(item.name || "", wrapLength),
+		originalName: item.name || item.originalName || ""
+	}));
 	const radius = Array.isArray(props.radius) ? props.radius : ["0%", (props.radius || 75) + "%"];
+	const customCenter = props.customOption?.series?.[0]?.center || props.customOption?.center;
+	const customRadius = props.customOption?.series?.[0]?.radius || props.customOption?.radius;
+	const hasTitle = !!props.title;
+	const hasSubtitle = !!props.subtitle;
+	const hasLegend = props.legend && props.legend.show !== false;
+	const legendPosition = props.legend?.position || "top";
+	let centerY = "50%";
+	let centerX = "50%";
+	const isDefaultCenter = customCenter && Array.isArray(customCenter) && customCenter[0] === "50%" && customCenter[1] === "50%";
+	if (!customCenter || isDefaultCenter) {
+		if (hasTitle && hasSubtitle) centerY = legendPosition === "top" ? "60%" : "55%";
+		else if (hasTitle || hasLegend && legendPosition === "top") centerY = "55%";
+	}
+	const finalCenter = customCenter && !isDefaultCenter ? customCenter : [centerX, centerY];
 	return {
 		...baseOption,
+		...props.title && { title: {
+			text: props.title,
+			...props.subtitle && { subtext: props.subtitle },
+			left: props.titlePosition || "center",
+			top: "2%",
+			textStyle: { color: isDark ? "#ffffff" : "#333333" },
+			subtextStyle: { color: isDark ? "#cccccc" : "#666666" }
+		} },
 		series: [{
 			type: "pie",
 			data,
-			radius,
+			radius: customRadius || radius,
+			center: finalCenter,
 			startAngle: props.startAngle || 90,
 			...props.roseType ? { roseType: "area" } : {},
 			label: {
 				show: props.showLabels !== false,
 				position: props.labelPosition || "outside",
-				formatter: props.labelFormat || (props.showPercentages ? "{b}: {d}%" : "{b}: {c}")
+				formatter: props.labelFormat || (props.showPercentages ? "{b}: {d}%" : "{b}: {c}"),
+				color: isDark ? "#ffffff" : "#333333",
+				fontSize: 12,
+				fontWeight: "normal",
+				distanceToLabelLine: 5,
+				alignTo: "none",
+				bleedMargin: 10,
+				lineHeight: 16,
+				rich: {
+					name: {
+						color: isDark ? "#ffffff" : "#333333",
+						fontSize: 12,
+						lineHeight: 16
+					},
+					value: {
+						color: isDark ? "#cccccc" : "#666666",
+						fontSize: 11
+					}
+				}
+			},
+			labelLine: {
+				show: (props.labelPosition || "outside") === "outside",
+				length: 15,
+				length2: 10,
+				smooth: false,
+				lineStyle: {
+					color: isDark ? "#666666" : "#cccccc",
+					width: 1
+				}
 			},
 			selectedMode: props.selectedMode || false,
-			...props.emphasis !== false ? { emphasis: { focus: "self" } } : {}
+			...props.emphasis !== false ? { emphasis: {
+				focus: "self",
+				label: {
+					fontSize: 13,
+					fontWeight: "bold"
+				}
+			} } : {}
 		}],
 		legend: buildLegendOption(props.legend, !!props.title, !!props.subtitle, false, props.theme),
-		tooltip: buildTooltipOption(props.tooltip, props.theme),
+		tooltip: {
+			...buildTooltipOption(props.tooltip, props.theme),
+			extraCssText: "max-width: 300px; white-space: normal; word-wrap: break-word;",
+			formatter: (params) => {
+				const originalName = params.data.originalName || params.name;
+				const value = params.value;
+				const percent = params.percent;
+				return `<div style="padding: 8px;">
+          <strong>${originalName}</strong><br/>
+          Value: ${typeof value === "number" ? value.toLocaleString() : value}<br/>
+          Percentage: ${percent}%
+        </div>`;
+			}
+		},
 		...props.customOption
 	};
 }
@@ -4265,7 +4362,7 @@ BarChart.displayName = "BarChart";
 *   showLabels
 * />
 */
-const PieChart = (0, react.forwardRef)(({ width = "100%", height = 400, className, style, data, nameField = "name", valueField = "value", theme = "light", colorPalette, backgroundColor, title, subtitle, titlePosition = "center", radius = 75, startAngle = 90, roseType = false, showLabels = true, labelPosition = "outside", showValues = false, showPercentages = true, labelFormat, legend, tooltip, selectedMode = false, emphasis = true, loading = false, disabled: _disabled = false, animate = true, animationDuration, onChartReady, onDataPointClick, onDataPointHover, onLegendDoubleClick, onSeriesDoubleClick, legendDoubleClickDelay, enableLegendDoubleClickSelection = true, customOption, responsive: _responsive = true,...restProps }, ref) => {
+const PieChart = (0, react.forwardRef)(({ width = "100%", height = 400, className, style, data, nameField = "name", valueField = "value", theme = "light", colorPalette, backgroundColor, title, subtitle, titlePosition = "center", radius = 75, startAngle = 90, roseType = false, showLabels = true, labelPosition = "outside", showValues = false, showPercentages = true, labelFormat, labelWrapLength, legend, tooltip, selectedMode = false, emphasis = true, loading = false, disabled: _disabled = false, animate = true, animationDuration, onChartReady, onDataPointClick, onDataPointHover, onLegendDoubleClick, onSeriesDoubleClick, legendDoubleClickDelay, enableLegendDoubleClickSelection = true, customOption, responsive: _responsive = true,...restProps }, ref) => {
 	const domProps = filterDOMProps(restProps);
 	const chartOption = (0, react.useMemo)(() => {
 		return buildPieChartOption({
@@ -4286,6 +4383,7 @@ const PieChart = (0, react.forwardRef)(({ width = "100%", height = 400, classNam
 			showValues,
 			showPercentages,
 			labelFormat,
+			labelWrapLength,
 			legend,
 			tooltip,
 			selectedMode,
@@ -4312,6 +4410,7 @@ const PieChart = (0, react.forwardRef)(({ width = "100%", height = 400, classNam
 		showValues,
 		showPercentages,
 		labelFormat,
+		labelWrapLength,
 		legend,
 		tooltip,
 		selectedMode,
@@ -4453,6 +4552,7 @@ const PieChart = (0, react.forwardRef)(({ width = "100%", height = 400, classNam
 			showValues,
 			showPercentages,
 			labelFormat,
+			labelWrapLength,
 			legend,
 			tooltip,
 			selectedMode,

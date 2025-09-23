@@ -133,6 +133,7 @@ export interface PieChartProps extends BaseErgonomicChartProps {
   readonly showValues?: boolean;
   readonly showPercentages?: boolean;
   readonly labelFormat?: string | ((params: any) => string) | undefined;
+  readonly labelWrapLength?: number | undefined; // Maximum characters per line before wrapping (default: 25)
   
   // Legend and tooltip
   readonly legend?: LegendConfig | undefined;

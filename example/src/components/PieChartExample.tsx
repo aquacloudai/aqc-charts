@@ -27,6 +27,16 @@ const performanceData = [
   { department: 'Operations', score: 85, budget: 900000 },
 ];
 
+// Norwegian mortality data for dark mode label fix demo
+const mortalityData = [
+  { name: 'A - Infeksjonssykdommer og parasittsykdommer', value: 125 },
+  { name: 'B - Miljøforhold og andre påvirkninger', value: 87 },
+  { name: 'C - Skader (traumer): 25.51%', value: 234 },
+  { name: 'D - Fysiologiske forstyrrelser', value: 98 },
+  { name: 'E - Andre årsaker til dødelighet', value: 45 },
+  { name: 'F - Ukjent årsak til dødelighet', value: 67 }
+];
+
 interface PieChartExampleProps {
   theme: 'light' | 'dark';
   colorPalette: readonly string[];
@@ -145,7 +155,7 @@ export function PieChartExample({ theme, colorPalette, onInteraction }: PieChart
           />
         </div>
 
-        {/* Rose/Nightingale Chart */}
+        {/* Dark Mode Label Fix Demo */}
         <div>
           <h5 style={{
             color: theme === 'dark' ? '#fff' : '#333',
@@ -153,36 +163,38 @@ export function PieChartExample({ theme, colorPalette, onInteraction }: PieChart
             fontSize: '16px',
             fontWeight: '600'
           }}>
-            🌹 Rose Chart - Performance Scores
+            🩺 Dark Mode Fix - Norwegian Labels
           </h5>
           <PieChart
-            data={performanceData}
-            nameField="department"
-            valueField="score"
-            title="Department Performance"
-            subtitle="Annual Review Scores"
+            data={mortalityData}
+            nameField="name"
+            valueField="value"
+            title="Mortality Distribution"
+            subtitle="Fixed truncation & dark mode styling"
             height={300}
             theme={theme}
             colorPalette={colorPalette}
-            roseType
             showLabels
-            showPercentages={false}
-            showValues
+            showPercentages
             labelPosition="outside"
-            legend={{ show: true, position: 'right', align: 'center' }}
+            labelWrapLength={20}
+            radius={[20, 80]}
+            customOption={{
+              radius: ['20%', '80%']
+            }}
             tooltip={{
               show: true,
               trigger: 'item',
               format: (params: any) => `
                 <div style="padding: 8px;">
                   <strong>${params.name}</strong><br/>
-                  Score: ${params.value}/100<br/>
-                  Budget: $${performanceData.find(d => d.department === params.name)?.budget?.toLocaleString()}
+                  Value: ${params.value}<br/>
+                  Percentage: ${params.percent}%
                 </div>
               `,
             }}
-            onDataPointHover={(data: any) => {
-              onInteraction?.(`${data.name}: ${data.value}/100 performance score`);
+            onDataPointClick={(data: any) => {
+              onInteraction?.(`${data.name}: ${data.value} cases (${data.percent}%)`);
             }}
           />
         </div>

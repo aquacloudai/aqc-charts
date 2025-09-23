@@ -91,6 +91,7 @@ export interface PieChartProps extends BaseErgonomicChartProps {
     readonly showValues?: boolean;
     readonly showPercentages?: boolean;
     readonly labelFormat?: string | ((params: any) => string) | undefined;
+    readonly labelWrapLength?: number | undefined;
     readonly legend?: LegendConfig | undefined;
     readonly tooltip?: TooltipConfig | undefined;
     readonly selectedMode?: 'single' | 'multiple' | false;

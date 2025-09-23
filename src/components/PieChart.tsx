@@ -78,6 +78,7 @@ const PieChart = forwardRef<ErgonomicChartRef, PieChartProps>(({
   showValues = false,
   showPercentages = true,
   labelFormat,
+  labelWrapLength,
   
   // Configuration
   legend,
@@ -132,6 +133,7 @@ const PieChart = forwardRef<ErgonomicChartRef, PieChartProps>(({
       showValues,
       showPercentages,
       labelFormat,
+      labelWrapLength,
       legend,
       tooltip,
       selectedMode,
@@ -145,7 +147,7 @@ const PieChart = forwardRef<ErgonomicChartRef, PieChartProps>(({
     theme, colorPalette, backgroundColor,
     title, subtitle, titlePosition,
     radius, startAngle, roseType,
-    showLabels, labelPosition, showValues, showPercentages, labelFormat,
+    showLabels, labelPosition, showValues, showPercentages, labelFormat, labelWrapLength,
     legend, tooltip, selectedMode, emphasis,
     animate, animationDuration, customOption
   ]);
@@ -332,6 +334,7 @@ const PieChart = forwardRef<ErgonomicChartRef, PieChartProps>(({
       showValues,
       showPercentages,
       labelFormat,
+      labelWrapLength,
       legend,
       tooltip,
       selectedMode,
