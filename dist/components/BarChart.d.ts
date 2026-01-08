@@ -5,7 +5,7 @@ import type { BarChartProps, ErgonomicChartRef } from '@/types';
  *
  * @example
  * // Simple bar chart with object data
- * <ErgonomicBarChart
+ * <BarChart
  *   data={[
  *     { category: 'Q1', sales: 100, profit: 20 },
  *     { category: 'Q2', sales: 120, profit: 25 },
@@ -19,7 +19,7 @@ import type { BarChartProps, ErgonomicChartRef } from '@/types';
  *
  * @example
  * // Stacked bar chart
- * <ErgonomicBarChart
+ * <BarChart
  *   data={salesData}
  *   categoryField="month"
  *   valueField="amount"
@@ -30,7 +30,7 @@ import type { BarChartProps, ErgonomicChartRef } from '@/types';
  *
  * @example
  * // Multiple series with explicit configuration
- * <ErgonomicBarChart
+ * <BarChart
  *   series={[
  *     {
  *       name: 'Sales',

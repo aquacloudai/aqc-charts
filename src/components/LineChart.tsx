@@ -1,17 +1,14 @@
-import React, { forwardRef, useMemo, useImperativeHandle, useEffect } from 'react';
-import type { EChartsType } from 'echarts/core';
+import React, { forwardRef, useImperativeHandle, useMemo } from 'react';
 import type { LineChartProps, ErgonomicChartRef } from '@/types';
-import { useECharts } from '@/hooks/useECharts';
-import { useLegendDoubleClick } from '@/hooks/useLegendDoubleClick';
+import { useChartComponent } from '@/hooks/useChartComponent';
 import { buildLineChartOption } from '@/utils/chart-builders';
-import { filterDOMProps } from '@/utils/domProps';
 
 /**
  * Ergonomic LineChart component with intuitive props
- * 
+ *
  * @example
  * // Simple line chart with object data
- * <ErgonomicLineChart
+ * <LineChart
  *   data={[
  *     { month: 'Jan', sales: 100, profit: 20 },
  *     { month: 'Feb', sales: 120, profit: 25 },
@@ -22,10 +19,10 @@ import { filterDOMProps } from '@/utils/domProps';
  *   smooth
  *   showArea
  * />
- * 
+ *
  * @example
  * // Multiple series with explicit configuration
- * <ErgonomicLineChart
+ * <LineChart
  *   series={[
  *     {
  *       name: 'Sales',
@@ -43,414 +40,33 @@ import { filterDOMProps } from '@/utils/domProps';
  *   yField="value"
  * />
  */
-const LineChart = forwardRef<ErgonomicChartRef, LineChartProps>(({
-  // Chart dimensions
-  width = '100%',
-  height = 400,
-  className,
-  style,
+const LineChart = forwardRef<ErgonomicChartRef, LineChartProps>((props, ref) => {
+  const { className } = props;
 
-  // Data and field mappings
-  data,
-  xField = 'x',
-  yField = 'y',
-  seriesField,
-  series,
-  seriesConfig,
+  // Memoize the build function to ensure stable reference
+  const buildOption = useMemo(() => buildLineChartOption, []);
 
-  // Styling
-  theme = 'light',
-  colorPalette,
-  backgroundColor,
-
-  // Title
-  title,
-  subtitle,
-  titlePosition = 'center',
-
-  // Logo
-  logo,
-
-  // Line styling
-  smooth = false,
-  strokeWidth = 2,
-  strokeStyle = 'solid',
-  showPoints = true,
-  pointSize = 4,
-  pointShape = 'circle',
-
-  // Area
-  showArea = false,
-  areaOpacity = 0.3,
-  areaGradient = false,
-
-  // Configuration
-  xAxis,
-  yAxis,
-  legend,
-  tooltip,
-
-  // Interaction
-  zoom = false,
-  pan = false,
-  brush = false,
-
-  // States
-  loading = false,
-  disabled: _disabled = false,
-  animate = true,
-  animationDuration,
-
-  // Events
-  onChartReady,
-  onDataPointClick,
-  onDataPointHover,
-  onLegendDoubleClick,
-  onSeriesDoubleClick,
-  legendDoubleClickDelay,
-  enableLegendDoubleClickSelection = true,
-
-  // Advanced
-  customOption,
-  responsive: _responsive = true,
-
-  ...restProps
-}, ref) => {
-
-  // Filter out chart-specific props from restProps to avoid React DOM warnings
-  const domProps = filterDOMProps(restProps);
-
-  // Build ECharts option from ergonomic props
-  const chartOption = useMemo(() => {
-    return buildLineChartOption({
-      data: data || undefined,
-      xField,
-      yField,
-      seriesField,
-      series,
-      seriesConfig,
-      theme,
-      colorPalette,
-      backgroundColor,
-      title,
-      subtitle,
-      titlePosition,
-      ...(logo && { logo }),
-      ...(width && { width }),
-      ...(height && { height }),
-      smooth,
-      strokeWidth,
-      strokeStyle,
-      showPoints,
-      pointSize,
-      pointShape,
-      showArea,
-      areaOpacity,
-      areaGradient,
-      xAxis: xAxis || undefined,
-      yAxis: yAxis || undefined,
-      legend,
-      tooltip,
-      zoom,
-      pan,
-      brush,
-      animate,
-      animationDuration,
-      customOption,
-    });
-  }, [
-    data, xField, yField, seriesField, series, seriesConfig,
-    theme, colorPalette, backgroundColor,
-    title, subtitle, titlePosition, logo, width, height,
-    smooth, strokeWidth, strokeStyle, showPoints, pointSize, pointShape,
-    showArea, areaOpacity, areaGradient,
-    xAxis, yAxis, legend, tooltip,
-    zoom, pan, brush, animate, animationDuration,
-    customOption
-  ]);
-
-  // Use our refactored hook with basic events
   const {
     containerRef,
-    loading: chartLoading,
+    containerStyle,
+    domProps,
+    refMethods,
+    renderError,
+    renderLoading,
     error,
-    getEChartsInstance,
-    resize,
-    showLoading,
-    hideLoading,
-  } = useECharts({
-    option: chartOption,
-    theme,
-    loading,
-    onChartReady,
+  } = useChartComponent({
+    props,
+    buildOption,
+    chartType: 'line',
   });
-
-  // Get chart instance for legend double-click functionality
-  const chartInstance = getEChartsInstance();
-
-  // Setup legend and series double-click handling
-  const { handleLegendClick, handleSeriesClick } = useLegendDoubleClick({
-    chartInstance,
-    onLegendDoubleClick,
-    onSeriesDoubleClick,
-    delay: legendDoubleClickDelay || 300,
-    enableAutoSelection: enableLegendDoubleClickSelection || true,
-  });
-
-  // Handle data point interactions and legend events
-  const chartEvents = useMemo(() => {
-    const events: Record<string, any> = {};
-
-    if (onDataPointClick) {
-      events.click = (params: any, chart: EChartsType) => {
-        onDataPointClick(params, { chart, event: params });
-      };
-    }
-
-    // Add series double-click detection via click event
-    if (onSeriesDoubleClick || enableLegendDoubleClickSelection) {
-      const existingClick = events.click;
-      events.click = (params: any, chart: EChartsType) => {
-        // Call existing click handler first
-        if (existingClick) {
-          existingClick(params, chart);
-        }
-        // Then handle series double-click
-        handleSeriesClick(params);
-      };
-    } else if (!onDataPointClick) {
-      // If no existing click handler, add series double-click handler only
-      events.click = (params: any) => {
-        handleSeriesClick(params);
-      };
-    }
-
-    if (onDataPointHover) {
-      events.mouseover = (params: any, chart: EChartsType) => {
-        onDataPointHover(params, { chart, event: params });
-      };
-    }
-
-    // Add legend double-click detection via legendselectchanged event
-    if (onLegendDoubleClick || enableLegendDoubleClickSelection) {
-      events.legendselectchanged = (params: any) => {
-        handleLegendClick(params);
-      };
-    }
-
-    return events;
-  }, [onDataPointClick, onDataPointHover, onLegendDoubleClick, onSeriesDoubleClick, enableLegendDoubleClickSelection, handleLegendClick, handleSeriesClick]);
-
-  // Apply events to chart instance
-  useEffect(() => {
-    if (!chartInstance || Object.keys(chartEvents).length === 0) return;
-
-    // Remove existing event handlers
-    const eventHandlers: Array<[string, (...args: unknown[]) => void]> = [];
-
-    // Set up event handlers
-    Object.entries(chartEvents).forEach(([event, handler]) => {
-      chartInstance.on(event, handler);
-      eventHandlers.push([event, handler]);
-    });
-
-    return () => {
-      // Clean up event handlers
-      eventHandlers.forEach(([event, handler]) => {
-        chartInstance.off(event, handler);
-      });
-    };
-  }, [chartInstance, chartEvents]);
-
-  // Export image functionality with logo support
-  const exportImage = (format: 'png' | 'jpeg' | 'svg' = 'png', opts?: { pixelRatio?: number; backgroundColor?: string; excludeComponents?: string[] }): string => {
-    const chart = getEChartsInstance();
-    if (!chart) return '';
-
-    // If logo should only appear on save, temporarily add it
-    if (logo?.onSaveOnly) {
-      const currentOption = chart.getOption();
-      const chartWidth = typeof width === 'number' ? width : 600;
-      const chartHeight = typeof height === 'number' ? height : 400;
-
-      // Add logo to option
-      const logoGraphic = {
-        type: 'image',
-        style: {
-          image: logo.src,
-          x: logo.x !== undefined ? logo.x : (logo.position === 'bottom-right' ? chartWidth - (logo.width || 100) - 10 : 10),
-          y: logo.y !== undefined ? logo.y : (logo.position === 'bottom-right' ? chartHeight - (logo.height || 50) - 10 : 10),
-          width: logo.width || 100,
-          height: logo.height || 50,
-          opacity: logo.opacity || 1,
-        },
-        z: 1000,
-        silent: true,
-      };
-
-      const optionWithLogo = {
-        ...currentOption,
-        graphic: [
-          ...(Array.isArray(currentOption.graphic) ? currentOption.graphic : currentOption.graphic ? [currentOption.graphic] : []),
-          logoGraphic,
-        ],
-      };
-
-      chart.setOption(optionWithLogo, { notMerge: false, lazyUpdate: false });
-
-      const dataURL = chart.getDataURL({
-        type: format,
-        pixelRatio: opts?.pixelRatio || 2,
-        backgroundColor: opts?.backgroundColor || backgroundColor || '#fff',
-        ...(opts?.excludeComponents && { excludeComponents: opts.excludeComponents }),
-      });
-
-      // Remove logo after export
-      const filteredGraphics = Array.isArray(currentOption.graphic)
-        ? currentOption.graphic.filter((g: any) => g.type !== 'image')
-        : (currentOption.graphic && (currentOption.graphic as any).type !== 'image') ? [currentOption.graphic] : [];
-
-      const optionWithoutLogo = {
-        ...currentOption,
-        graphic: filteredGraphics.length > 0 ? filteredGraphics : undefined,
-      };
-      chart.setOption(optionWithoutLogo, { notMerge: false, lazyUpdate: false });
-
-      return dataURL;
-    }
-
-    // Normal export without temporary logo
-    return chart.getDataURL({
-      type: format,
-      pixelRatio: opts?.pixelRatio || 2,
-      backgroundColor: opts?.backgroundColor || backgroundColor || '#fff',
-      ...(opts?.excludeComponents && { excludeComponents: opts.excludeComponents }),
-    });
-  };
-
-  // Save as image functionality
-  const saveAsImage = (filename?: string, opts?: { type?: 'png' | 'jpeg' | 'svg'; pixelRatio?: number; backgroundColor?: string; excludeComponents?: string[] }) => {
-    const dataURL = exportImage(opts?.type || 'png', opts);
-    if (!dataURL) return;
-
-    // Create download link
-    const link = document.createElement('a');
-    link.download = filename || `chart.${opts?.type || 'png'}`;
-    link.href = dataURL;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-
-  // Highlight functionality
-  const highlight = (dataIndex: number, seriesIndex: number = 0) => {
-    const chart = getEChartsInstance();
-    if (!chart) return;
-
-    chart.dispatchAction({
-      type: 'highlight',
-      seriesIndex,
-      dataIndex,
-    });
-  };
-
-  const clearHighlight = () => {
-    const chart = getEChartsInstance();
-    if (!chart) return;
-
-    chart.dispatchAction({
-      type: 'downplay',
-    });
-  };
-
-  // Update data functionality
-  const updateData = (newData: readonly any[]) => {
-    const chart = getEChartsInstance();
-    if (!chart) return;
-
-    const newOption = buildLineChartOption({
-      data: newData,
-      xField,
-      yField,
-      seriesField: seriesField || undefined,
-      series,
-      seriesConfig,
-      theme,
-      colorPalette,
-      backgroundColor,
-      title,
-      subtitle,
-      titlePosition,
-      smooth,
-      strokeWidth,
-      strokeStyle,
-      showPoints,
-      pointSize,
-      pointShape,
-      showArea,
-      areaOpacity,
-      areaGradient,
-      xAxis: xAxis || undefined,
-      yAxis: yAxis || undefined,
-      legend,
-      tooltip,
-      zoom,
-      pan,
-      brush,
-      animate,
-      animationDuration,
-      customOption,
-    });
-
-    chart.setOption(newOption as any);
-  };
 
   // Expose ergonomic API through ref
-  useImperativeHandle(ref, () => ({
-    getChart: getEChartsInstance,
-    exportImage,
-    saveAsImage,
-    resize,
-    showLoading: () => showLoading(),
-    hideLoading,
-    highlight,
-    clearHighlight,
-    updateData,
-  }), [getEChartsInstance, exportImage, saveAsImage, resize, showLoading, hideLoading, highlight, clearHighlight, updateData]);
+  useImperativeHandle(ref, () => refMethods, [refMethods]);
 
   // Error state
   if (error) {
-    return (
-      <div
-        className={`aqc-charts-error ${className || ''}`}
-        style={{
-          width,
-          height,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          color: '#ff4d4f',
-          fontSize: '14px',
-          border: '1px dashed #ff4d4f',
-          borderRadius: '4px',
-          ...style,
-        }}
-      >
-        Error: {error.message || 'Failed to render chart'}
-      </div>
-    );
+    return renderError();
   }
-
-  // Container style with minimum dimensions fallback
-  const containerStyle = useMemo(() => ({
-    width,
-    height,
-    // Add min dimensions when using percentage width to prevent zero-size containers
-    minWidth: typeof width === 'string' && width.includes('%') ? '300px' : undefined,
-    minHeight: '300px', // Always ensure minimum height
-    position: 'relative' as const,
-    ...style,
-  }), [width, height, style]);
 
   return (
     <div
@@ -468,35 +84,7 @@ const LineChart = forwardRef<ErgonomicChartRef, LineChartProps>(({
       />
 
       {/* Loading overlay */}
-      {(chartLoading || loading) && (
-        <div
-          className="aqc-charts-loading"
-          style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            backgroundColor: 'rgba(255, 255, 255, 0.8)',
-            fontSize: '14px',
-            color: '#666',
-          }}
-        >
-          <div className="aqc-charts-spinner" style={{
-            width: '20px',
-            height: '20px',
-            border: '2px solid #f3f3f3',
-            borderTop: '2px solid #1890ff',
-            borderRadius: '50%',
-            animation: 'spin 1s linear infinite',
-            marginRight: '8px',
-          }} />
-          Loading...
-        </div>
-      )}
+      {renderLoading()}
     </div>
   );
 });

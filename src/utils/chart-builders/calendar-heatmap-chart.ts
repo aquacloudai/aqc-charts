@@ -1,10 +1,9 @@
 import type { EChartsOption } from 'echarts/types/dist/shared';
-import type { CalendarHeatmapProps, LegendConfig } from '@/types';
+import type { CalendarHeatmapProps } from '@/types';
 
 import { isObjectData } from '../data-processing';
 import {
   buildBaseOption,
-  calculateGridSpacing,
   buildTooltipOption,
 } from '../base-options';
 
@@ -77,19 +76,22 @@ export function buildCalendarHeatmapOption(props: CalendarHeatmapProps): ECharts
   const minValue = Math.min(...values, 0);
   const maxValue = Math.max(...values, 1);
   
-  // Calculate proper spacing using the standard approach
+  // Calculate proper spacing for calendar heatmap
   const hasTitle = !!props.title;
+  const hasSubtitle = !!props.subtitle;
   const isVertical = props.orient === 'vertical';
-  
-  // Create a mock legend config to determine visual map positioning
-  const visualMapLegendConfig: LegendConfig = {
-    show: true,
-    position: isVertical ? 'right' : 'bottom',
-    orientation: isVertical ? 'vertical' : 'horizontal',
-  };
-  
-  // Use the standard spacing calculation but adapt for calendar
-  const gridSpacing = calculateGridSpacing(visualMapLegendConfig, hasTitle, false, false);
+
+  // Calendar needs extra top spacing for:
+  // 1. Title (if present)
+  // 2. Month labels that appear above the calendar grid
+  // Title height: ~40px for title, ~60px for title+subtitle
+  // Month labels: ~25px
+  const titleHeight = hasTitle && hasSubtitle ? 60 : hasTitle ? 40 : 0;
+  const monthLabelHeight = 25;
+  const topPadding = titleHeight + monthLabelHeight + 10; // 10px buffer
+
+  // Bottom spacing for visual map legend
+  const bottomPadding = isVertical ? 30 : 50; // More space for horizontal visual map
   
   // Build calendar configurations - use any to bypass strict typing for now
   const calendars: any[] = years.map((year, index) => {
@@ -122,24 +124,27 @@ export function buildCalendarHeatmapOption(props: CalendarHeatmapProps): ECharts
     };
 
     if (isVertical) {
-      // For vertical layout, use standard grid spacing approach
-      calendarConfig.left = gridSpacing.left;
-      calendarConfig.top = gridSpacing.top;
-      calendarConfig.bottom = gridSpacing.bottom;
-      calendarConfig.right = gridSpacing.right;
+      // For vertical layout
+      calendarConfig.left = 80; // Space for day labels
+      calendarConfig.top = topPadding;
+      calendarConfig.bottom = bottomPadding;
+      calendarConfig.right = 100; // Space for visual map on right
     } else {
       // For horizontal layout
       if (years.length > 1) {
-        const availableHeight = 100 - parseInt(gridSpacing.top) - parseInt(gridSpacing.bottom);
-        calendarConfig.top = `${parseInt(gridSpacing.top) + index * (availableHeight / years.length)}%`;
-        calendarConfig.height = `${Math.floor(availableHeight / years.length * 0.8)}%`;
-        calendarConfig.left = gridSpacing.left;
-        calendarConfig.right = gridSpacing.right;
+        // Multiple years stacked vertically
+        const totalHeight = 100; // percentage
+        const availableHeight = totalHeight - topPadding - bottomPadding;
+        const heightPerYear = availableHeight / years.length;
+        calendarConfig.top = topPadding + index * heightPerYear;
+        calendarConfig.left = 50; // Space for day labels
+        calendarConfig.right = 30;
       } else {
-        calendarConfig.top = gridSpacing.top;
-        calendarConfig.left = gridSpacing.left;
-        calendarConfig.right = gridSpacing.right;
-        calendarConfig.bottom = gridSpacing.bottom;
+        // Single year
+        calendarConfig.top = topPadding;
+        calendarConfig.left = 50; // Space for day labels (Mon, Wed, Fri)
+        calendarConfig.right = 30;
+        calendarConfig.bottom = bottomPadding;
       }
     }
 
@@ -175,34 +180,32 @@ export function buildCalendarHeatmapOption(props: CalendarHeatmapProps): ECharts
     ...baseOption,
     calendar: calendars,
     series,
-    visualMap: (() => {
-      return {
-        type: 'piecewise',
-        orient: isVertical ? 'vertical' : 'horizontal',
-        // Use the same positioning as the legend would use
-        ...(isVertical ? {
-          right: '5%',
-          top: hasTitle ? (gridSpacing.top) : 'center',
-          itemGap: 5,
-        } : {
-          left: 'center',
-          bottom: years.length > 1 ? '3%' : '5%',
-        }),
-        min: minValue,
-        max: maxValue,
-        splitNumber: props.splitNumber || colorScale.length - 1,
-        inRange: {
-          color: colorScale,
-        },
-        textStyle: {
-          color: isDark ? '#cccccc' : '#666666',
-          fontSize: isVertical ? 11 : 12,
-        },
-        itemSymbol: 'rect',
-        itemWidth: isVertical ? 15 : 20,
-        itemHeight: isVertical ? 12 : 14,
-      };
-    })(),
+    visualMap: {
+      type: 'piecewise',
+      orient: isVertical ? 'vertical' : 'horizontal',
+      // Position visual map with proper spacing
+      ...(isVertical ? {
+        right: 20,
+        top: topPadding,
+        itemGap: 5,
+      } : {
+        left: 'center',
+        bottom: 10, // Fixed bottom position with good spacing
+      }),
+      min: minValue,
+      max: maxValue,
+      splitNumber: props.splitNumber || colorScale.length - 1,
+      inRange: {
+        color: colorScale,
+      },
+      textStyle: {
+        color: isDark ? '#cccccc' : '#666666',
+        fontSize: isVertical ? 11 : 12,
+      },
+      itemSymbol: 'rect',
+      itemWidth: isVertical ? 15 : 20,
+      itemHeight: isVertical ? 12 : 14,
+    },
     tooltip: props.tooltip ? buildTooltipOption(props.tooltip, props.theme) : {
       trigger: 'item',
       formatter: (params: any) => {

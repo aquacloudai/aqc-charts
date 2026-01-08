@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import type { RefObject } from 'react';
 import type { EChartsType } from 'echarts/core';
-import { loadECharts } from '@/utils/EChartsLoader';
-import { ChartInitError, ChartErrorCode, createChartError } from '@/utils/errors';
+// Import from our utility to ensure ecStat transforms are registered
+import { echarts } from '@/utils/echarts';
 
 interface UseChartInstanceProps {
   containerRef: RefObject<HTMLDivElement | null>;
@@ -21,128 +21,108 @@ export function useChartInstance({
   containerRef,
   onChartReady,
 }: UseChartInstanceProps): UseChartInstanceReturn {
-  const chartRef = useRef<EChartsType | null>(null);
+  const [chartInstance, setChartInstance] = useState<EChartsType | null>(null);
   const [isInitialized, setIsInitialized] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 
-  const disposeChart = useCallback(() => {
-    if (chartRef.current) {
-      chartRef.current.dispose();
-      chartRef.current = null;
-      setIsInitialized(false);
-    }
-  }, []);
+  // Store onChartReady in a ref to avoid dependency issues
+  const onChartReadyRef = useRef(onChartReady);
+  onChartReadyRef.current = onChartReady;
 
-  const initChart = useCallback(async () => {
-    if (!containerRef.current) {
-      const error = createChartError(
-        new Error('Container element not found'),
-        ChartErrorCode.CONTAINER_NOT_FOUND,
-        { containerRef: !!containerRef.current }
-      );
-      setError(error);
+  // Track if we're mounted to avoid state updates after unmount
+  const isMountedRef = useRef(true);
+
+  const disposeChart = useCallback(() => {
+    if (chartInstance && !chartInstance.isDisposed?.()) {
+      chartInstance.dispose();
+    }
+  }, [chartInstance]);
+
+  // Initialize chart - synchronous to avoid StrictMode race conditions
+  useEffect(() => {
+    isMountedRef.current = true;
+
+    const container = containerRef.current;
+    if (!container) return;
+
+    // Check if there's already a chart on this container (from StrictMode remount)
+    const existingInstance = echarts.getInstanceByDom(container);
+    if (existingInstance && !existingInstance.isDisposed?.()) {
+      // Reuse existing instance
+      setChartInstance(existingInstance as unknown as EChartsType);
+      setIsInitialized(true);
+      setError(null);
+      onChartReadyRef.current?.(existingInstance as unknown as EChartsType);
       return;
     }
 
     try {
-      // Load ECharts dynamically
-      const echarts = await loadECharts();
+      // Create new chart instance synchronously
+      const chart = echarts.init(container, undefined, {
+        renderer: 'canvas',
+        useDirtyRect: true,
+      });
 
-      // Dispose existing instance
-      disposeChart();
-
-      // Verify container still exists after async operation
-      if (!containerRef.current) {
-        throw new ChartInitError(
-          new Error('Container element was removed during initialization'),
-          { phase: 'post-load' }
-        );
+      if (!isMountedRef.current) {
+        // Component unmounted during init, dispose immediately
+        chart.dispose();
+        return;
       }
 
-      // Check container dimensions - if zero, wait a bit for layout to complete
-      let rect = containerRef.current.getBoundingClientRect();
-      if (rect.width === 0 || rect.height === 0) {
-        // Wait a short time for CSS/layout to apply, then check again
-        await new Promise(resolve => setTimeout(resolve, 50));
-        
-        // Check again after waiting
-        if (!containerRef.current) {
-          throw new ChartInitError(
-            new Error('Container element was removed during dimension check'),
-            { phase: 'dimension-check' }
-          );
-        }
-        
-        rect = containerRef.current.getBoundingClientRect();
-        if (rect.width === 0 || rect.height === 0) {
-          console.warn('AQC Charts: Container still has zero dimensions after layout delay', {
-            width: rect.width,
-            height: rect.height,
-            suggestion: 'Consider setting explicit width/height on the chart or its parent container'
-          });
-        }
-      }
-
-      // Create new instance without built-in theme
-      // We handle theming through our comprehensive option-based approach
-      const chart = echarts.init(
-        containerRef.current,
-        undefined, // No built-in theme - we use options for full control
-        {
-          renderer: 'canvas',
-          useDirtyRect: true,
-        }
-      );
-
-      if (!chart) {
-        throw new ChartInitError(
-          new Error('ECharts.init returned null or undefined'),
-          { 
-            containerDimensions: { width: rect.width, height: rect.height },
-            containerElement: containerRef.current.tagName
-          }
-        );
-      }
-
-      chartRef.current = chart;
+      setChartInstance(chart as unknown as EChartsType);
       setIsInitialized(true);
       setError(null);
-      onChartReady?.(chart);
+      onChartReadyRef.current?.(chart as unknown as EChartsType);
     } catch (err) {
-      const error = err instanceof ChartInitError ? err : createChartError(
-        err,
-        ChartErrorCode.CHART_INIT_FAILED,
-        { 
-          containerExists: !!containerRef.current,
-          containerDimensions: containerRef.current ? {
-            width: containerRef.current.getBoundingClientRect().width,
-            height: containerRef.current.getBoundingClientRect().height
-          } : null
-        }
-      );
-      setError(error);
-      setIsInitialized(false);
-      console.error('Failed to initialize ECharts:', error);
-    }
-  }, [containerRef, onChartReady, disposeChart]);
-
-  // Initialize chart when container is ready 
-  // Theme changes are handled via options, not chart reinitialization
-  useEffect(() => {
-    if (containerRef.current) {
-      initChart();
+      if (isMountedRef.current) {
+        setError(err instanceof Error ? err : new Error(String(err)));
+        setIsInitialized(false);
+      }
     }
 
     return () => {
-      disposeChart();
+      isMountedRef.current = false;
+      // Don't dispose here - let echarts manage the instance
+      // It will be reused if StrictMode remounts, or garbage collected if truly unmounting
     };
-  }, [initChart, disposeChart]); // Removed theme dependency - we handle theming via options
+  }, []); // Empty deps - only run on mount
+
+  // Cleanup on true unmount (when container is removed from DOM)
+  useEffect(() => {
+    return () => {
+      const container = containerRef.current;
+      if (container) {
+        const instance = echarts.getInstanceByDom(container);
+        if (instance && !instance.isDisposed?.()) {
+          instance.dispose();
+        }
+      }
+    };
+  }, []);
+
+  const manualInit = useCallback(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    try {
+      const chart = echarts.init(container, undefined, {
+        renderer: 'canvas',
+        useDirtyRect: true,
+      });
+      setChartInstance(chart as unknown as EChartsType);
+      setIsInitialized(true);
+      setError(null);
+      onChartReadyRef.current?.(chart as unknown as EChartsType);
+    } catch (err) {
+      setError(err instanceof Error ? err : new Error(String(err)));
+    }
+  }, []);
 
   return {
-    chartInstance: chartRef.current,
+    chartInstance,
     isInitialized,
     error,
-    initChart,
+    initChart: manualInit,
     disposeChart,
   };
 }

@@ -1,8 +1,9 @@
 import type { EChartsType } from 'echarts/core';
+import type { EChartsOption } from 'echarts/types/dist/shared';
 interface UseChartOptionsProps {
     chartInstance: EChartsType | null;
-    option: unknown;
-    theme?: string | object | undefined;
+    option: EChartsOption | unknown;
+    theme?: string | Record<string, unknown> | undefined;
     notMerge?: boolean;
     lazyUpdate?: boolean;
 }

@@ -144,22 +144,33 @@ export interface PieChartProps extends BaseErgonomicChartProps {
   readonly emphasis?: boolean;
 }
 
+// Jitter configuration for scatter charts (ECharts 6 feature)
+export interface JitterConfig {
+  readonly width?: number; // Jitter width in data units
+  readonly height?: number; // Jitter height in data units
+}
+
 // Scatter Chart Props
 export interface ScatterChartProps extends BaseErgonomicChartProps {
   readonly data: readonly DataPoint[] | readonly (readonly [number, number])[] | readonly (readonly [number, number, number])[];
-  
+
   // Field mappings
   readonly xField?: string;
   readonly yField?: string;
   readonly sizeField?: string; // For bubble charts
   readonly colorField?: string; // For color-coded points
   readonly seriesField?: string;
-  
+
   // Point styling
   readonly pointSize?: number | readonly [number, number]; // Min and max for size field
   readonly pointShape?: 'circle' | 'square' | 'triangle' | 'diamond';
   readonly pointOpacity?: number;
-  
+
+  // ECharts 6: Jittering for dense data visualization
+  // Adds random offsets to prevent point overlap while maintaining axis accuracy
+  readonly jitter?: boolean | JitterConfig; // Enable jittering (true for auto, or provide config)
+  readonly jitterOverlap?: boolean; // Allow overlapping in jittered positions
+
   // Multiple series
   readonly series?: readonly {
     readonly name: string;
@@ -167,16 +178,18 @@ export interface ScatterChartProps extends BaseErgonomicChartProps {
     readonly color?: string;
     readonly pointSize?: number;
     readonly pointShape?: string;
+    readonly jitter?: boolean | JitterConfig; // Per-series jitter override
+    readonly jitterOverlap?: boolean;
   }[];
-  
+
   // Axes
   readonly xAxis?: AxisConfig | undefined;
   readonly yAxis?: AxisConfig | undefined;
-  
+
   // Legend and tooltip
   readonly legend?: LegendConfig | undefined;
   readonly tooltip?: TooltipConfig | undefined;
-  
+
   // Regression line
   readonly showTrendline?: boolean;
   readonly trendlineType?: 'linear' | 'polynomial' | 'exponential';

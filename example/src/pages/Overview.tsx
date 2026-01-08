@@ -1,108 +1,157 @@
-import React from 'react';
+import { Link } from 'react-router-dom';
+import { useResolvedTheme } from '@aquacloud_ai/aqc-charts';
 
 interface OverviewProps {
-  theme: 'light' | 'dark';
+  theme: 'light' | 'dark' | 'auto';
 }
 
-export const Overview: React.FC<OverviewProps> = ({ theme }) => {
-  const containerStyle = {
-    padding: '40px 20px',
-    maxWidth: '800px',
-    margin: '0 auto',
-    color: theme === 'dark' ? '#fff' : '#333',
-  };
+const chartTypes = [
+  {
+    name: 'Bar Chart',
+    path: '/bar',
+    icon: '📊',
+    description: 'Display categorical data with rectangular bars'
+  },
+  {
+    name: 'Line Chart',
+    path: '/line',
+    icon: '📈',
+    description: 'Visualize trends and changes over time'
+  },
+  {
+    name: 'Pie Chart',
+    path: '/pie',
+    icon: '🥧',
+    description: 'Display proportional data and part-to-whole relationships'
+  },
+  {
+    name: 'Scatter Chart',
+    path: '/scatter',
+    icon: '⚬',
+    description: 'Visualize correlations and distributions between variables'
+  },
+  {
+    name: 'Stacked Area',
+    path: '/stacked-area',
+    icon: '📉',
+    description: 'Show cumulative totals and composition over time'
+  },
+  {
+    name: 'Combined Chart',
+    path: '/combined',
+    icon: '📊',
+    description: 'Mix bar and line series with dual axis support'
+  },
+  {
+    name: 'Sankey Chart',
+    path: '/sankey',
+    icon: '🔀',
+    description: 'Visualize flow and relationships between nodes'
+  },
+  {
+    name: 'Calendar Heatmap',
+    path: '/calendar',
+    icon: '📅',
+    description: 'GitHub-style contribution graphs for activity data'
+  },
+  {
+    name: 'Cluster Chart',
+    path: '/cluster',
+    icon: '🎯',
+    description: 'K-means clustering for data segmentation analysis'
+  },
+  {
+    name: 'Regression Chart',
+    path: '/regression',
+    icon: '📐',
+    description: 'Statistical regression with trend lines and equations'
+  },
+  {
+    name: 'Gantt Chart',
+    path: '/gantt',
+    icon: '📋',
+    description: 'Project timelines with tasks and progress tracking'
+  },
+  {
+    name: 'Geo Chart',
+    path: '/geo',
+    icon: '🗺️',
+    description: 'Geographic maps with regional data visualization'
+  },
+];
 
-  const cardStyle = {
-    backgroundColor: theme === 'dark' ? '#1a1a1a' : '#ffffff',
-    padding: '30px',
-    borderRadius: '12px',
-    marginBottom: '30px',
-    boxShadow: theme === 'dark'
-      ? '0 4px 6px rgba(0, 0, 0, 0.3)'
-      : '0 4px 6px rgba(0, 0, 0, 0.1)',
-    border: `1px solid ${theme === 'dark' ? '#333' : '#e1e5e9'}`,
-  };
+export function Overview({ theme }: OverviewProps) {
+  // ECharts 6: Resolve 'auto' theme for UI styling
+  const resolvedTheme = useResolvedTheme(theme);
 
   return (
-    <div style={containerStyle}>
-      <div style={cardStyle}>
+    <div style={{ padding: '24px', maxWidth: '1200px', margin: '0 auto' }}>
+      <header style={{ textAlign: 'center', marginBottom: '48px' }}>
         <h1 style={{
+          margin: '0 0 12px 0',
           fontSize: '36px',
-          margin: '0 0 20px 0',
-          fontWeight: '700',
-          background: theme === 'dark'
-            ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
-            : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-          WebkitBackgroundClip: 'text',
-          WebkitTextFillColor: 'transparent',
-          textAlign: 'center'
+          color: resolvedTheme === 'dark' ? '#fff' : '#333'
         }}>
-          🚀 AQC Chart Components
+          AQC Charts
         </h1>
-        
         <p style={{
+          margin: 0,
           fontSize: '18px',
-          lineHeight: 1.6,
-          marginBottom: '30px',
-          textAlign: 'center',
-          color: theme === 'dark' ? '#ccc' : '#666'
+          color: resolvedTheme === 'dark' ? '#aaa' : '#666'
         }}>
-          Experience the new intuitive API for creating beautiful, interactive charts with minimal code.
-          Simply pass your data and field mappings - no complex configuration objects required!
+          Modern React charting library built on ECharts 6
         </p>
+      </header>
 
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
-          gap: '20px',
-          marginTop: '40px'
-        }}>
-          {[
-            { icon: '📈', title: 'Line Charts', desc: 'Time series and trend analysis' },
-            { icon: '📊', title: 'Bar Charts', desc: 'Categorical data comparison' },
-            { icon: '🥧', title: 'Pie Charts', desc: 'Part-to-whole relationships' },
-            { icon: '🔹', title: 'Scatter Charts', desc: 'Correlation and distribution' },
-            { icon: '⛰️', title: 'Stacked Area', desc: 'Cumulative data visualization' },
-            { icon: '🎯', title: 'Combined Charts', desc: 'Mixed visualizations' },
-            { icon: '🔬', title: 'Cluster Charts', desc: 'Pattern recognition' },
-            { icon: '📅', title: 'Calendar Heatmap', desc: 'Time-based patterns' },
-            { icon: '🌊', title: 'Sankey Charts', desc: 'Flow visualization' },
-            { icon: '📋', title: 'Gantt Charts', desc: 'Project timelines' },
-            { icon: '📈', title: 'Regression Charts', desc: 'Statistical analysis' }
-          ].map((chart, index) => (
-            <div key={index} style={{
-              padding: '20px',
-              backgroundColor: theme === 'dark' ? '#2a2a2a' : '#f8f9fa',
-              borderRadius: '8px',
-              textAlign: 'center',
-              border: `1px solid ${theme === 'dark' ? '#444' : '#ddd'}`
-            }}>
-              <div style={{ fontSize: '24px', marginBottom: '10px' }}>{chart.icon}</div>
-              <h3 style={{ margin: '0 0 8px 0', fontSize: '16px' }}>{chart.title}</h3>
-              <p style={{ margin: 0, fontSize: '14px', color: theme === 'dark' ? '#aaa' : '#666' }}>
-                {chart.desc}
-              </p>
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+        gap: '24px'
+      }}>
+        {chartTypes.map((chart) => (
+          <Link
+            key={chart.path}
+            to={chart.path}
+            style={{
+              display: 'block',
+              padding: '24px',
+              backgroundColor: resolvedTheme === 'dark' ? '#1a1a1a' : '#fff',
+              borderRadius: '12px',
+              border: `1px solid ${resolvedTheme === 'dark' ? '#333' : '#e1e5e9'}`,
+              textDecoration: 'none',
+              transition: 'transform 0.2s, box-shadow 0.2s',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.transform = 'translateY(-4px)';
+              e.currentTarget.style.boxShadow = resolvedTheme === 'dark'
+                ? '0 8px 24px rgba(0,0,0,0.4)'
+                : '0 8px 24px rgba(0,0,0,0.1)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = 'translateY(0)';
+              e.currentTarget.style.boxShadow = 'none';
+            }}
+          >
+            <div style={{ fontSize: '48px', marginBottom: '16px' }}>
+              {chart.icon}
             </div>
-          ))}
-        </div>
-
-        <div style={{
-          marginTop: '40px',
-          padding: '20px',
-          backgroundColor: theme === 'dark' ? '#2d5016' : '#d4edda',
-          border: `1px solid ${theme === 'dark' ? '#4f7c2a' : '#c3e6cb'}`,
-          borderRadius: '8px',
-          textAlign: 'center'
-        }}>
-          <p style={{
-            margin: 0,
-            color: theme === 'dark' ? '#d1e7dd' : '#155724',
-            fontSize: '16px'
-          }}>
-            📝 Use the navigation tabs above to explore each chart type with interactive examples!
-          </p>
-        </div>
+            <h2 style={{
+              margin: '0 0 8px 0',
+              fontSize: '20px',
+              color: resolvedTheme === 'dark' ? '#fff' : '#333'
+            }}>
+              {chart.name}
+            </h2>
+            <p style={{
+              margin: 0,
+              fontSize: '14px',
+              color: resolvedTheme === 'dark' ? '#aaa' : '#666'
+            }}>
+              {chart.description}
+            </p>
+          </Link>
+        ))}
       </div>
     </div>
   );
-};
+}

@@ -11,6 +11,9 @@ export default defineConfig({
     resolve: {
         alias: {
             '@': path.resolve(__dirname, '../src'),
+            // Map the npm package name to the local build for development
+            '@aquacloud_ai/aqc-charts': path.resolve(__dirname, '../dist/index.js'),
+            'aqc-charts': path.resolve(__dirname, '../dist/index.js'),
         },
     },
 });

@@ -1,5 +1,44 @@
-import { useRef, useCallback } from 'react';
+import { useRef, useCallback, useEffect } from 'react';
 import type { EChartsType } from 'echarts/core';
+
+/**
+ * ECharts event params for legend and series clicks
+ */
+export interface LegendClickParams {
+  name: string;
+  seriesName?: string;
+  [key: string]: unknown;
+}
+
+/**
+ * Legend data item - can be string or object with name property
+ */
+type LegendDataItem = string | { name: string; [key: string]: unknown };
+
+/**
+ * Series item from chart option
+ */
+interface SeriesItem {
+  name?: string;
+  [key: string]: unknown;
+}
+
+/**
+ * Legend configuration from chart option
+ */
+interface LegendOption {
+  data?: LegendDataItem[];
+  [key: string]: unknown;
+}
+
+/**
+ * Partial chart option type for legend and series access
+ */
+interface ChartOptionWithLegend {
+  legend?: LegendOption | LegendOption[];
+  series?: SeriesItem[];
+  [key: string]: unknown;
+}
 
 export interface UseLegendDoubleClickProps {
   chartInstance: EChartsType | null;
@@ -22,33 +61,54 @@ export function useLegendDoubleClick({
   const lastClickType = useRef<'legend' | 'series' | null>(null);
   const selectedLegends = useRef<Set<string>>(new Set());
   const allLegendsVisible = useRef<boolean>(true);
+  // Track the chart instance to detect changes
+  const prevChartInstanceRef = useRef<EChartsType | null>(null);
 
-  const handleItemClick = useCallback((params: any, event?: MouseEvent, type: 'legend' | 'series' = 'legend') => {
+  // Reset state when chart instance changes to prevent stale state bugs
+  useEffect(() => {
+    if (chartInstance !== prevChartInstanceRef.current) {
+      // Clear timeout if pending
+      if (clickTimeout.current) {
+        clearTimeout(clickTimeout.current);
+        clickTimeout.current = null;
+      }
+      // Reset all tracking state
+      lastClickTime.current = 0;
+      lastClickedItem.current = null;
+      lastClickType.current = null;
+      selectedLegends.current.clear();
+      allLegendsVisible.current = true;
+      // Update tracked instance
+      prevChartInstanceRef.current = chartInstance;
+    }
+  }, [chartInstance]);
+
+  const handleItemClick = useCallback((params: LegendClickParams, event?: MouseEvent, type: 'legend' | 'series' = 'legend') => {
     if (!chartInstance) return;
-    
+
     // Early return if neither callback nor auto-selection is enabled
     if (!onLegendDoubleClick && !onSeriesDoubleClick && !enableAutoSelection) return;
-    
+
     const itemName = type === 'series' ? params.seriesName || params.name : params.name;
     const currentTime = Date.now();
     const isShiftClick = event?.shiftKey === true;
-    
+
     // Get all legend data from the current option
-    const option = chartInstance.getOption();
-    const legends = (option as any).legend;
-    let legendData: any[] = [];
-    
-    if (Array.isArray(legends) && legends.length > 0) {
+    const option = chartInstance.getOption() as ChartOptionWithLegend;
+    const legends = option.legend;
+    let legendData: LegendDataItem[] = [];
+
+    if (Array.isArray(legends) && legends.length > 0 && legends[0]) {
       legendData = legends[0].data || [];
     } else if (legends && !Array.isArray(legends)) {
       legendData = legends.data || [];
     }
-    
+
     // Get series names if legend data is not available
     if (legendData.length === 0) {
-      const series = (option as any).series;
+      const series = option.series;
       if (Array.isArray(series)) {
-        legendData = series.map((s: any) => s.name).filter(Boolean);
+        legendData = series.map((s: SeriesItem) => s.name).filter((name): name is string => Boolean(name));
       }
     }
     
@@ -187,11 +247,11 @@ export function useLegendDoubleClick({
   }, [chartInstance, onLegendDoubleClick, onSeriesDoubleClick, delay, enableAutoSelection]);
 
   // Create specific handlers for different event types
-  const handleLegendClick = useCallback((params: any, event?: MouseEvent) => {
+  const handleLegendClick = useCallback((params: LegendClickParams, event?: MouseEvent) => {
     handleItemClick(params, event, 'legend');
   }, [handleItemClick]);
 
-  const handleSeriesClick = useCallback((params: any, event?: MouseEvent) => {
+  const handleSeriesClick = useCallback((params: LegendClickParams, event?: MouseEvent) => {
     handleItemClick(params, event, 'series');
   }, [handleItemClick]);
 

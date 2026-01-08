@@ -1,6 +1,6 @@
 {
   "name": "@aquacloud_ai/aqc-charts",
-  "version": "0.1.3",
+  "version": "0.2.0",
   "description": "Modern Apache ECharts React components with TypeScript",
   "keywords": [
     "react",
@@ -28,6 +28,11 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
       "require": "./dist/index.cjs"
+    },
+    "./legacy": {
+      "types": "./dist/legacy.d.ts",
+      "import": "./dist/legacy.js",
+      "require": "./dist/legacy.cjs"
     }
   },
   "files": [
@@ -35,7 +40,12 @@
     "README.md",
     "LICENSE"
   ],
-  "sideEffects": false,
+  "sideEffects": [
+    "./dist/index.js",
+    "./dist/index.cjs",
+    "./src/index.ts",
+    "./src/utils/echarts.ts"
+  ],
   "scripts": {
     "dev": "rolldown --config rolldown.config.js --watch",
     "build": "rolldown --config rolldown.config.js && bun run build:types",
@@ -56,8 +66,15 @@
     "release": "np --no-yarn"
   },
   "peerDependencies": {
-    "react": ">=19.0.0",
-    "react-dom": ">=19.0.0"
+    "react": ">=18.0.0",
+    "react-dom": ">=18.0.0",
+    "echarts": ">=6.0.0",
+    "echarts-stat": ">=1.2.0"
+  },
+  "peerDependenciesMeta": {
+    "echarts-stat": {
+      "optional": true
+    }
   },
   "devDependencies": {
     "@swc/core": "^1.12.6",
@@ -69,6 +86,8 @@
     "@vitest/coverage-v8": "^3.2.4",
     "@vitest/ui": "^3.2.4",
     "dprint": "^0.50.0",
+    "echarts": "6.0.0",
+    "echarts-stat": "1.2.0",
     "happy-dom": "^18.0.1",
     "np": "^10.2.0",
     "oxlint": "^1.3.0",
@@ -79,10 +98,6 @@
     "typescript": "^5.8.3",
     "vite": "^7.0.0",
     "vitest": "^3.2.4"
-  },
-  "dependencies": {
-    "echarts": "6.0.0",
-    "echarts-stat": "1.2.0"
   },
   "publishConfig": {
     "access": "public",

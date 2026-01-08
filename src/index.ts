@@ -1,3 +1,7 @@
+// Initialize echarts with ecStat transforms before exporting components
+// This side-effect import ensures transforms are registered early
+import './utils/echarts';
+
 // Components
 export { BaseChart } from './components/BaseChart';
 export { LineChart } from './components/LineChart';
@@ -16,7 +20,12 @@ export { GeoChart } from './components/GeoChart';
 // Export utilities
 export { ExportPreviewModal } from './components/ExportPreviewModal';
 
-// Legacy components (old API)
+/**
+ * Legacy components (old API)
+ * @deprecated These components will be removed in a future major version.
+ * For better bundle size, import from '@aquacloud_ai/aqc-charts/legacy' instead.
+ * Or migrate to the new ergonomic components (LineChart, BarChart, etc.).
+ */
 export { OldCalendarHeatmapChart } from './components/legacy/OldCalendarHeatmapChart';
 export { OldStackedBarChart } from './components/legacy/OldStackedBarChart';
 export { OldSankeyChart } from './components/legacy/OldSankeyChart';
@@ -31,9 +40,13 @@ export { OldPieChart } from './components/legacy/OldPieChart';
 // Hooks
 export { useECharts } from './hooks/useECharts';
 export { useFullHDExport } from './hooks/useFullHDExport';
+export { useChartComponent } from './hooks/useChartComponent';
+
+// ECharts 6 theme hooks for dynamic dark mode support
+export { useSystemTheme, useResolvedTheme, usePrefersDarkMode } from './hooks/useSystemTheme';
 
 // Individual chart hooks (advanced usage)
-export { 
+export {
     useChartInstance,
     useChartResize,
     useChartOptions,
@@ -47,6 +60,14 @@ export {
     performKMeansClustering,
     clusterPointsToScatterData
 } from './utils/legacy/regression';
+
+// ECharts utilities (for advanced usage)
+export {
+    registerMap,
+    getMap,
+    getEChartsModule,
+    disposeChart
+} from './utils/echarts';
 
 
 // Error handling utilities
@@ -137,11 +158,12 @@ export type {
 } from './types';
 
 // New component types (from ergonomic types)
-export type { 
-    LineChartProps, 
-    BarChartProps, 
+export type {
+    LineChartProps,
+    BarChartProps,
     PieChartProps,
     ScatterChartProps,
+    JitterConfig, // ECharts 6 scatter jitter configuration
     CombinedChartProps,
     ClusterChartProps,
     CalendarHeatmapProps,
@@ -185,10 +207,14 @@ export type {
 
 // Export utility types
 export type { ExportPreviewModalProps } from './components/ExportPreviewModal';
-export type { 
+export type {
     UseFullHDExportOptions,
     UseFullHDExportReturn
 } from './hooks/useFullHDExport';
+export type {
+    UseChartComponentProps,
+    UseChartComponentReturn
+} from './hooks/useChartComponent';
 
 // CSS injection for styling (optimized for modern bundlers)
 if (typeof document !== 'undefined' && !document.getElementById('aqc-charts-styles')) {

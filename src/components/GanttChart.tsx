@@ -1,14 +1,12 @@
-import React, { forwardRef, useMemo, useImperativeHandle, useEffect } from 'react';
+import React, { forwardRef, useImperativeHandle, useMemo, useCallback, useEffect } from 'react';
 import type { EChartsType } from 'echarts/core';
 import type { GanttChartProps, ErgonomicChartRef, GanttTask, GanttCategory } from '@/types';
-import { useECharts } from '@/hooks/useECharts';
-import { useLegendDoubleClick } from '@/hooks/useLegendDoubleClick';
+import { useChartComponent } from '@/hooks/useChartComponent';
 import { buildGanttChartOption } from '@/utils/chart-builders';
-import { filterDOMProps } from '@/utils/domProps';
 
 /**
  * Ergonomic GanttChart component with extensive customization options
- * 
+ *
  * @example
  * // Simple project timeline with tasks and categories
  * <GanttChart
@@ -41,345 +39,84 @@ import { filterDOMProps } from '@/utils/domProps';
  *   showTaskProgress
  *   todayMarker
  * />
- * 
- * @example
- * // Highly customized Gantt chart with status-based styling
- * <GanttChart
- *   tasks={projectTasks}
- *   categories={departments}
- *   title="Q1 Project Schedule"
- *   theme="dark"
- *   taskBarStyle={{
- *     height: 0.8,
- *     borderRadius: 6,
- *     showProgress: true,
- *     textStyle: { 
- *       position: 'inside',
- *       showDuration: true 
- *     }
- *   }}
- *   categoryLabelStyle={{
- *     width: 150,
- *     shape: 'pill',
- *     backgroundColor: '#2a2a2a',
- *     textColor: '#ffffff'
- *   }}
- *   statusStyles={{
- *     'completed': { backgroundColor: '#4CAF50' },
- *     'in-progress': { backgroundColor: '#2196F3' },
- *     'delayed': { backgroundColor: '#FF9800' }
- *   }}
- *   dataZoom={{ type: 'both' }}
- *   sortBy="priority"
- *   sortOrder="desc"
- *   onTaskClick={(task) => alert('Task clicked: ' + task.name)}
- * />
  */
-const GanttChart = forwardRef<ErgonomicChartRef, GanttChartProps>(({
-  // Chart dimensions
-  width = '100%',
-  height = 600,
-  className,
-  style,
-  
-  // Data and field mappings
-  data,
-  idField = 'id',
-  nameField = 'name',
-  categoryField = 'category',
-  startTimeField = 'startTime',
-  endTimeField = 'endTime',
-  colorField = 'color',
-  statusField = 'status',
-  priorityField = 'priority',
-  progressField = 'progress',
-  assigneeField = 'assignee',
-  tasks,
-  categories,
-  
-  // Styling
-  theme = 'light',
-  colorPalette,
-  backgroundColor,
-  
-  // Title
-  title,
-  subtitle,
-  titlePosition = 'center',
-  
-  // Layout and spacing
-  categoryWidth = 120,
-  taskHeight = 0.6,
-  categorySpacing = 2,
-  groupSpacing = 8,
-  
-  // Task bar styling
-  taskBarStyle,
-  statusStyles,
-  priorityStyles,
-  
-  // Category styling
-  categoryLabelStyle,
-  showCategoryLabels = true,
-  categoryColors,
-  
-  // Timeline styling
-  timelineStyle,
-  timeRange,
-  timeFormat,
-  
-  // Zoom and navigation
-  dataZoom = true,
-  allowPan = true,
-  allowZoom = true,
-  initialZoomLevel,
-  
-  // Interactions
-  draggable = false,
-  resizable = false,
-  selectable = false,
-  showTaskTooltips = true,
-  showDependencies = false,
-  
-  // Milestones and markers
-  showMilestones = false,
-  milestoneStyle,
-  todayMarker = false,
-  
-  // Progress and status
-  showProgress = false,
-  showTaskProgress = true,
-  progressStyle,
-  
-  // Grouping and filtering
-  groupByCategory = false,
-  groupByAssignee = false,
-  filterByStatus,
-  filterByPriority,
-  sortBy,
-  sortOrder = 'asc',
-  
-  // Configuration
-  legend,
-  tooltip,
-  
-  // States
-  loading = false,
-  disabled: _disabled = false,
-  animate = true,
-  animationDuration,
-  
-  // Events
-  onChartReady,
-  onDataPointClick,
-  onDataPointHover,
-  onLegendDoubleClick,
-  legendDoubleClickDelay,
-  enableLegendDoubleClickSelection,
-  onTaskClick,
-  onTaskDrag: _onTaskDrag,
-  onTaskResize: _onTaskResize,
-  onCategoryClick,
-  onTimeRangeChange,
-  
-  // Advanced
-  customOption,
-  responsive: _responsive = true,
-  
-  ...restProps
-}, ref) => {
-  const domProps = filterDOMProps(restProps);
-  
-  // Build ECharts option from ergonomic props
-  const chartOption = useMemo(() => {
-    return buildGanttChartOption({
-      data: data || undefined,
-      idField,
-      nameField,
-      categoryField,
-      startTimeField,
-      endTimeField,
-      colorField,
-      statusField,
-      priorityField,
-      progressField,
-      assigneeField,
-      tasks,
-      categories,
-      theme,
-      colorPalette,
-      backgroundColor,
-      title,
-      subtitle,
-      titlePosition,
-      categoryWidth,
-      taskHeight,
-      categorySpacing,
-      groupSpacing,
-      taskBarStyle,
-      statusStyles,
-      priorityStyles,
-      categoryLabelStyle,
-      showCategoryLabels,
-      categoryColors,
-      timelineStyle,
-      timeRange,
-      timeFormat,
-      dataZoom,
-      allowPan,
-      allowZoom,
-      initialZoomLevel,
-      draggable,
-      resizable,
-      selectable,
-      showTaskTooltips,
-      showDependencies,
-      showMilestones,
-      milestoneStyle,
-      todayMarker,
-      showProgress,
-      showTaskProgress,
-      progressStyle,
-      groupByCategory,
-      groupByAssignee,
-      filterByStatus,
-      filterByPriority,
-      sortBy,
-      sortOrder,
-      legend,
-      tooltip,
-      animate,
-      animationDuration,
-      customOption,
-    });
-  }, [
-    data, idField, nameField, categoryField, startTimeField, endTimeField,
-    colorField, statusField, priorityField, progressField, assigneeField,
-    tasks, categories, theme, colorPalette, backgroundColor,
-    title, subtitle, titlePosition, categoryWidth, taskHeight,
-    categorySpacing, groupSpacing, taskBarStyle, statusStyles, priorityStyles,
-    categoryLabelStyle, showCategoryLabels, categoryColors,
-    timelineStyle, timeRange, timeFormat, dataZoom, allowPan, allowZoom,
-    initialZoomLevel, draggable, resizable, selectable, showTaskTooltips,
-    showDependencies, showMilestones, milestoneStyle, todayMarker,
-    showProgress, showTaskProgress, progressStyle, groupByCategory,
-    groupByAssignee, filterByStatus, filterByPriority, sortBy, sortOrder,
-    legend, tooltip, animate, animationDuration, customOption
-  ]);
-  
-  // Use the ECharts hook
+const GanttChart = forwardRef<ErgonomicChartRef, GanttChartProps>((props, ref) => {
+  const {
+    className,
+    onTaskClick,
+    onCategoryClick,
+    onTimeRangeChange,
+    onDataPointClick,
+  } = props;
+
+  // Memoize the build function to ensure stable reference
+  const buildOption = useMemo(() => buildGanttChartOption, []);
+
   const {
     containerRef,
-    loading: chartLoading,
+    containerStyle,
+    domProps,
+    refMethods,
+    renderError,
+    renderLoading,
     error,
     getEChartsInstance,
-    resize,
-    showLoading,
-    hideLoading,
-  } = useECharts({
-    option: chartOption,
-    theme,
-    loading,
-    onChartReady,
+  } = useChartComponent({
+    props,
+    buildOption,
+    chartType: 'gantt',
   });
-  
-  // Get chart instance for legend double-click functionality
+
+  // Get chart instance for Gantt-specific event handling
   const chartInstance = getEChartsInstance();
 
-  // Setup legend double-click handling
-  const { handleLegendClick } = useLegendDoubleClick({
-    chartInstance,
-    onLegendDoubleClick,
-    delay: legendDoubleClickDelay || 300,
-    enableAutoSelection: enableLegendDoubleClickSelection || false,
-  });
-
-  // Handle chart interactions
-  const chartEvents = useMemo(() => {
-    const events: Record<string, any> = {};
-    
-    if (onDataPointClick || onTaskClick) {
-      events.click = (params: any, chart: EChartsType) => {
-        if (params.seriesIndex === 0) { // Task series
-          const [_categoryIndex, startTime, endTime, taskName, taskId] = params.value;
-          const taskData: GanttTask = {
-            id: taskId,
-            name: taskName,
-            category: '', // We'd need to get this from the categories array
-            startTime: new Date(startTime),
-            endTime: new Date(endTime),
-          };
-          
-          onTaskClick?.(taskData, params);
-          onDataPointClick?.(params, { chart, event: params });
-        } else if (params.seriesIndex === 1) { // Category series
-          const [_categoryIndex, categoryName, categoryLabel] = params.value;
-          const categoryData: GanttCategory = {
-            name: categoryName,
-            label: categoryLabel,
-          };
-          
-          onCategoryClick?.(categoryData, params);
-        }
-      };
-    }
-    
-    if (onDataPointHover) {
-      events.mouseover = (params: any, chart: EChartsType) => {
-        onDataPointHover(params, { chart, event: params });
-      };
-    }
-    
-    // Add legend double-click detection via legendselectchanged event
-    if (onLegendDoubleClick || enableLegendDoubleClickSelection) {
-      events.legendselectchanged = (params: any) => {
-        handleLegendClick(params);
-      };
-    }
-    
-    return events;
-  }, [onDataPointClick, onDataPointHover, onLegendDoubleClick, enableLegendDoubleClickSelection, handleLegendClick, onTaskClick, onCategoryClick]);
-
-  // Apply events to chart instance
+  // Gantt-specific event handling for task and category clicks
   useEffect(() => {
-    if (!chartInstance || Object.keys(chartEvents).length === 0) return;
+    if (!chartInstance) return;
 
-    const eventHandlers: Array<[string, (...args: unknown[]) => void]> = [];
+    const handleClick = (params: { seriesIndex: number; value: unknown[] }, chart: EChartsType) => {
+      if (params.seriesIndex === 0) { // Task series
+        const [_categoryIndex, startTime, endTime, taskName, taskId] = params.value as [number, number, number, string, string];
+        const taskData: GanttTask = {
+          id: taskId,
+          name: taskName,
+          category: '',
+          startTime: new Date(startTime),
+          endTime: new Date(endTime),
+        };
 
-    Object.entries(chartEvents).forEach(([event, handler]) => {
-      chartInstance.on(event, handler);
-      eventHandlers.push([event, handler]);
-    });
+        onTaskClick?.(taskData, params);
+        onDataPointClick?.(params, { chart, event: params });
+      } else if (params.seriesIndex === 1) { // Category series
+        const [_categoryIndex, categoryName, categoryLabel] = params.value as [number, string, string];
+        const categoryData: GanttCategory = {
+          name: categoryName,
+          label: categoryLabel,
+        };
+
+        onCategoryClick?.(categoryData, params);
+      }
+    };
+
+    if (onTaskClick || onCategoryClick || onDataPointClick) {
+      chartInstance.on('click', handleClick as (...args: unknown[]) => void);
+    }
 
     return () => {
-      eventHandlers.forEach(([event, handler]) => {
-        chartInstance.off(event, handler);
-      });
+      chartInstance.off('click', handleClick as (...args: unknown[]) => void);
     };
-  }, [chartInstance, chartEvents]);
-  
-  // Export image functionality
-  const exportImage = (format: 'png' | 'jpeg' | 'svg' = 'png'): string => {
-    const chart = getEChartsInstance();
-    if (!chart) return '';
-    
-    return chart.getDataURL({
-      type: format,
-      pixelRatio: 2,
-      backgroundColor: backgroundColor || '#fff',
-    });
-  };
-  
-  // Highlight functionality for tasks
-  const highlight = (taskId: string) => {
+  }, [chartInstance, onTaskClick, onCategoryClick, onDataPointClick]);
+
+  // Gantt-specific: Highlight task by ID
+  const highlightTask = useCallback((taskId: string) => {
     const chart = getEChartsInstance();
     if (!chart) return;
-    
-    const option = chart.getOption() as any;
+
+    const option = chart.getOption() as { series?: Array<{ data?: Array<{ value: unknown[] }> }> };
     const taskSeries = option.series?.[0];
     if (!taskSeries?.data) return;
-    
-    const taskIndex = taskSeries.data.findIndex((item: any) => item.value[4] === taskId);
+
+    const taskIndex = taskSeries.data.findIndex((item) => item.value[4] === taskId);
     if (taskIndex >= 0) {
       chart.dispatchAction({
         type: 'highlight',
@@ -387,123 +124,59 @@ const GanttChart = forwardRef<ErgonomicChartRef, GanttChartProps>(({
         dataIndex: taskIndex,
       });
     }
-  };
-  
-  const clearHighlight = () => {
+  }, [getEChartsInstance]);
+
+  // Gantt-specific: Zoom to specific time range
+  const zoomToRange = useCallback((startTime: Date, endTime: Date) => {
     const chart = getEChartsInstance();
     if (!chart) return;
-    
-    chart.dispatchAction({
-      type: 'downplay',
-    });
-  };
-  
-  // Zoom to specific time range
-  const zoomToRange = (startTime: Date, endTime: Date) => {
-    const chart = getEChartsInstance();
-    if (!chart) return;
-    
+
     const startMs = startTime.getTime();
     const endMs = endTime.getTime();
-    
+
     chart.dispatchAction({
       type: 'dataZoom',
       startValue: startMs,
       endValue: endMs,
     });
-    
+
     onTimeRangeChange?.(startTime, endTime);
-  };
-  
-  // Focus on specific task
-  const focusTask = (taskId: string) => {
+  }, [getEChartsInstance, onTimeRangeChange]);
+
+  // Gantt-specific: Focus on specific task
+  const focusTask = useCallback((taskId: string) => {
     const chart = getEChartsInstance();
     if (!chart) return;
-    
-    const option = chart.getOption() as any;
+
+    const option = chart.getOption() as { series?: Array<{ data?: Array<{ value: unknown[] }> }> };
     const taskSeries = option.series?.[0];
     if (!taskSeries?.data) return;
-    
-    const task = taskSeries.data.find((item: any) => item.value[4] === taskId);
+
+    const task = taskSeries.data.find((item) => item.value[4] === taskId);
     if (task) {
-      const [, startTime, endTime] = task.value;
+      const [, startTime, endTime] = task.value as [unknown, number, number];
       const buffer = (endTime - startTime) * 0.2; // 20% padding
       zoomToRange(new Date(startTime - buffer), new Date(endTime + buffer));
-      highlight(taskId);
+      highlightTask(taskId);
     }
-  };
-  
-  // Update chart data
-  const updateData = (newData: any) => {
-    const chart = getEChartsInstance();
-    if (!chart) return;
-    
-    const newOption = buildGanttChartOption({
-      data: newData,
-      idField, nameField, categoryField, startTimeField, endTimeField,
-      colorField, statusField, priorityField, progressField, assigneeField,
-      tasks, categories, theme, colorPalette, backgroundColor,
-      title, subtitle, titlePosition, categoryWidth, taskHeight,
-      categorySpacing, groupSpacing, taskBarStyle, statusStyles, priorityStyles,
-      categoryLabelStyle, showCategoryLabels, categoryColors,
-      timelineStyle, timeRange, timeFormat, dataZoom, allowPan, allowZoom,
-      initialZoomLevel, draggable, resizable, selectable, showTaskTooltips,
-      showDependencies, showMilestones, milestoneStyle, todayMarker,
-      showProgress, showTaskProgress, progressStyle, groupByCategory,
-      groupByAssignee, filterByStatus, filterByPriority, sortBy, sortOrder,
-      legend, tooltip, animate, animationDuration, customOption,
-    });
-    
-    chart.setOption(newOption as any);
-  };
-  
-  // Expose ergonomic API through ref
+  }, [getEChartsInstance, zoomToRange, highlightTask]);
+
+  // Expose ergonomic API through ref (including gantt-specific methods)
   useImperativeHandle(ref, () => ({
-    getChart: getEChartsInstance,
-    exportImage,
-    resize,
-    showLoading: () => showLoading(),
-    hideLoading,
-    highlight: (dataIndex: number) => highlight(String(dataIndex)), // Convert for compatibility
-    clearHighlight,
-    updateData,
+    ...refMethods,
+    // Override highlight to work with task IDs
+    highlight: (dataIndex: number) => highlightTask(String(dataIndex)),
     // Gantt-specific methods
     focusTask,
     zoomToRange,
-    highlightTask: highlight,
-  }), [getEChartsInstance, exportImage, resize, showLoading, hideLoading, highlight, clearHighlight, updateData, focusTask, zoomToRange]);
-  
+    highlightTask,
+  }), [refMethods, focusTask, zoomToRange, highlightTask]);
+
   // Error state
   if (error) {
-    return (
-      <div
-        className={`aqc-charts-error ${className || ''}`}
-        style={{
-          width,
-          height,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          color: '#ff4d4f',
-          fontSize: '14px',
-          border: '1px dashed #ff4d4f',
-          borderRadius: '4px',
-          ...style,
-        }}
-      >
-        Error: {error.message || 'Failed to render chart'}
-      </div>
-    );
+    return renderError();
   }
-  
-  // Container style
-  const containerStyle = useMemo(() => ({
-    width,
-    height,
-    position: 'relative' as const,
-    ...style,
-  }), [width, height, style]);
-  
+
   return (
     <div
       className={`aqc-charts-container ${className || ''}`}
@@ -518,37 +191,9 @@ const GanttChart = forwardRef<ErgonomicChartRef, GanttChartProps>(({
           height: '100%',
         }}
       />
-      
+
       {/* Loading overlay */}
-      {(chartLoading || loading) && (
-        <div 
-          className="aqc-charts-loading"
-          style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            backgroundColor: 'rgba(255, 255, 255, 0.8)',
-            fontSize: '14px',
-            color: '#666',
-          }}
-        >
-          <div className="aqc-charts-spinner" style={{
-            width: '20px',
-            height: '20px',
-            border: '2px solid #f3f3f3',
-            borderTop: '2px solid #1890ff',
-            borderRadius: '50%',
-            animation: 'spin 1s linear infinite',
-            marginRight: '8px',
-          }} />
-          Loading...
-        </div>
-      )}
+      {renderLoading()}
     </div>
   );
 });

@@ -117,13 +117,17 @@ export function buildPieChartOption(props: PieChartProps): EChartsOption {
         text: props.title,
         ...(props.subtitle && { subtext: props.subtitle }),
         left: props.titlePosition || 'center',
-        top: '2%', // Fixed top position to ensure no overlap
+        top: 10, // Fixed top position with proper padding
         textStyle: {
           color: isDark ? '#ffffff' : '#333333',
+          fontSize: 16,
+          fontWeight: 'bold',
         },
         subtextStyle: {
           color: isDark ? '#cccccc' : '#666666',
+          fontSize: 12,
         },
+        itemGap: 8,
       }
     }),
     series: [{

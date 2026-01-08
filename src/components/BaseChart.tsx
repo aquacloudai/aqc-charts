@@ -1,7 +1,8 @@
-import { forwardRef, useEffect, useImperativeHandle, useMemo, useCallback } from 'react';
+import { forwardRef, useEffect, useImperativeHandle, useMemo, useCallback, useRef } from 'react';
 import type { BaseChartProps, ChartRef } from '@/types';
 import { useECharts } from '@/hooks/useECharts';
-import { useLegendDoubleClick } from '@/hooks/useLegendDoubleClick';
+import { useLegendDoubleClick, type LegendClickParams } from '@/hooks/useLegendDoubleClick';
+import { useResolvedTheme } from '@/hooks/useSystemTheme';
 import { validateDimensions, validateTheme, assertValidation } from '@/utils/validation';
 import { isChartError } from '@/utils/errors';
 import { addLogoToOption, removeLogoFromOption } from '@/utils/logo';
@@ -10,7 +11,7 @@ export const BaseChart = forwardRef<ChartRef, BaseChartProps>(({
     title,
     width = '100%',
     height = 400,
-    theme = 'light',
+    theme: themeProp = 'light',
     loading: externalLoading = false,
     notMerge = false,
     lazyUpdate = true,
@@ -33,6 +34,9 @@ export const BaseChart = forwardRef<ChartRef, BaseChartProps>(({
     locale: _locale = 'en',
     ...restProps
 }, ref) => {
+
+    // Resolve 'auto' theme to system preference using ECharts 6 dynamic theme switching
+    const theme = useResolvedTheme(themeProp);
 
     // Validate props in development mode
     useMemo(() => {
@@ -121,127 +125,122 @@ export const BaseChart = forwardRef<ChartRef, BaseChartProps>(({
         enableAutoSelection: enableLegendDoubleClickSelection,
     });
 
-    // Setup event listeners
+    // Store event handlers in refs to avoid effect re-runs when handlers change
+    const handlersRef = useRef({
+        onClick,
+        onDoubleClick,
+        onMouseOver,
+        onMouseOut,
+        onDataZoom,
+        onBrush,
+        onChartReady,
+        onLegendDoubleClick,
+        onSeriesDoubleClick,
+        handleLegendClick,
+        handleSeriesClick,
+    });
+
+    // Update refs when handlers change (no effect re-run needed)
+    useEffect(() => {
+        handlersRef.current = {
+            onClick,
+            onDoubleClick,
+            onMouseOver,
+            onMouseOut,
+            onDataZoom,
+            onBrush,
+            onChartReady,
+            onLegendDoubleClick,
+            onSeriesDoubleClick,
+            handleLegendClick,
+            handleSeriesClick,
+        };
+    });
+
+    // Setup event listeners - only depends on chart instance
     useEffect(() => {
         if (!chart) return;
 
-        const eventHandlers: Array<[string, any]> = [];
+        const handlers = handlersRef.current;
+        const eventCleanup: Array<() => void> = [];
+        let pendingLegendClick: string | null = null;
+        let pendingTimeout: ReturnType<typeof setTimeout> | null = null;
 
-        if (onClick) {
-            const handler = (params: unknown) => {
-                onClick(params, chart);
-            };
-            chart.on('click', handler);
-            eventHandlers.push(['click', handler]);
-        }
+        // Unified click handler - consolidates onClick and series double-click detection
+        const clickHandler = (params: unknown) => {
+            handlers.onClick?.(params, chart);
+            if (handlers.onSeriesDoubleClick || enableLegendDoubleClickSelection) {
+                handlers.handleSeriesClick(params as LegendClickParams);
+            }
+        };
+        chart.on('click', clickHandler);
+        eventCleanup.push(() => chart.off('click', clickHandler));
 
-        // Setup series double-click detection via click event
-        if (onSeriesDoubleClick || enableLegendDoubleClickSelection) {
-            const handler = (params: unknown) => {
-                handleSeriesClick(params);
-            };
-            chart.on('click', handler);
-            eventHandlers.push(['click', handler]);
-        }
+        // Double click handler
+        const dblclickHandler = (params: unknown) => {
+            handlers.onDoubleClick?.(params, chart);
+        };
+        chart.on('dblclick', dblclickHandler);
+        eventCleanup.push(() => chart.off('dblclick', dblclickHandler));
 
-        if (onDoubleClick) {
-            const handler = (params: unknown) => {
-                onDoubleClick(params, chart);
-            };
-            chart.on('dblclick', handler);
-            eventHandlers.push(['dblclick', handler]);
-        }
+        // Mouse events
+        const mouseOverHandler = (params: unknown) => handlers.onMouseOver?.(params, chart);
+        const mouseOutHandler = (params: unknown) => handlers.onMouseOut?.(params, chart);
+        chart.on('mouseover', mouseOverHandler);
+        chart.on('mouseout', mouseOutHandler);
+        eventCleanup.push(() => {
+            chart.off('mouseover', mouseOverHandler);
+            chart.off('mouseout', mouseOutHandler);
+        });
 
-        if (onMouseOver) {
-            const handler = (params: unknown) => {
-                onMouseOver(params, chart);
-            };
-            chart.on('mouseover', handler);
-            eventHandlers.push(['mouseover', handler]);
-        }
+        // Data zoom and brush
+        const dataZoomHandler = (params: unknown) => handlers.onDataZoom?.(params, chart);
+        const brushHandler = (params: unknown) => handlers.onBrush?.(params, chart);
+        chart.on('datazoom', dataZoomHandler);
+        chart.on('brush', brushHandler);
+        eventCleanup.push(() => {
+            chart.off('datazoom', dataZoomHandler);
+            chart.off('brush', brushHandler);
+        });
 
-        if (onMouseOut) {
-            const handler = (params: unknown) => {
-                onMouseOut(params, chart);
-            };
-            chart.on('mouseout', handler);
-            eventHandlers.push(['mouseout', handler]);
-        }
+        // Legend double-click detection (consolidated - single handler)
+        if (handlers.onLegendDoubleClick || enableLegendDoubleClickSelection) {
+            const legendHandler = (params: unknown) => {
+                const legendParams = params as LegendClickParams;
+                pendingLegendClick = legendParams.name;
+                handlers.handleLegendClick(legendParams);
 
-        if (onDataZoom) {
-            const handler = (params: unknown) => {
-                onDataZoom(params, chart);
+                // Clear pending state after delay
+                if (pendingTimeout) clearTimeout(pendingTimeout);
+                pendingTimeout = setTimeout(() => { pendingLegendClick = null; }, 100);
             };
-            chart.on('datazoom', handler);
-            eventHandlers.push(['datazoom', handler]);
-        }
+            chart.on('legendselectchanged', legendHandler);
+            eventCleanup.push(() => chart.off('legendselectchanged', legendHandler));
 
-        if (onBrush) {
-            const handler = (params: unknown) => {
-                onBrush(params, chart);
-            };
-            chart.on('brush', handler);
-            eventHandlers.push(['brush', handler]);
-        }
-
-        // Setup legend double-click detection
-        if (onLegendDoubleClick || enableLegendDoubleClickSelection) {
-            // Listen to legendselectchanged for basic functionality
-            const handler = (params: unknown) => {
-                handleLegendClick(params);
-            };
-            chart.on('legendselectchanged', handler);
-            eventHandlers.push(['legendselectchanged', handler]);
-            
-            // Also listen to raw mouse events on the chart container for shift+click detection
+            // DOM click for shift+click detection
             const containerElement = chart.getDom();
             if (containerElement) {
-                let pendingLegendClick: string | null = null;
-                
-                const mouseHandler = (event: MouseEvent) => {
-                    // Check if the click was on a legend item
+                const domClickHandler = (event: MouseEvent) => {
                     const target = event.target as HTMLElement;
-                    if (target && target.closest('.echarts-legend') && pendingLegendClick) {
-                        // Re-trigger the handler with the mouse event
-                        handleLegendClick({ name: pendingLegendClick }, event);
+                    if (target?.closest?.('.echarts-legend') && pendingLegendClick) {
+                        handlers.handleLegendClick({ name: pendingLegendClick }, event);
                         pendingLegendClick = null;
                     }
                 };
-                
-                // Track legend names when they're about to be clicked
-                const legendHandler = (params: any) => {
-                    pendingLegendClick = params.name;
-                    // Clear it after a short delay if no mouse event comes
-                    setTimeout(() => { pendingLegendClick = null; }, 100);
-                };
-                
-                chart.on('legendselectchanged', legendHandler);
-                containerElement.addEventListener('click', mouseHandler);
-                
-                eventHandlers.push(['legendselectchanged', legendHandler]);
-                // Store DOM cleanup separately
-                eventHandlers.push(['DOM:click', { element: containerElement, handler: mouseHandler }]);
+                containerElement.addEventListener('click', domClickHandler);
+                eventCleanup.push(() => containerElement.removeEventListener('click', domClickHandler));
             }
         }
 
         // Call onChartReady
-        onChartReady?.(chart);
+        handlers.onChartReady?.(chart);
 
         return () => {
-            for (const [event, handler] of eventHandlers) {
-                if (event.startsWith('DOM:')) {
-                    // Handle DOM event cleanup
-                    const { element, handler: domHandler } = handler as { element: HTMLElement, handler: EventListener };
-                    const eventType = event.replace('DOM:', '');
-                    element.removeEventListener(eventType, domHandler);
-                } else {
-                    // Handle ECharts event cleanup
-                    chart.off(event, handler as (...args: unknown[]) => void);
-                }
-            }
+            eventCleanup.forEach(cleanup => cleanup());
             cleanupLegendDoubleClick();
+            if (pendingTimeout) clearTimeout(pendingTimeout);
         };
-    }, [chart, onClick, onDoubleClick, onMouseOver, onMouseOut, onDataZoom, onBrush, onChartReady, handleLegendClick, handleSeriesClick, cleanupLegendDoubleClick, onLegendDoubleClick, onSeriesDoubleClick, enableLegendDoubleClickSelection]);
+    }, [chart, enableLegendDoubleClickSelection, cleanupLegendDoubleClick]);
 
     // Handle loading state
     useEffect(() => {

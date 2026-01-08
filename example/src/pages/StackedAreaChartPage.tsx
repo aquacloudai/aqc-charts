@@ -1,35 +1,47 @@
-import React from 'react';
-import { ChartPage } from './ChartPage';
+import { useState } from 'react';
+import { useResolvedTheme } from '@aquacloud_ai/aqc-charts';
 import { StackedAreaChartExample } from '../components/StackedAreaChartExample';
 
 interface StackedAreaChartPageProps {
-  theme: 'light' | 'dark';
-  palette: string;
-  setPalette: (palette: string) => void;
+  theme: 'light' | 'dark' | 'auto';
 }
 
-const colorPalettes = {
-  default: ['#5470c6', '#91cc75', '#fac858', '#ee6666', '#73c0de', '#3ba272', '#fc8452', '#9a60b4'],
-  vibrant: ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7', '#DDA0DD', '#98D8C8', '#F7DC6F'],
-  pastel: ['#FFB3BA', '#BAFFC9', '#BAE1FF', '#FFFFBA', '#FFD9BA', '#E6E6FA', '#D3FFD3', '#FFCCFF'],
-  business: ['#2E4057', '#048A81', '#54C6EB', '#F8B500', '#B83A4B', '#5C7A89', '#A8E6CF', '#FFB6B3'],
-  earth: ['#8B4513', '#228B22', '#4682B4', '#DAA520', '#CD853F', '#32CD32', '#6495ED', '#FF8C00'],
-};
+export function StackedAreaChartPage({ theme }: StackedAreaChartPageProps) {
+  const [interaction, setInteraction] = useState<string>('');
+  const resolvedTheme = useResolvedTheme(theme);
 
-export const StackedAreaChartPage: React.FC<StackedAreaChartPageProps> = ({ theme, palette, setPalette }) => {
   return (
-    <ChartPage
-      title="Stacked Area Chart Showcase"
-      description="Demonstrate stacked area chart configurations: normal stacking, percentage stacking, overlapping areas, individual series styling, and advanced gradient effects."
-      icon="📊"
-      theme={theme}
-      palette={palette}
-      setPalette={setPalette}
-    >
-      <StackedAreaChartExample
-        theme={theme}
-        colorPalette={colorPalettes[palette as keyof typeof colorPalettes]}
-      />
-    </ChartPage>
+    <div style={{ padding: '24px', maxWidth: '1200px', margin: '0 auto' }}>
+      <header style={{ marginBottom: '32px' }}>
+        <h1 style={{
+          margin: '0 0 8px 0',
+          fontSize: '28px',
+          color: resolvedTheme === 'dark' ? '#fff' : '#333'
+        }}>
+          Stacked Area Chart
+        </h1>
+        <p style={{
+          margin: 0,
+          color: resolvedTheme === 'dark' ? '#aaa' : '#666'
+        }}>
+          Show cumulative totals and composition over time
+        </p>
+      </header>
+
+      {interaction && (
+        <div style={{
+          padding: '12px 16px',
+          marginBottom: '24px',
+          backgroundColor: resolvedTheme === 'dark' ? '#1a3a1a' : '#d4edda',
+          borderRadius: '6px',
+          color: resolvedTheme === 'dark' ? '#90ee90' : '#155724',
+          fontFamily: 'monospace'
+        }}>
+          {interaction}
+        </div>
+      )}
+
+      <StackedAreaChartExample theme={theme} onInteraction={setInteraction} />
+    </div>
   );
-};
+}

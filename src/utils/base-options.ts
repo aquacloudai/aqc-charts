@@ -1,26 +1,58 @@
 import type { EChartsOption } from 'echarts/types/dist/shared';
-import type { AxisConfig, LegendConfig, TooltipConfig } from '@/types';
+import type { AxisConfig, LegendConfig, TooltipConfig, ChartLogo } from '@/types';
 import { COLOR_PALETTES } from './color-palettes';
 import { createLogoGraphic } from './logo';
 
+/**
+ * Props used by buildBaseOption function
+ * All properties explicitly allow undefined to support exactOptionalPropertyTypes
+ */
+interface BaseOptionProps {
+  readonly theme?: 'light' | 'dark' | 'auto' | undefined;
+  readonly title?: string | undefined;
+  readonly subtitle?: string | undefined;
+  readonly titlePosition?: 'left' | 'center' | 'right' | undefined;
+  readonly animate?: boolean | undefined;
+  readonly animationDuration?: number | undefined;
+  readonly backgroundColor?: string | undefined;
+  readonly colorPalette?: readonly string[] | undefined;
+  readonly logo?: ChartLogo | undefined;
+  readonly width?: number | string | undefined;
+  readonly height?: number | string | undefined;
+}
+
+/**
+ * Record type for ECharts option objects
+ * eslint-disable-next-line @typescript-eslint/no-explicit-any
+ * Using Record<string, any> because ECharts option objects are dynamic
+ * and need to support spreading
+ */
+// biome-ignore lint/suspicious/noExplicitAny: ECharts options require dynamic object types
+type EChartsOptionRecord = Record<string, any>;
+
 // Base option builders
-export function buildBaseOption(props: any): Partial<EChartsOption> {
+export function buildBaseOption(props: BaseOptionProps): Partial<EChartsOption> {
   const option: Partial<EChartsOption> = {};
   const isDark = props.theme === 'dark';
   
   
-  // Title with theme-aware colors
+  // Title with theme-aware colors and proper spacing
   if (props.title) {
     option.title = {
       text: props.title,
-      subtext: props.subtitle,
+      ...(props.subtitle && { subtext: props.subtitle }),
       left: props.titlePosition || 'center',
+      top: 10, // Add top padding to prevent edge clipping
       textStyle: {
         color: isDark ? '#ffffff' : '#333333',
+        fontSize: 16,
+        fontWeight: 'bold',
       },
       subtextStyle: {
         color: isDark ? '#cccccc' : '#666666',
+        fontSize: 12,
       },
+      itemGap: 8, // Space between title and subtitle
     };
   }
   
@@ -68,7 +100,7 @@ export function buildBaseOption(props: any): Partial<EChartsOption> {
   return option;
 }
 
-export function buildAxisOption(config?: AxisConfig, dataType: 'numeric' | 'categorical' | 'time' = 'categorical', theme?: string): any {
+export function buildAxisOption(config?: AxisConfig, dataType: 'numeric' | 'categorical' | 'time' = 'categorical', theme?: string): EChartsOptionRecord {
   const isDark = theme === 'dark';
   
   if (!config) {
@@ -147,158 +179,110 @@ export function buildAxisOption(config?: AxisConfig, dataType: 'numeric' | 'cate
   };
 }
 
-export function buildLegendOption(config?: LegendConfig, hasTitle?: boolean, hasSubtitle?: boolean, hasDataZoom?: boolean, theme?: string): any {
+export function buildLegendOption(config?: LegendConfig, hasTitle?: boolean, hasSubtitle?: boolean, hasDataZoom?: boolean, theme?: string): EChartsOptionRecord {
   if (!config || config.show === false) {
     return { show: false };
   }
-  
+
   const position = config.position || 'top';
   const orientation = config.orientation || (position === 'left' || position === 'right' ? 'vertical' : 'horizontal');
   const align = config.align || 'center';
-  
-  // Calculate smart positioning based on content
-  let positioning: any = {};
-  
+
+  // Use percentage-based positioning for responsive layout
+  let positioning: EChartsOptionRecord = {};
+
+  // Calculate top offset based on title presence
+  const topOffset = hasTitle && hasSubtitle ? '10%' : hasTitle ? '8%' : '3%';
+
   switch (position) {
     case 'top':
-      // Account for title/subtitle space
-      if (hasTitle && hasSubtitle) {
-        positioning = { top: '12%' }; // More space for title + subtitle
-      } else if (hasTitle) {
-        positioning = { top: '8%' }; // Space for title only
-      } else {
-        positioning = { top: '5%' }; // Default top spacing
-      }
-      // Center alignment for top position
+      positioning = { top: topOffset };
       if (align === 'center') {
-        positioning = { ...positioning, left: 'center' };
+        positioning.left = 'center';
       } else if (align === 'start') {
-        positioning = { ...positioning, left: '5%' };
-      } else if (align === 'end') {
-        positioning = { ...positioning, right: '5%' };
+        positioning.left = '10%';
+      } else {
+        positioning.right = '5%';
       }
       break;
-      
+
     case 'bottom':
-      // Account for data zoom controls and ensure proper spacing
-      if (hasDataZoom) {
-        positioning = { bottom: '15%' }; // More space for zoom controls
-      } else {
-        positioning = { bottom: '8%' }; // Standard bottom spacing
-      }
-      // Center alignment for bottom position
+      positioning = { bottom: hasDataZoom ? '12%' : '3%' };
       if (align === 'center') {
-        positioning = { ...positioning, left: 'center' };
+        positioning.left = 'center';
       } else if (align === 'start') {
-        positioning = { ...positioning, left: '5%' };
-      } else if (align === 'end') {
-        positioning = { ...positioning, right: '5%' };
+        positioning.left = '10%';
+      } else {
+        positioning.right = '5%';
       }
       break;
-      
+
     case 'left':
-      positioning = { 
-        left: '5%',
-        top: hasTitle ? (hasSubtitle ? '15%' : '12%') : 'center'
-      };
+      positioning = { left: '3%', top: topOffset };
       break;
-      
+
     case 'right':
-      positioning = { 
-        right: '5%',
-        top: hasTitle ? (hasSubtitle ? '15%' : '12%') : 'center'
-      };
+      positioning = { right: '3%', top: topOffset };
       break;
   }
-  
+
   const isDark = theme === 'dark';
-  
+
   return {
     show: true,
     type: 'scroll',
     orient: orientation,
     ...positioning,
-    itemGap: 10, // Better spacing between legend items
+    itemGap: 12,
+    itemWidth: 20,
+    itemHeight: 12,
     textStyle: {
       fontSize: 12,
-      padding: [2, 0, 0, 2], // Better text padding
       color: isDark ? '#cccccc' : '#666666'
     }
   };
 }
 
-export function calculateGridSpacing(legendConfig?: LegendConfig, hasTitle?: boolean, hasSubtitle?: boolean, hasDataZoom?: boolean): any {
-  const defaultGrid = {
-    left: '3%',
-    right: '4%',
-    top: '10%',
-    bottom: '3%',
-    containLabel: true
+export function calculateGridSpacing(legendConfig?: LegendConfig, hasTitle?: boolean, hasSubtitle?: boolean, hasDataZoom?: boolean): EChartsOptionRecord {
+  // Use ECharts' built-in grid with containLabel for automatic label handling
+  // Position using percentages for responsive sizing
+
+  const hasLegendTop = legendConfig && legendConfig.show !== false && (legendConfig.position || 'top') === 'top';
+  const hasLegendBottom = legendConfig && legendConfig.show !== false && legendConfig.position === 'bottom';
+  const hasLegendLeft = legendConfig && legendConfig.show !== false && legendConfig.position === 'left';
+  const hasLegendRight = legendConfig && legendConfig.show !== false && legendConfig.position === 'right';
+
+  // Calculate top spacing: title (if any) + legend (if top)
+  let top = '10%';
+  if (hasTitle && hasSubtitle && hasLegendTop) {
+    top = '18%';
+  } else if (hasTitle && hasSubtitle) {
+    top = '14%';
+  } else if ((hasTitle && hasLegendTop) || (hasSubtitle && hasLegendTop)) {
+    top = '15%';
+  } else if (hasTitle || hasSubtitle) {
+    top = '12%';
+  } else if (hasLegendTop) {
+    top = '12%';
+  }
+
+  // Calculate bottom spacing: dataZoom (if any) + legend (if bottom)
+  let bottom = '10%';
+  if (hasDataZoom && hasLegendBottom) {
+    bottom = '22%';
+  } else if (hasDataZoom) {
+    bottom = '15%';
+  } else if (hasLegendBottom) {
+    bottom = '15%';
+  }
+
+  return {
+    left: hasLegendLeft ? '15%' : '10%',
+    right: hasLegendRight ? '15%' : '5%',
+    top,
+    bottom,
+    containLabel: true  // Let ECharts handle axis label spacing automatically
   };
-
-  if (!legendConfig || legendConfig.show === false) {
-    // Adjust for title/subtitle and zoom only
-    let topSpacing = '10%';
-    if (hasTitle && hasSubtitle) {
-      topSpacing = '15%';
-    } else if (hasTitle) {
-      topSpacing = '12%';
-    }
-    
-    return {
-      ...defaultGrid,
-      top: topSpacing,
-      bottom: hasDataZoom ? '12%' : '3%'
-    };
-  }
-
-  const position = legendConfig.position || 'top';
-  let gridAdjustments = { ...defaultGrid };
-
-  switch (position) {
-    case 'top':
-      // Reserve space for legend at top
-      if (hasTitle && hasSubtitle) {
-        gridAdjustments.top = '20%'; // Title + subtitle + legend
-      } else if (hasTitle) {
-        gridAdjustments.top = '18%'; // Title + legend
-      } else {
-        gridAdjustments.top = '15%'; // Legend only
-      }
-      gridAdjustments.bottom = hasDataZoom ? '12%' : '3%';
-      break;
-      
-    case 'bottom':
-      // Reserve space for legend at bottom
-      let topSpacing = '10%';
-      if (hasTitle && hasSubtitle) {
-        topSpacing = '15%';
-      } else if (hasTitle) {
-        topSpacing = '12%';
-      }
-      gridAdjustments.top = topSpacing;
-      
-      if (hasDataZoom) {
-        gridAdjustments.bottom = '25%'; // Legend + zoom controls
-      } else {
-        gridAdjustments.bottom = '15%'; // Legend only
-      }
-      break;
-      
-    case 'left':
-      gridAdjustments.left = '15%'; // More space for left legend
-      gridAdjustments.top = hasTitle ? (hasSubtitle ? '15%' : '12%') : '10%';
-      gridAdjustments.bottom = hasDataZoom ? '12%' : '3%';
-      break;
-      
-    case 'right':
-      gridAdjustments.right = '15%'; // More space for right legend
-      gridAdjustments.top = hasTitle ? (hasSubtitle ? '15%' : '12%') : '10%';
-      gridAdjustments.bottom = hasDataZoom ? '12%' : '3%';
-      break;
-  }
-
-  return gridAdjustments;
 }
 
 // Generate stable component key for theme changes
@@ -308,7 +292,7 @@ export function generateChartKey(theme?: string, colorPalette?: readonly string[
   return `chart-${themeKey}-${paletteKey}`;
 }
 
-export function buildTooltipOption(config?: TooltipConfig, theme?: string): any {
+export function buildTooltipOption(config?: TooltipConfig, theme?: string): EChartsOptionRecord {
   if (!config || config.show === false) {
     return { show: false };
   }

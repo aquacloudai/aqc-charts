@@ -1,14 +1,11 @@
-import React, { forwardRef, useMemo, useImperativeHandle, useEffect } from 'react';
-import type { EChartsType } from 'echarts/core';
+import React, { forwardRef, useImperativeHandle, useMemo } from 'react';
 import type { ScatterChartProps, ErgonomicChartRef } from '@/types';
-import { useECharts } from '@/hooks/useECharts';
-import { useLegendDoubleClick } from '@/hooks/useLegendDoubleClick';
+import { useChartComponent } from '@/hooks/useChartComponent';
 import { buildScatterChartOption } from '@/utils/chart-builders';
-import { filterDOMProps } from '@/utils/domProps';
 
 /**
  * Ergonomic ScatterChart component with intuitive props
- * 
+ *
  * @example
  * // Simple scatter plot with object data
  * <ScatterChart
@@ -21,7 +18,7 @@ import { filterDOMProps } from '@/utils/domProps';
  *   yField="y"
  *   pointSize={8}
  * />
- * 
+ *
  * @example
  * // Bubble chart with size dimension
  * <ScatterChart
@@ -35,7 +32,7 @@ import { filterDOMProps } from '@/utils/domProps';
  *   sizeField="employees"
  *   pointSize={[5, 30]}
  * />
- * 
+ *
  * @example
  * // Multiple series with explicit configuration
  * <ScatterChart
@@ -57,324 +54,34 @@ import { filterDOMProps } from '@/utils/domProps';
  *   yField="y"
  * />
  */
-const ScatterChart = forwardRef<ErgonomicChartRef, ScatterChartProps>(({
-  // Chart dimensions
-  width = '100%',
-  height = 400,
-  className,
-  style,
-  
-  // Data and field mappings
-  data,
-  xField = 'x',
-  yField = 'y',
-  sizeField,
-  colorField,
-  seriesField,
-  series,
-  
-  // Styling
-  theme = 'light',
-  colorPalette,
-  backgroundColor,
-  
-  // Title
-  title,
-  subtitle,
-  titlePosition = 'center',
-  
-  // Point styling
-  pointSize = 10,
-  pointShape = 'circle',
-  pointOpacity = 0.8,
-  
-  // Configuration
-  xAxis,
-  yAxis,
-  legend,
-  tooltip,
-  
-  // Regression line
-  showTrendline = false,
-  trendlineType = 'linear',
-  
-  // States
-  loading = false,
-  disabled: _disabled = false,
-  animate = true,
-  animationDuration,
-  
-  // Events
-  onChartReady,
-  onDataPointClick,
-  onDataPointHover,
-  onLegendDoubleClick,
-  onSeriesDoubleClick,
-  legendDoubleClickDelay,
-  enableLegendDoubleClickSelection = true,
-  
-  // Advanced
-  customOption,
-  responsive: _responsive = true,
-  
-  ...restProps
-}, ref) => {
-  
-  // Filter out chart-specific props to prevent DOM warnings
-  const domProps = filterDOMProps(restProps);
-  
-  // Build ECharts option from ergonomic props
-  const chartOption = useMemo(() => {
-    const optionProps: any = {
-      data: data || [],
-      xField,
-      yField,
-      theme,
-      colorPalette,
-      backgroundColor,
-      title,
-      subtitle,
-      titlePosition,
-      pointSize,
-      pointShape,
-      pointOpacity,
-      animate,
-      animationDuration,
-      customOption,
-    };
-    
-    // Only add optional fields if they have values
-    if (sizeField) optionProps.sizeField = sizeField;
-    if (colorField) optionProps.colorField = colorField;
-    if (seriesField) optionProps.seriesField = seriesField;
-    if (series) optionProps.series = series;
-    if (xAxis) optionProps.xAxis = xAxis;
-    if (yAxis) optionProps.yAxis = yAxis;
-    if (legend) optionProps.legend = legend;
-    if (tooltip) optionProps.tooltip = tooltip;
-    if (showTrendline) optionProps.showTrendline = showTrendline;
-    if (trendlineType) optionProps.trendlineType = trendlineType;
-    
-    return buildScatterChartOption(optionProps);
-  }, [
-    data, xField, yField, sizeField, colorField, seriesField, series,
-    theme, colorPalette, backgroundColor,
-    title, subtitle, titlePosition,
-    pointSize, pointShape, pointOpacity,
-    xAxis, yAxis, legend, tooltip,
-    showTrendline, trendlineType, animate, animationDuration,
-    customOption
-  ]);
-  
-  // Use our refactored hook
+const ScatterChart = forwardRef<ErgonomicChartRef, ScatterChartProps>((props, ref) => {
+  const { className } = props;
+
+  // Memoize the build function to ensure stable reference
+  const buildOption = useMemo(() => buildScatterChartOption, []);
+
   const {
     containerRef,
-    loading: chartLoading,
+    containerStyle,
+    domProps,
+    refMethods,
+    renderError,
+    renderLoading,
     error,
-    getEChartsInstance,
-    resize,
-    showLoading,
-    hideLoading,
-  } = useECharts({
-    option: chartOption,
-    theme,
-    loading,
-    onChartReady,
-  });
-  
-  // Get chart instance for legend double-click functionality
-  const chartInstance = getEChartsInstance();
-
-  // Setup legend and series double-click handling
-  const { handleLegendClick, handleSeriesClick } = useLegendDoubleClick({
-    chartInstance,
-    onLegendDoubleClick,
-    onSeriesDoubleClick,
-    delay: legendDoubleClickDelay || 300,
-    enableAutoSelection: enableLegendDoubleClickSelection,
+  } = useChartComponent({
+    props,
+    buildOption,
+    chartType: 'scatter',
   });
 
-  // Handle data point interactions and legend events
-  const chartEvents = useMemo(() => {
-    const events: Record<string, any> = {};
-    
-    if (onDataPointClick) {
-      events.click = (params: any, chart: EChartsType) => {
-        onDataPointClick(params, { chart, event: params });
-      };
-    }
-
-    // Add series double-click detection via click event
-    if (onSeriesDoubleClick || enableLegendDoubleClickSelection) {
-      const existingClick = events.click;
-      events.click = (params: any, chart: EChartsType) => {
-        // Call existing click handler first
-        if (existingClick) {
-          existingClick(params, chart);
-        }
-        // Then handle series double-click
-        handleSeriesClick(params);
-      };
-    } else if (!onDataPointClick) {
-      // If no existing click handler, add series double-click handler only
-      events.click = (params: any) => {
-        handleSeriesClick(params);
-      };
-    }
-    
-    if (onDataPointHover) {
-      events.mouseover = (params: any, chart: EChartsType) => {
-        onDataPointHover(params, { chart, event: params });
-      };
-    }
-    
-    // Add legend double-click detection via legendselectchanged event
-    if (onLegendDoubleClick || enableLegendDoubleClickSelection) {
-      events.legendselectchanged = (params: any) => {
-        handleLegendClick(params);
-      };
-    }
-    
-    return events;
-  }, [onDataPointClick, onDataPointHover, onLegendDoubleClick, onSeriesDoubleClick, enableLegendDoubleClickSelection, handleLegendClick, handleSeriesClick]);
-
-  // Apply events to chart instance
-  useEffect(() => {
-    if (!chartInstance || Object.keys(chartEvents).length === 0) return;
-
-    const eventHandlers: Array<[string, (...args: unknown[]) => void]> = [];
-
-    Object.entries(chartEvents).forEach(([event, handler]) => {
-      chartInstance.on(event, handler);
-      eventHandlers.push([event, handler]);
-    });
-
-    return () => {
-      eventHandlers.forEach(([event, handler]) => {
-        chartInstance.off(event, handler);
-      });
-    };
-  }, [chartInstance, chartEvents]);
-  
-  // Export image functionality
-  const exportImage = (format: 'png' | 'jpeg' | 'svg' = 'png'): string => {
-    const chart = getEChartsInstance();
-    if (!chart) return '';
-    
-    return chart.getDataURL({
-      type: format,
-      pixelRatio: 2,
-      backgroundColor: backgroundColor || '#fff',
-    });
-  };
-  
-  // Highlight functionality
-  const highlight = (dataIndex: number, seriesIndex: number = 0) => {
-    const chart = getEChartsInstance();
-    if (!chart) return;
-    
-    chart.dispatchAction({
-      type: 'highlight',
-      seriesIndex,
-      dataIndex,
-    });
-  };
-  
-  const clearHighlight = () => {
-    const chart = getEChartsInstance();
-    if (!chart) return;
-    
-    chart.dispatchAction({
-      type: 'downplay',
-    });
-  };
-  
-  // Update data functionality
-  const updateData = (newData: readonly any[]) => {
-    const chart = getEChartsInstance();
-    if (!chart) return;
-    
-    const optionProps: any = {
-      data: newData,
-      xField,
-      yField,
-      theme,
-      colorPalette,
-      backgroundColor,
-      title,
-      subtitle,
-      titlePosition,
-      pointSize,
-      pointShape,
-      pointOpacity,
-      animate,
-      animationDuration,
-      customOption,
-    };
-    
-    // Only add optional fields if they have values
-    if (sizeField) optionProps.sizeField = sizeField;
-    if (colorField) optionProps.colorField = colorField;
-    if (seriesField) optionProps.seriesField = seriesField;
-    if (series) optionProps.series = series;
-    if (xAxis) optionProps.xAxis = xAxis;
-    if (yAxis) optionProps.yAxis = yAxis;
-    if (legend) optionProps.legend = legend;
-    if (tooltip) optionProps.tooltip = tooltip;
-    if (showTrendline) optionProps.showTrendline = showTrendline;
-    if (trendlineType) optionProps.trendlineType = trendlineType;
-    
-    const newOption = buildScatterChartOption(optionProps);
-    
-    chart.setOption(newOption as any);
-  };
-  
   // Expose ergonomic API through ref
-  useImperativeHandle(ref, () => ({
-    getChart: getEChartsInstance,
-    exportImage,
-    resize,
-    showLoading: () => showLoading(),
-    hideLoading,
-    highlight,
-    clearHighlight,
-    updateData,
-  }), [getEChartsInstance, exportImage, resize, showLoading, hideLoading, highlight, clearHighlight, updateData]);
-  
+  useImperativeHandle(ref, () => refMethods, [refMethods]);
+
   // Error state
   if (error) {
-    return (
-      <div
-        className={`aqc-charts-error ${className || ''}`}
-        style={{
-          width,
-          height,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          color: '#ff4d4f',
-          fontSize: '14px',
-          border: '1px dashed #ff4d4f',
-          borderRadius: '4px',
-          ...style,
-        }}
-      >
-        Error: {error.message || 'Failed to render chart'}
-      </div>
-    );
+    return renderError();
   }
-  
-  // Container style with minimum dimensions fallback
-  const containerStyle = useMemo(() => ({
-    width,
-    height,
-    // Add min dimensions when using percentage width to prevent zero-size containers
-    minWidth: typeof width === 'string' && width.includes('%') ? '300px' : undefined,
-    minHeight: '300px', // Always ensure minimum height
-    position: 'relative' as const,
-    ...style,
-  }), [width, height, style]);
-  
+
   return (
     <div
       className={`aqc-charts-container ${className || ''}`}
@@ -389,37 +96,9 @@ const ScatterChart = forwardRef<ErgonomicChartRef, ScatterChartProps>(({
           height: '100%',
         }}
       />
-      
+
       {/* Loading overlay */}
-      {(chartLoading || loading) && (
-        <div 
-          className="aqc-charts-loading"
-          style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            backgroundColor: 'rgba(255, 255, 255, 0.8)',
-            fontSize: '14px',
-            color: '#666',
-          }}
-        >
-          <div className="aqc-charts-spinner" style={{
-            width: '20px',
-            height: '20px',
-            border: '2px solid #f3f3f3',
-            borderTop: '2px solid #1890ff',
-            borderRadius: '50%',
-            animation: 'spin 1s linear infinite',
-            marginRight: '8px',
-          }} />
-          Loading...
-        </div>
-      )}
+      {renderLoading()}
     </div>
   );
 });

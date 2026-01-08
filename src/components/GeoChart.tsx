@@ -7,7 +7,7 @@ import type {
 } from 'echarts/types/dist/option';
 import type { GeoChartProps, ChartRef } from '@/types';
 import { BaseChart } from './BaseChart';
-import { loadECharts } from '@/utils/EChartsLoader';
+import { getEChartsModule, registerMap } from '@/utils/echarts';
 
 // Use a type assertion to access registerMap method
 
@@ -61,9 +61,6 @@ export const GeoChart = forwardRef<ChartRef, GeoChartProps>(({
   // Load and register map data
   const loadMapData = useCallback(async () => {
     try {
-      // Load ECharts first
-      const echarts = await loadECharts();
-      
       // If no mapUrl is provided, assume it's a built-in ECharts map
       if (!mapUrl) {
         setIsMapLoaded(true);
@@ -78,33 +75,34 @@ export const GeoChart = forwardRef<ChartRef, GeoChartProps>(({
         stableOnMapLoad();
         return;
       }
-      
+
       // Load map data
       const response = await fetch(mapUrl);
       if (!response.ok) {
         throw new Error(`Failed to load map data: ${response.statusText}`);
       }
-      
+
       if (mapType === 'svg') {
         // Load SVG data as text
         const svgText = await response.text();
         console.log(`Registering SVG map "${mapName}" with ${svgText.length} characters`);
-        echarts.registerMap(mapName, { svg: svgText }, mapSpecialAreas);
+        // Use getEChartsModule() for SVG maps which need the { svg: string } format
+        getEChartsModule().registerMap(mapName, { svg: svgText }, mapSpecialAreas);
         console.log(`SVG map "${mapName}" registered successfully`);
-        
+
         // Add longer delay for SVG maps to ensure registration is fully processed
         await new Promise(resolve => setTimeout(resolve, 200));
       } else {
         // Load GeoJSON data
         const geoJson = await response.json();
         console.log(`Registering GeoJSON map "${mapName}"`);
-        echarts.registerMap(mapName, geoJson, mapSpecialAreas);
+        registerMap(mapName, geoJson, mapSpecialAreas);
         console.log(`GeoJSON map "${mapName}" registered successfully`);
       }
-      
+
       // Mark this map as registered
       registeredMapsRef.current.add(mapKey);
-      
+
       setIsMapLoaded(true);
       stableOnMapLoad();
     } catch (error) {

@@ -110,11 +110,14 @@ export function buildSankeyChartOption(props: SankeyChartProps): EChartsOption {
     return processedLink;
   });
   
+  // Calculate title height for proper spacing
+  const titleHeight = props.title ? (props.subtitle ? 65 : 45) : 0;
+
   // Build series configuration
   const series: any = {
     type: 'sankey',
     layout: props.layout || 'none',
-    orient: props.orient || 'horizontal', 
+    orient: props.orient || 'horizontal',
     nodeAlign: props.nodeAlign || 'justify',
     nodeGap: props.nodeGap || 8,
     nodeWidth: props.nodeWidth || 20,
@@ -125,17 +128,17 @@ export function buildSankeyChartOption(props: SankeyChartProps): EChartsOption {
       focus: props.focusMode || 'adjacency',
       ...(props.blurScope && { blurScope: props.blurScope }),
     },
-    // Standard spacing
-    left: '5%',
-    top: props.title ? '15%' : '5%',
-    right: '5%',
-    bottom: '5%',
+    // Proper spacing accounting for title
+    left: 50,
+    top: titleHeight + 20,
+    right: 50,
+    bottom: 30,
   };
   
   return {
     ...baseOption,
     series: [series],
-    legend: props.legend ? buildLegendOption(props.legend, !!props.title, !!props.subtitle, false, props.theme) : undefined,
+    ...(props.legend && { legend: buildLegendOption(props.legend, !!props.title, !!props.subtitle, false, props.theme) }),
     tooltip: props.tooltip ? buildTooltipOption(props.tooltip, props.theme) : {
       trigger: 'item',
       triggerOn: 'mousemove',

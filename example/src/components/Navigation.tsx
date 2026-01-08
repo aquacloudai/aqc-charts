@@ -1,40 +1,44 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import { useResolvedTheme } from '@aquacloud_ai/aqc-charts';
 
 interface NavigationProps {
-  theme: 'light' | 'dark';
+  theme: 'light' | 'dark' | 'auto';
 }
 
 const chartTypes = [
   { path: '/', label: 'Overview', icon: '🏠' },
-  { path: '/line', label: 'Line Charts', icon: '📈' },
-  { path: '/bar', label: 'Bar Charts', icon: '📊' },
-  { path: '/pie', label: 'Pie Charts', icon: '🥧' },
-  { path: '/scatter', label: 'Scatter Charts', icon: '🔹' },
-  { path: '/stacked-area', label: 'Stacked Area', icon: '⛰️' },
-  { path: '/combined', label: 'Combined Charts', icon: '🎯' },
-  { path: '/cluster', label: 'Cluster Charts', icon: '🔬' },
-  { path: '/calendar', label: 'Calendar Heatmap', icon: '📅' },
-  { path: '/sankey', label: 'Sankey Charts', icon: '🌊' },
-  { path: '/gantt', label: 'Gantt Charts', icon: '📋' },
-  { path: '/regression', label: 'Regression Charts', icon: '📈' },
-  { path: '/geo', label: 'Geographic Charts', icon: '🗺️' }
+  { path: '/bar', label: 'Bar', icon: '📊' },
+  { path: '/line', label: 'Line', icon: '📈' },
+  { path: '/pie', label: 'Pie', icon: '🥧' },
+  { path: '/scatter', label: 'Scatter', icon: '⚬' },
+  { path: '/stacked-area', label: 'Area', icon: '📉' },
+  { path: '/combined', label: 'Combined', icon: '📊' },
+  { path: '/sankey', label: 'Sankey', icon: '🔀' },
+  { path: '/calendar', label: 'Calendar', icon: '📅' },
+  { path: '/cluster', label: 'Cluster', icon: '🎯' },
+  { path: '/regression', label: 'Regression', icon: '📐' },
+  { path: '/gantt', label: 'Gantt', icon: '📋' },
+  { path: '/geo', label: 'Geo', icon: '🗺️' },
 ];
 
 export const Navigation: React.FC<NavigationProps> = ({ theme }) => {
   const location = useLocation();
+  // ECharts 6: Resolve 'auto' theme to system preference for UI styling
+  const resolvedTheme = useResolvedTheme(theme);
 
   return (
     <nav style={{
-      backgroundColor: theme === 'dark' ? '#1f1f1f' : '#ffffff',
-      borderBottom: `2px solid ${theme === 'dark' ? '#333' : '#e1e5e9'}`,
+      backgroundColor: resolvedTheme === 'dark' ? '#1f1f1f' : '#ffffff',
+      borderBottom: `2px solid ${resolvedTheme === 'dark' ? '#333' : '#e1e5e9'}`,
       padding: '0 20px',
       position: 'sticky',
       top: 0,
       zIndex: 100,
-      boxShadow: theme === 'dark' 
-        ? '0 2px 4px rgba(0,0,0,0.3)' 
-        : '0 2px 4px rgba(0,0,0,0.1)'
+      boxShadow: resolvedTheme === 'dark'
+        ? '0 2px 4px rgba(0,0,0,0.3)'
+        : '0 2px 4px rgba(0,0,0,0.1)',
+      transition: 'all 0.3s ease', // Smooth transition for theme changes
     }}>
       <div style={{
         display: 'flex',
@@ -58,14 +62,14 @@ export const Navigation: React.FC<NavigationProps> = ({ theme }) => {
                 fontSize: '14px',
                 fontWeight: '500',
                 whiteSpace: 'nowrap',
-                backgroundColor: isActive 
-                  ? (theme === 'dark' ? '#333' : '#f8f9fa')
+                backgroundColor: isActive
+                  ? (resolvedTheme === 'dark' ? '#333' : '#f8f9fa')
                   : 'transparent',
                 color: isActive
-                  ? (theme === 'dark' ? '#fff' : '#333')
-                  : (theme === 'dark' ? '#ccc' : '#666'),
-                borderBottom: isActive 
-                  ? `2px solid ${theme === 'dark' ? '#667eea' : '#667eea'}`
+                  ? (resolvedTheme === 'dark' ? '#fff' : '#333')
+                  : (resolvedTheme === 'dark' ? '#ccc' : '#666'),
+                borderBottom: isActive
+                  ? `2px solid ${resolvedTheme === 'dark' ? '#667eea' : '#667eea'}`
                   : '2px solid transparent',
                 transition: 'all 0.2s ease'
               }}

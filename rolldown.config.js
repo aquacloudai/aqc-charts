@@ -1,7 +1,10 @@
 import { defineConfig } from 'rolldown';
 
 export default defineConfig({
-    input: 'src/index.ts',
+    input: {
+        index: 'src/index.ts',
+        legacy: 'src/legacy.ts',
+    },
     output: [
         {
             dir: 'dist',
@@ -16,7 +19,15 @@ export default defineConfig({
             chunkFileNames: '[name]-[hash].cjs'
         }
     ],
-    external: ['react', 'react-dom', 'react/jsx-runtime', 'echarts'],
+    external: [
+        'react',
+        'react-dom',
+        'react/jsx-runtime',
+        'echarts',
+        'echarts-stat',
+        /^echarts\//,      // Match echarts/core, echarts/types/*, etc.
+        /^echarts-stat\//  // Match echarts-stat sub-paths if any
+    ],
     platform: 'browser',
     treeshake: true,
     minify: true,

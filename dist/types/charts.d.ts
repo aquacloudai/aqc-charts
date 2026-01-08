@@ -97,6 +97,10 @@ export interface PieChartProps extends BaseErgonomicChartProps {
     readonly selectedMode?: 'single' | 'multiple' | false;
     readonly emphasis?: boolean;
 }
+export interface JitterConfig {
+    readonly width?: number;
+    readonly height?: number;
+}
 export interface ScatterChartProps extends BaseErgonomicChartProps {
     readonly data: readonly DataPoint[] | readonly (readonly [number, number])[] | readonly (readonly [number, number, number])[];
     readonly xField?: string;
@@ -107,12 +111,16 @@ export interface ScatterChartProps extends BaseErgonomicChartProps {
     readonly pointSize?: number | readonly [number, number];
     readonly pointShape?: 'circle' | 'square' | 'triangle' | 'diamond';
     readonly pointOpacity?: number;
+    readonly jitter?: boolean | JitterConfig;
+    readonly jitterOverlap?: boolean;
     readonly series?: readonly {
         readonly name: string;
         readonly data: readonly DataPoint[];
         readonly color?: string;
         readonly pointSize?: number;
         readonly pointShape?: string;
+        readonly jitter?: boolean | JitterConfig;
+        readonly jitterOverlap?: boolean;
     }[];
     readonly xAxis?: AxisConfig | undefined;
     readonly yAxis?: AxisConfig | undefined;

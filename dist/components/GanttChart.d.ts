@@ -35,39 +35,6 @@ import type { GanttChartProps, ErgonomicChartRef } from '@/types';
  *   showTaskProgress
  *   todayMarker
  * />
- *
- * @example
- * // Highly customized Gantt chart with status-based styling
- * <GanttChart
- *   tasks={projectTasks}
- *   categories={departments}
- *   title="Q1 Project Schedule"
- *   theme="dark"
- *   taskBarStyle={{
- *     height: 0.8,
- *     borderRadius: 6,
- *     showProgress: true,
- *     textStyle: {
- *       position: 'inside',
- *       showDuration: true
- *     }
- *   }}
- *   categoryLabelStyle={{
- *     width: 150,
- *     shape: 'pill',
- *     backgroundColor: '#2a2a2a',
- *     textColor: '#ffffff'
- *   }}
- *   statusStyles={{
- *     'completed': { backgroundColor: '#4CAF50' },
- *     'in-progress': { backgroundColor: '#2196F3' },
- *     'delayed': { backgroundColor: '#FF9800' }
- *   }}
- *   dataZoom={{ type: 'both' }}
- *   sortBy="priority"
- *   sortOrder="desc"
- *   onTaskClick={(task) => alert('Task clicked: ' + task.name)}
- * />
  */
 declare const GanttChart: React.ForwardRefExoticComponent<GanttChartProps & React.RefAttributes<ErgonomicChartRef>>;
 export { GanttChart };

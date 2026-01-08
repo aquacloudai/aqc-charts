@@ -1,22 +1,41 @@
 /**
- * Helper functions for creating ECharts options easily
+ * @deprecated Legacy helper functions for creating ECharts options.
+ * These functions are provided for backward compatibility.
+ * Consider using the ergonomic chart components (LineChart, BarChart, etc.) instead.
  */
 
 import type { EChartsOption } from 'echarts/types/dist/shared';
 
 /**
+ * Common series item structure
+ */
+interface SeriesInputItem {
+  name: string;
+  data: number[];
+  color?: string;
+}
+
+/**
+ * ECharts series item output
+ */
+interface SeriesOutputItem {
+  name: string;
+  type: 'line' | 'bar';
+  data: number[];
+  itemStyle?: { color: string };
+}
+
+/**
  * Create a basic line chart option
+ * @deprecated Use the LineChart component instead
  */
 export function createLineChartOption(data: {
   categories: string[];
-  series: Array<{
-    name: string;
-    data: number[];
-    color?: string;
-  }>;
+  series: SeriesInputItem[];
   title?: string;
 }): EChartsOption {
-  const option: any = {
+  // biome-ignore lint/suspicious/noExplicitAny: Legacy code - ECharts options
+  const option: Record<string, any> = {
     tooltip: {
       trigger: 'axis',
       axisPointer: {
@@ -38,10 +57,10 @@ export function createLineChartOption(data: {
     yAxis: {
       type: 'value'
     },
-    series: data.series.map(s => {
-      const seriesItem: any = {
+    series: data.series.map((s): SeriesOutputItem => {
+      const seriesItem: SeriesOutputItem = {
         name: s.name,
-        type: 'line' as const,
+        type: 'line',
         data: s.data
       };
       if (s.color) {
@@ -70,17 +89,15 @@ export function createLineChartOption(data: {
 
 /**
  * Create a basic bar chart option
+ * @deprecated Use the BarChart component instead
  */
 export function createBarChartOption(data: {
   categories: string[];
-  series: Array<{
-    name: string;
-    data: number[];
-    color?: string;
-  }>;
+  series: SeriesInputItem[];
   title?: string;
 }): EChartsOption {
-  const option: any = {
+  // biome-ignore lint/suspicious/noExplicitAny: Legacy code - ECharts options
+  const option: Record<string, any> = {
     tooltip: {
       trigger: 'axis',
       axisPointer: {
@@ -101,10 +118,10 @@ export function createBarChartOption(data: {
     yAxis: {
       type: 'value'
     },
-    series: data.series.map(s => {
-      const seriesItem: any = {
+    series: data.series.map((s): SeriesOutputItem => {
+      const seriesItem: SeriesOutputItem = {
         name: s.name,
-        type: 'bar' as const,
+        type: 'bar',
         data: s.data
       };
       if (s.color) {
@@ -133,6 +150,7 @@ export function createBarChartOption(data: {
 
 /**
  * Create a basic pie chart option
+ * @deprecated Use the PieChart component instead
  */
 export function createPieChartOption(data: {
   data: Array<{
@@ -141,7 +159,8 @@ export function createPieChartOption(data: {
   }>;
   title?: string;
 }): EChartsOption {
-  const option: any = {
+  // biome-ignore lint/suspicious/noExplicitAny: Legacy code - ECharts options
+  const option: Record<string, any> = {
     tooltip: {
       trigger: 'item',
       formatter: '{a} <br/>{b}: {c} ({d}%)'
@@ -177,6 +196,7 @@ export function createPieChartOption(data: {
 
 /**
  * Create a basic sankey chart option
+ * @deprecated Use the SankeyChart component instead
  */
 export function createSankeyChartOption(data: {
   nodes: Array<{
@@ -202,7 +222,8 @@ export function createSankeyChartOption(data: {
   iterations?: number;
   title?: string;
 }): EChartsOption {
-  const option: any = {
+  // biome-ignore lint/suspicious/noExplicitAny: Legacy code - ECharts options
+  const option: Record<string, any> = {
     tooltip: {
       trigger: 'item',
       triggerOn: 'mousemove'
@@ -219,7 +240,8 @@ export function createSankeyChartOption(data: {
         focus: 'adjacency'
       },
       data: data.nodes.map(node => {
-        const result: any = { name: node.name };
+        // biome-ignore lint/suspicious/noExplicitAny: Legacy code - dynamic object construction
+        const result: Record<string, any> = { name: node.name };
         if (node.value !== undefined) result.value = node.value;
         if (node.depth !== undefined) result.depth = node.depth;
         if (node.itemStyle) result.itemStyle = node.itemStyle;
@@ -228,7 +250,8 @@ export function createSankeyChartOption(data: {
         return result;
       }),
       links: data.links.map(link => {
-        const result: any = {
+        // biome-ignore lint/suspicious/noExplicitAny: Legacy code - dynamic object construction
+        const result: Record<string, any> = {
           source: link.source,
           target: link.target,
           value: link.value,
@@ -252,31 +275,33 @@ export function createSankeyChartOption(data: {
 
 /**
  * Merge ECharts options (simple deep merge)
+ * @deprecated Use spread operator or a proper merge utility instead
  */
 export function mergeOptions(base: EChartsOption, override: Partial<EChartsOption>): EChartsOption {
-  const result = { ...base };
-  
+  // biome-ignore lint/suspicious/noExplicitAny: Legacy code - dynamic merging
+  const result: Record<string, any> = { ...base };
+
   for (const key in override) {
     const overrideValue = override[key as keyof EChartsOption];
-    const baseValue = result[key as keyof EChartsOption];
-    
+    const baseValue = result[key];
+
     if (overrideValue !== undefined) {
       if (
-        typeof overrideValue === 'object' && 
-        overrideValue !== null && 
+        typeof overrideValue === 'object' &&
+        overrideValue !== null &&
         !Array.isArray(overrideValue) &&
-        typeof baseValue === 'object' && 
-        baseValue !== null && 
+        typeof baseValue === 'object' &&
+        baseValue !== null &&
         !Array.isArray(baseValue)
       ) {
         // Deep merge objects
-        (result as any)[key] = { ...baseValue, ...overrideValue };
+        result[key] = { ...baseValue, ...overrideValue };
       } else {
         // Direct assignment for primitives, arrays, and null values
-        (result as any)[key] = overrideValue;
+        result[key] = overrideValue;
       }
     }
   }
-  
-  return result;
+
+  return result as EChartsOption;
 }

@@ -65,6 +65,7 @@ export function buildCombinedChartOption(params: BuildCombinedChartOptionParams)
 
   // Build base option
   const baseOption = buildBaseOption({
+    theme: theme as 'light' | 'dark' | 'auto' | undefined,
     title,
     subtitle,
     titlePosition,
@@ -178,12 +179,18 @@ export function buildCombinedChartOption(params: BuildCombinedChartOptionParams)
     return buildAxisOption(axisOptions);
   });
 
-  // Build legend
-  const builtLegend = legend !== false ? buildLegendOption({
-    show: true,
-    data: series.map(s => s.name),
-    ...legend,
-  }) : undefined;
+  // Build legend with proper title-aware positioning
+  const builtLegend = legend !== false ? buildLegendOption(
+    {
+      show: true,
+      data: series.map(s => s.name),
+      ...legend,
+    },
+    !!title,
+    !!subtitle,
+    zoom,
+    theme
+  ) : undefined;
 
   // Build tooltip
   const builtTooltip = buildTooltipOption({

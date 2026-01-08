@@ -6,6 +6,7 @@ import {
   buildBaseOption,
   buildAxisOption,
   buildTooltipOption,
+  calculateGridSpacing,
 } from '../base-options';
 import { enhanceAxisForNegativeValues } from '../negative-value-handling';
 
@@ -54,7 +55,10 @@ export function buildClusterChartOption(props: ClusterChartProps): EChartsOption
   });
   
   const outputClusterIndexDimension = 2;
-  const gridLeft = visualMapPosition === 'left' ? 120 : 60;
+
+  // Calculate grid spacing based on title and visual map position
+  const baseGrid = calculateGridSpacing(undefined, !!props.title, !!props.subtitle, false);
+  const gridLeft = visualMapPosition === 'left' ? 120 : (baseGrid.left as number) || 50;
   
   
   // Create visual map pieces for cluster coloring
@@ -92,9 +96,12 @@ export function buildClusterChartOption(props: ClusterChartProps): EChartsOption
     },
     visualMap: {
       type: 'piecewise',
-      top: visualMapPosition === 'top' ? 10 : visualMapPosition === 'bottom' ? 'bottom' : 'middle',
+      // Position visual map below title if present
+      top: visualMapPosition === 'bottom' ? 'auto' :
+           visualMapPosition === 'top' ? (props.title ? 50 : 10) :
+           (props.title ? 60 : 'middle'),
       ...(visualMapPosition === 'left' && { left: 10 }),
-      ...(visualMapPosition === 'right' && { left: 'right', right: 10 }),
+      ...(visualMapPosition === 'right' && { right: 10 }),
       ...(visualMapPosition === 'bottom' && { bottom: 10 }),
       min: 0,
       max: clusterCount,
@@ -103,7 +110,9 @@ export function buildClusterChartOption(props: ClusterChartProps): EChartsOption
       pieces: pieces
     },
     grid: {
-      left: gridLeft
+      ...baseGrid,
+      left: gridLeft,
+      containLabel: true
     },
     xAxis: enhanceAxisForNegativeValues({
       ...buildAxisOption(props.xAxis, 'numeric', props.theme),

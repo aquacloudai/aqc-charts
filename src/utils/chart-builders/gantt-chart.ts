@@ -385,14 +385,17 @@ export function buildGanttChartOption(props: GanttChartProps): EChartsOption {
     });
   }
   
+  // Calculate title height for proper spacing
+  const titleHeight = props.title ? (props.subtitle ? 65 : 45) : 0;
+
   return {
     ...baseOption,
     grid: {
       show: timelineStyle.showGrid || false,
       left: (categoryLabelStyle.width! + 20) || 140,
       right: 20,
-      top: timelineStyle.position === 'top' ? 60 : 20,
-      bottom: (props.dataZoom !== false ? 40 : 20) + (timelineStyle.position === 'bottom' ? 40 : 0),
+      top: titleHeight + (timelineStyle.position === 'top' ? 50 : 20),
+      bottom: (props.dataZoom !== false ? 50 : 30) + (timelineStyle.position === 'bottom' ? 40 : 0),
       backgroundColor: isDark ? '#1a1a1a' : '#ffffff',
       borderWidth: 0,
     },
@@ -459,7 +462,7 @@ export function buildGanttChartOption(props: GanttChartProps): EChartsOption {
         return '';
       },
     },
-    legend: props.legend ? buildLegendOption(props.legend, !!props.title, !!props.subtitle, false, props.theme) : undefined,
+    ...(props.legend && { legend: buildLegendOption(props.legend, !!props.title, !!props.subtitle, false, props.theme) }),
     ...props.customOption,
   };
 }

@@ -5,7 +5,7 @@ import type { PieChartProps, ErgonomicChartRef } from '@/types';
  *
  * @example
  * // Simple pie chart with object data
- * <ErgonomicPieChart
+ * <PieChart
  *   data={[
  *     { category: 'Desktop', sales: 4200 },
  *     { category: 'Mobile', sales: 3800 },
@@ -18,7 +18,7 @@ import type { PieChartProps, ErgonomicChartRef } from '@/types';
  *
  * @example
  * // Donut chart with custom styling
- * <ErgonomicPieChart
+ * <PieChart
  *   data={marketData}
  *   nameField="segment"
  *   valueField="share"
@@ -30,7 +30,7 @@ import type { PieChartProps, ErgonomicChartRef } from '@/types';
  *
  * @example
  * // Rose/nightingale chart
- * <ErgonomicPieChart
+ * <PieChart
  *   data={performanceData}
  *   nameField="department"
  *   valueField="score"

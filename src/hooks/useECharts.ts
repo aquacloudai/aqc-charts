@@ -11,7 +11,7 @@ type EventHandler = (params: any, chart: EChartsType) => void;
 
 export interface UseEChartsProps {
   option: unknown;
-  theme?: string | object | undefined;
+  theme?: string | Record<string, unknown> | undefined;
   loading?: boolean;
   notMerge?: boolean;
   lazyUpdate?: boolean;
@@ -60,7 +60,7 @@ export function useECharts({
   useChartOptions({
     chartInstance,
     option,
-    theme: theme as string | object | undefined,
+    theme,
     notMerge,
     lazyUpdate,
   });

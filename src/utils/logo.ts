@@ -1,5 +1,8 @@
 import type { ChartLogo } from '@/types';
 
+/**
+ * Logo graphic option for ECharts
+ */
 export interface LogoGraphicOption {
   type: 'image';
   style: {
@@ -13,6 +16,21 @@ export interface LogoGraphicOption {
   z?: number;
   silent?: boolean;
 }
+
+/**
+ * Generic graphic element in ECharts option
+ */
+interface GraphicElement {
+  type?: string;
+  [key: string]: unknown;
+}
+
+/**
+ * Chart option with optional graphic property
+ * Using Record<string, any> for flexibility with ECharts' complex type system
+ */
+// biome-ignore lint/suspicious/noExplicitAny: ECharts options require dynamic object types
+type ChartOptionWithGraphic = Record<string, any>;
 
 export const calculateLogoPosition = (
   logo: ChartLogo,
@@ -70,16 +88,16 @@ export const createLogoGraphic = (
   };
 };
 
-export const addLogoToOption = (
-  option: any,
+export const addLogoToOption = <T extends ChartOptionWithGraphic>(
+  option: T,
   logo: ChartLogo,
   chartWidth: number,
   chartHeight: number
-): any => {
+): T => {
   if (!logo) return option;
 
   const logoGraphic = createLogoGraphic(logo, chartWidth, chartHeight);
-  
+
   return {
     ...option,
     graphic: [
@@ -89,12 +107,12 @@ export const addLogoToOption = (
   };
 };
 
-export const removeLogoFromOption = (option: any): any => {
+export const removeLogoFromOption = <T extends ChartOptionWithGraphic>(option: T): T => {
   if (!option.graphic) return option;
 
   // Remove image graphics (assumed to be logos)
   const filteredGraphics = Array.isArray(option.graphic)
-    ? option.graphic.filter((graphic: any) => graphic.type !== 'image')
+    ? option.graphic.filter((graphic: GraphicElement) => graphic.type !== 'image')
     : option.graphic.type !== 'image' ? [option.graphic] : [];
 
   return {

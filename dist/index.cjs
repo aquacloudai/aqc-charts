@@ -1,1172 +1,163 @@
-//#region rolldown:runtime
-var __create = Object.create;
-var __defProp = Object.defineProperty;
-var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
-var __getOwnPropNames = Object.getOwnPropertyNames;
-var __getProtoOf = Object.getPrototypeOf;
-var __hasOwnProp = Object.prototype.hasOwnProperty;
-var __copyProps = (to, from, except, desc) => {
-	if (from && typeof from === "object" || typeof from === "function") for (var keys = __getOwnPropNames(from), i = 0, n = keys.length, key; i < n; i++) {
-		key = keys[i];
-		if (!__hasOwnProp.call(to, key) && key !== except) __defProp(to, key, {
-			get: ((k) => from[k]).bind(null, key),
-			enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable
-		});
-	}
-	return to;
-};
-var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__getProtoOf(mod)) : {}, __copyProps(isNodeMode || !mod || !mod.__esModule ? __defProp(target, "default", {
-	value: mod,
-	enumerable: true
-}) : target, mod));
+const require_OldPieChart = require('./OldPieChart-Cq-4VBAT.cjs');
+const react = require_OldPieChart.__toESM(require("react"));
+const react_jsx_runtime = require_OldPieChart.__toESM(require("react/jsx-runtime"));
+const react_dom = require_OldPieChart.__toESM(require("react-dom"));
 
-//#endregion
-const react = __toESM(require("react"));
-const react_jsx_runtime = __toESM(require("react/jsx-runtime"));
-const react_dom = __toESM(require("react-dom"));
-
-//#region src/utils/errors.ts
+//#region src/hooks/useChartComponent.tsx
 /**
-* Custom error types for AQC Charts library
-* Provides specific error classes with helpful context for debugging
+* Shared hook that consolidates common chart component logic.
+* Eliminates ~400 lines of duplicated code per chart component.
+*
+* @example
+* ```tsx
+* const LineChart = forwardRef<ErgonomicChartRef, LineChartProps>((props, ref) => {
+*   const {
+*     containerRef,
+*     containerStyle,
+*     domProps,
+*     refMethods,
+*     renderError,
+*     renderLoading,
+*     error,
+*   } = useChartComponent({
+*     props,
+*     buildOption: buildLineChartOption,
+*     chartType: 'line',
+*   });
+*
+*   useImperativeHandle(ref, () => refMethods, [refMethods]);
+*
+*   if (error) return renderError();
+*
+*   return (
+*     <div className={`aqc-charts-container ${props.className || ''}`} style={containerStyle} {...domProps}>
+*       <div ref={containerRef} style={{ width: '100%', height: '100%' }} />
+*       {renderLoading()}
+*     </div>
+*   );
+* });
+* ```
 */
-let ChartErrorCode = /* @__PURE__ */ function(ChartErrorCode$1) {
-	ChartErrorCode$1["ECHARTS_LOAD_FAILED"] = "ECHARTS_LOAD_FAILED";
-	ChartErrorCode$1["CHART_INIT_FAILED"] = "CHART_INIT_FAILED";
-	ChartErrorCode$1["CONTAINER_NOT_FOUND"] = "CONTAINER_NOT_FOUND";
-	ChartErrorCode$1["INVALID_DATA_FORMAT"] = "INVALID_DATA_FORMAT";
-	ChartErrorCode$1["EMPTY_DATA"] = "EMPTY_DATA";
-	ChartErrorCode$1["MISSING_REQUIRED_FIELD"] = "MISSING_REQUIRED_FIELD";
-	ChartErrorCode$1["INVALID_CHART_OPTION"] = "INVALID_CHART_OPTION";
-	ChartErrorCode$1["INVALID_THEME"] = "INVALID_THEME";
-	ChartErrorCode$1["UNSUPPORTED_CHART_TYPE"] = "UNSUPPORTED_CHART_TYPE";
-	ChartErrorCode$1["CHART_RENDER_FAILED"] = "CHART_RENDER_FAILED";
-	ChartErrorCode$1["CHART_UPDATE_FAILED"] = "CHART_UPDATE_FAILED";
-	ChartErrorCode$1["CHART_RESIZE_FAILED"] = "CHART_RESIZE_FAILED";
-	ChartErrorCode$1["ECSTAT_TRANSFORM_FAILED"] = "ECSTAT_TRANSFORM_FAILED";
-	ChartErrorCode$1["DATA_TRANSFORM_FAILED"] = "DATA_TRANSFORM_FAILED";
-	ChartErrorCode$1["UNKNOWN_ERROR"] = "UNKNOWN_ERROR";
-	return ChartErrorCode$1;
-}({});
-/**
-* Base class for all chart-related errors
-*/
-var ChartError = class ChartError extends Error {
-	code;
-	context;
-	cause;
-	recoverable;
-	suggestions;
-	constructor(details) {
-		super(details.message);
-		this.name = "ChartError";
-		this.code = details.code;
-		this.context = details.context ?? {};
-		this.cause = details.cause;
-		this.recoverable = details.recoverable ?? false;
-		this.suggestions = details.suggestions ?? [];
-		if (Error.captureStackTrace) Error.captureStackTrace(this, ChartError);
-	}
-	/**
-	* Convert error to a user-friendly format
-	*/
-	toUserMessage() {
-		const baseMessage = this.message;
-		const suggestions = this.suggestions.length > 0 ? `\n\nSuggestions:\n${this.suggestions.map((s) => `• ${s}`).join("\n")}` : "";
-		return `${baseMessage}${suggestions}`;
-	}
-	/**
-	* Convert error to detailed format for debugging
-	*/
-	toDetailedString() {
-		const details = [`ChartError [${this.code}]: ${this.message}`, `Recoverable: ${this.recoverable}`];
-		if (Object.keys(this.context).length > 0) details.push(`Context: ${JSON.stringify(this.context, null, 2)}`);
-		if (this.suggestions.length > 0) details.push(`Suggestions:\n${this.suggestions.map((s) => `  • ${s}`).join("\n")}`);
-		if (this.cause) details.push(`Caused by: ${this.cause.message}`);
-		return details.join("\n");
-	}
-};
-/**
-* Specific error class for ECharts loading failures
-*/
-var EChartsLoadError = class extends ChartError {
-	constructor(cause, context) {
-		super({
-			code: ChartErrorCode.ECHARTS_LOAD_FAILED,
-			message: "Failed to load ECharts library from CDN",
-			context,
-			cause,
-			recoverable: true,
-			suggestions: [
-				"Check your internet connection",
-				"Verify that CDN is accessible",
-				"Try refreshing the page",
-				"Consider using a local ECharts build"
-			]
-		});
-		this.name = "EChartsLoadError";
-	}
-};
-/**
-* Specific error class for chart initialization failures
-*/
-var ChartInitError = class extends ChartError {
-	constructor(cause, context) {
-		super({
-			code: ChartErrorCode.CHART_INIT_FAILED,
-			message: "Failed to initialize chart instance",
-			context,
-			cause,
-			recoverable: true,
-			suggestions: [
-				"Ensure the container element exists",
-				"Verify container has non-zero dimensions",
-				"Check if ECharts is properly loaded"
-			]
-		});
-		this.name = "ChartInitError";
-	}
-};
-/**
-* Specific error class for data validation failures
-*/
-var DataValidationError = class extends ChartError {
-	constructor(message, context, suggestions) {
-		super({
-			code: ChartErrorCode.INVALID_DATA_FORMAT,
-			message: `Data validation failed: ${message}`,
-			context,
-			recoverable: true,
-			suggestions: suggestions || [
-				"Check the data format matches the expected structure",
-				"Ensure required fields are present",
-				"Verify data types are correct"
-			]
-		});
-		this.name = "DataValidationError";
-	}
-};
-/**
-* Specific error class for chart rendering failures
-*/
-var ChartRenderError = class extends ChartError {
-	constructor(cause, context) {
-		super({
-			code: ChartErrorCode.CHART_RENDER_FAILED,
-			message: "Failed to render chart",
-			context,
-			cause,
-			recoverable: true,
-			suggestions: [
-				"Check if the chart options are valid",
-				"Verify the data format is correct",
-				"Ensure the container is properly sized"
-			]
-		});
-		this.name = "ChartRenderError";
-	}
-};
-/**
-* Specific error class for transform failures
-*/
-var TransformError = class extends ChartError {
-	constructor(transformType, cause, context) {
-		super({
-			code: ChartErrorCode.DATA_TRANSFORM_FAILED,
-			message: `Failed to apply ${transformType} transform`,
-			context,
-			cause,
-			recoverable: true,
-			suggestions: [
-				"Check if the data is compatible with the transform",
-				"Verify transform parameters are correct",
-				"Ensure ecStat is properly loaded"
-			]
-		});
-		this.name = "TransformError";
-	}
-};
-/**
-* Utility function to create ChartError from unknown error
-*/
-function createChartError(error, code = ChartErrorCode.UNKNOWN_ERROR, context) {
-	if (error instanceof ChartError) return error;
-	if (error instanceof Error) return new ChartError({
-		code,
-		message: error.message,
-		context,
-		cause: error,
-		recoverable: true
-	});
-	return new ChartError({
-		code,
-		message: String(error) || "An unknown error occurred",
-		context,
-		recoverable: false
-	});
-}
-/**
-* Utility function to safely handle async operations with proper error wrapping
-*/
-async function safeAsync(operation, errorCode, context) {
-	try {
-		return await operation();
-	} catch (error) {
-		throw createChartError(error, errorCode, context);
-	}
-}
-/**
-* Utility function to safely handle sync operations with proper error wrapping
-*/
-function safeSync(operation, errorCode, context) {
-	try {
-		return operation();
-	} catch (error) {
-		throw createChartError(error, errorCode, context);
-	}
-}
-/**
-* Type guard to check if an error is a ChartError
-*/
-function isChartError(error) {
-	return error instanceof ChartError;
-}
-/**
-* Type guard to check if an error is recoverable
-*/
-function isRecoverableError(error) {
-	return isChartError(error) && error.recoverable;
-}
-
-//#endregion
-//#region src/utils/EChartsLoader.ts
-let loadingPromise = null;
-let isLoaded = false;
-let loadAttempts = 0;
-/**
-* Wait for a specified amount of time
-*/
-function delay(ms) {
-	return new Promise((resolve) => setTimeout(resolve, ms));
-}
-/**
-* Load a script with timeout and retry logic
-*/
-function loadScript(src, name, timeout = 3e4) {
-	return new Promise((resolve, reject) => {
-		const script = document.createElement("script");
-		script.src = src;
-		script.async = true;
-		let timeoutId;
-		let isResolved = false;
-		const cleanup = () => {
-			if (timeoutId) clearTimeout(timeoutId);
-			script.onload = null;
-			script.onerror = null;
-		};
-		script.onload = () => {
-			if (!isResolved) {
-				isResolved = true;
-				cleanup();
-				resolve();
-			}
-		};
-		script.onerror = () => {
-			if (!isResolved) {
-				isResolved = true;
-				cleanup();
-				reject(new Error(`Failed to load ${name} from ${src}`));
-			}
-		};
-		timeoutId = setTimeout(() => {
-			if (!isResolved) {
-				isResolved = true;
-				cleanup();
-				reject(new Error(`Timeout loading ${name} from ${src}`));
-			}
-		}, timeout);
-		document.head.appendChild(script);
-	});
-}
-/**
-* Load ECharts dynamically from CDN with enhanced error handling
-*/
-async function loadECharts(options = {}) {
-	if (isLoaded && window.echarts && window.ecStat) return window.echarts;
-	if (loadingPromise) return loadingPromise;
-	const { version = "6.0.0", retryAttempts = 3, retryDelay = 1e3, timeout = 3e4 } = options;
-	loadingPromise = safeAsync(async () => {
-		if (window.echarts && window.ecStat) {
-			isLoaded = true;
-			return window.echarts;
-		}
-		let lastError = null;
-		for (let attempt = 0; attempt < retryAttempts; attempt++) try {
-			loadAttempts++;
-			await Promise.all([loadScript(`https://cdn.jsdelivr.net/npm/echarts@${version}/dist/echarts.min.js`, "ECharts", timeout), loadScript("https://cdn.jsdelivr.net/npm/echarts-stat@1.2.0/dist/ecStat.min.js", "ecStat", timeout)]);
-			if (!window.echarts) throw new Error("ECharts library not available after loading");
-			if (!window.ecStat) throw new Error("ecStat library not available after loading");
-			try {
-				if (window.ecStat.transform.clustering) window.echarts.registerTransform(window.ecStat.transform.clustering);
-				if (window.ecStat.transform.regression) window.echarts.registerTransform(window.ecStat.transform.regression);
-				if (window.ecStat.transform.histogram) window.echarts.registerTransform(window.ecStat.transform.histogram);
-			} catch (transformError) {
-				throw new TransformError("ecStat registration", transformError, {
-					echartsVersion: version,
-					attempt: attempt + 1,
-					availableTransforms: Object.keys(window.ecStat?.transform || {})
-				});
-			}
-			isLoaded = true;
-			return window.echarts;
-		} catch (error) {
-			lastError = error;
-			if (attempt < retryAttempts - 1) {
-				console.warn(`ECharts loading attempt ${attempt + 1} failed, retrying in ${retryDelay}ms...`, error);
-				await delay(retryDelay * (attempt + 1));
-			}
-		}
-		throw new EChartsLoadError(lastError || new Error("Unknown loading error"), {
-			version,
-			attempts: retryAttempts,
-			totalLoadAttempts: loadAttempts,
-			userAgent: typeof navigator !== "undefined" ? navigator.userAgent : "unknown",
-			online: typeof navigator !== "undefined" ? navigator.onLine : true
-		});
-	}, ChartErrorCode.ECHARTS_LOAD_FAILED, {
-		version,
-		retryAttempts
-	});
-	return loadingPromise;
-}
-
-//#endregion
-//#region src/hooks/echarts/useChartInstance.ts
-function useChartInstance({ containerRef, onChartReady }) {
-	const chartRef = (0, react.useRef)(null);
-	const [isInitialized, setIsInitialized] = (0, react.useState)(false);
-	const [error, setError] = (0, react.useState)(null);
-	const disposeChart = (0, react.useCallback)(() => {
-		if (chartRef.current) {
-			chartRef.current.dispose();
-			chartRef.current = null;
-			setIsInitialized(false);
-		}
-	}, []);
-	const initChart = (0, react.useCallback)(async () => {
-		if (!containerRef.current) {
-			const error$1 = createChartError(new Error("Container element not found"), ChartErrorCode.CONTAINER_NOT_FOUND, { containerRef: !!containerRef.current });
-			setError(error$1);
-			return;
-		}
-		try {
-			const echarts = await loadECharts();
-			disposeChart();
-			if (!containerRef.current) throw new ChartInitError(new Error("Container element was removed during initialization"), { phase: "post-load" });
-			let rect = containerRef.current.getBoundingClientRect();
-			if (rect.width === 0 || rect.height === 0) {
-				await new Promise((resolve) => setTimeout(resolve, 50));
-				if (!containerRef.current) throw new ChartInitError(new Error("Container element was removed during dimension check"), { phase: "dimension-check" });
-				rect = containerRef.current.getBoundingClientRect();
-				if (rect.width === 0 || rect.height === 0) console.warn("AQC Charts: Container still has zero dimensions after layout delay", {
-					width: rect.width,
-					height: rect.height,
-					suggestion: "Consider setting explicit width/height on the chart or its parent container"
-				});
-			}
-			const chart = echarts.init(containerRef.current, void 0, {
-				renderer: "canvas",
-				useDirtyRect: true
-			});
-			if (!chart) throw new ChartInitError(new Error("ECharts.init returned null or undefined"), {
-				containerDimensions: {
-					width: rect.width,
-					height: rect.height
-				},
-				containerElement: containerRef.current.tagName
-			});
-			chartRef.current = chart;
-			setIsInitialized(true);
-			setError(null);
-			onChartReady?.(chart);
-		} catch (err) {
-			const error$1 = err instanceof ChartInitError ? err : createChartError(err, ChartErrorCode.CHART_INIT_FAILED, {
-				containerExists: !!containerRef.current,
-				containerDimensions: containerRef.current ? {
-					width: containerRef.current.getBoundingClientRect().width,
-					height: containerRef.current.getBoundingClientRect().height
-				} : null
-			});
-			setError(error$1);
-			setIsInitialized(false);
-			console.error("Failed to initialize ECharts:", error$1);
-		}
-	}, [
-		containerRef,
-		onChartReady,
-		disposeChart
-	]);
-	(0, react.useEffect)(() => {
-		if (containerRef.current) initChart();
-		return () => {
-			disposeChart();
-		};
-	}, [initChart, disposeChart]);
-	return {
-		chartInstance: chartRef.current,
-		isInitialized,
-		error,
-		initChart,
-		disposeChart
-	};
-}
-
-//#endregion
-//#region src/hooks/echarts/useChartResize.ts
-function useChartResize({ chartInstance, containerRef, debounceMs = 100 }) {
-	const resizeTimeoutRef = (0, react.useRef)(void 0);
-	const handleResize = (0, react.useCallback)(() => {
-		if (resizeTimeoutRef.current !== void 0) clearTimeout(resizeTimeoutRef.current);
-		resizeTimeoutRef.current = setTimeout(() => {
-			if (chartInstance) try {
-				chartInstance.resize();
-			} catch (error) {
-				console.warn("Failed to resize chart:", error);
-			}
-		}, debounceMs);
-	}, [chartInstance, debounceMs]);
-	(0, react.useEffect)(() => {
-		if (!containerRef.current || !chartInstance) return;
-		const resizeObserver = new ResizeObserver(handleResize);
-		resizeObserver.observe(containerRef.current);
-		window.addEventListener("resize", handleResize);
-		return () => {
-			resizeObserver.disconnect();
-			window.removeEventListener("resize", handleResize);
-			if (resizeTimeoutRef.current !== void 0) clearTimeout(resizeTimeoutRef.current);
-		};
-	}, [
-		containerRef,
-		chartInstance,
-		handleResize
-	]);
-	return { resize: handleResize };
-}
-
-//#endregion
-//#region src/hooks/echarts/useChartOptions.ts
-function deepEqual(a, b) {
-	if (a === b) return true;
-	if (a == null || b == null) return false;
-	if (typeof a !== typeof b) return false;
-	if (typeof a !== "object") return false;
-	const keysA = Object.keys(a);
-	const keysB = Object.keys(b);
-	if (keysA.length !== keysB.length) return false;
-	for (const key of keysA) {
-		if (!keysB.includes(key)) return false;
-		if (!deepEqual(a[key], b[key])) return false;
-	}
-	return true;
-}
-function useChartOptions({ chartInstance, option, theme, notMerge = true, lazyUpdate = true }) {
-	const lastChartInstanceRef = (0, react.useRef)(null);
-	const lastOptionRef = (0, react.useRef)(null);
-	(0, react.useEffect)(() => {
-		if (!chartInstance || !option) return;
-		const isNewChartInstance = lastChartInstanceRef.current !== chartInstance;
-		const hasOptionChanged = !deepEqual(lastOptionRef.current, option);
-		if (isNewChartInstance) lastChartInstanceRef.current = chartInstance;
-		if (isNewChartInstance || hasOptionChanged) {
-			lastOptionRef.current = option;
-			try {
-				chartInstance.setOption(option, {
-					notMerge: isNewChartInstance ? true : notMerge,
-					lazyUpdate
-				});
-			} catch (error) {
-				const chartError = createChartError(error, ChartErrorCode.CHART_UPDATE_FAILED, {
-					isNewChartInstance,
-					notMerge: isNewChartInstance ? true : notMerge,
-					lazyUpdate,
-					optionKeys: typeof option === "object" && option !== null ? Object.keys(option) : "not-object"
-				});
-				console.error("Failed to set chart options:", chartError.toDetailedString());
-				throw chartError;
-			}
-		}
-	}, [
-		chartInstance,
-		option,
-		notMerge,
-		lazyUpdate
-	]);
-	(0, react.useEffect)(() => {
-		if (!chartInstance || !theme) return;
-		if (typeof theme === "object") try {
-			const currentOption = chartInstance.getOption();
-			if (currentOption && typeof currentOption === "object") {
-				const themedOption = {
-					...currentOption,
-					...theme
-				};
-				chartInstance.setOption(themedOption, { notMerge: true });
-			}
-		} catch (error) {
-			const chartError = createChartError(error, ChartErrorCode.INVALID_THEME, {
-				themeType: typeof theme,
-				themeKeys: typeof theme === "object" ? Object.keys(theme) : "not-object"
-			});
-			console.error("Failed to apply theme:", chartError.toDetailedString());
-		}
-	}, [chartInstance, theme]);
-}
-
-//#endregion
-//#region src/hooks/echarts/useChartEvents.ts
-function useChartEvents({ chartInstance, events = {} }) {
-	const handlersRef = (0, react.useRef)(new Map());
-	(0, react.useEffect)(() => {
-		if (!chartInstance) return;
-		handlersRef.current.forEach((handler, eventName) => {
-			chartInstance.off(eventName, handler);
-		});
-		handlersRef.current.clear();
-		Object.entries(events).forEach(([eventName, handler]) => {
-			const wrappedHandler = (params) => {
-				handler(params, chartInstance);
-			};
-			handlersRef.current.set(eventName, wrappedHandler);
-			chartInstance.on(eventName, wrappedHandler);
-		});
-		return () => {
-			handlersRef.current.forEach((handler, eventName) => {
-				chartInstance.off(eventName, handler);
-			});
-			handlersRef.current.clear();
-		};
-	}, [chartInstance, events]);
-}
-
-//#endregion
-//#region src/hooks/useECharts.ts
-function useECharts({ option, theme, loading: externalLoading = false, notMerge = false, lazyUpdate = true, onChartReady, events, debounceResize = 100 }) {
-	const containerRef = (0, react.useRef)(null);
-	const { chartInstance, isInitialized, error, disposeChart } = useChartInstance({
-		containerRef,
-		onChartReady
-	});
-	const { resize } = useChartResize({
-		chartInstance,
-		containerRef,
-		debounceMs: debounceResize
-	});
-	useChartOptions({
-		chartInstance,
-		option,
-		theme,
-		notMerge,
-		lazyUpdate
-	});
-	useChartEvents({
-		chartInstance,
-		events: events || {}
-	});
-	const isLoading = (0, react.useMemo)(() => {
-		return !isInitialized || externalLoading;
-	}, [isInitialized, externalLoading]);
-	const showLoading = (0, react.useCallback)(() => {
-		if (chartInstance && isInitialized) chartInstance.showLoading("default", {
-			text: "Loading...",
-			color: "#1890ff",
-			textColor: "#000",
-			maskColor: "rgba(255, 255, 255, 0.8)",
-			zlevel: 0
-		});
-	}, [chartInstance, isInitialized]);
-	const hideLoading = (0, react.useCallback)(() => {
-		if (chartInstance && isInitialized) chartInstance.hideLoading();
-	}, [chartInstance, isInitialized]);
-	(0, react.useEffect)(() => {
-		if (externalLoading) showLoading();
-		else hideLoading();
-	}, [
-		externalLoading,
-		showLoading,
-		hideLoading
-	]);
-	const getEChartsInstance = (0, react.useCallback)(() => {
-		return chartInstance;
-	}, [chartInstance]);
-	const refresh = (0, react.useCallback)(() => {
-		if (chartInstance && option) {
-			chartInstance.clear();
-			chartInstance.setOption(option, { notMerge: true });
-		}
-	}, [chartInstance, option]);
-	const clear = (0, react.useCallback)(() => {
-		if (chartInstance) chartInstance.clear();
-	}, [chartInstance]);
-	return {
-		containerRef,
-		loading: isLoading,
-		error,
-		resize,
-		refresh,
-		clear,
-		getEChartsInstance,
-		showLoading,
-		hideLoading,
-		dispose: disposeChart
-	};
-}
-
-//#endregion
-//#region src/hooks/useLegendDoubleClick.ts
-function useLegendDoubleClick({ chartInstance, onLegendDoubleClick, onSeriesDoubleClick, delay: delay$1 = 300, enableAutoSelection = false }) {
-	const clickTimeout = (0, react.useRef)(null);
-	const lastClickTime = (0, react.useRef)(0);
-	const lastClickedItem = (0, react.useRef)(null);
-	const lastClickType = (0, react.useRef)(null);
-	const selectedLegends = (0, react.useRef)(new Set());
-	const allLegendsVisible = (0, react.useRef)(true);
-	const handleItemClick = (0, react.useCallback)((params, event, type = "legend") => {
-		if (!chartInstance) return;
-		if (!onLegendDoubleClick && !onSeriesDoubleClick && !enableAutoSelection) return;
-		const itemName = type === "series" ? params.seriesName || params.name : params.name;
-		const currentTime = Date.now();
-		const isShiftClick = event?.shiftKey === true;
-		const option = chartInstance.getOption();
-		const legends = option.legend;
-		let legendData = [];
-		if (Array.isArray(legends) && legends.length > 0) legendData = legends[0].data || [];
-		else if (legends && !Array.isArray(legends)) legendData = legends.data || [];
-		if (legendData.length === 0) {
-			const series = option.series;
-			if (Array.isArray(series)) legendData = series.map((s) => s.name).filter(Boolean);
-		}
-		const allLegendNames = legendData.map((item) => typeof item === "string" ? item : item.name).filter(Boolean);
-		if (isShiftClick && enableAutoSelection) {
-			if (clickTimeout.current) {
-				clearTimeout(clickTimeout.current);
-				clickTimeout.current = null;
-			}
-			if (selectedLegends.current.has(itemName)) {
-				selectedLegends.current.delete(itemName);
-				chartInstance.dispatchAction({
-					type: "legendUnSelect",
-					name: itemName
-				});
-			} else {
-				selectedLegends.current.add(itemName);
-				if (allLegendsVisible.current) {
-					for (const name of allLegendNames) if (name !== itemName) chartInstance.dispatchAction({
-						type: "legendUnSelect",
-						name
-					});
-					allLegendsVisible.current = false;
-				}
-				chartInstance.dispatchAction({
-					type: "legendSelect",
-					name: itemName
-				});
-			}
-			if (selectedLegends.current.size === 0) {
-				for (const name of allLegendNames) chartInstance.dispatchAction({
-					type: "legendSelect",
-					name
-				});
-				allLegendsVisible.current = true;
-			}
-			return;
-		}
-		if (clickTimeout.current) {
-			clearTimeout(clickTimeout.current);
-			clickTimeout.current = null;
-		}
-		if (lastClickedItem.current === itemName && lastClickType.current === type && currentTime - lastClickTime.current < delay$1) {
-			if (type === "legend") onLegendDoubleClick?.(itemName, chartInstance);
-			else onSeriesDoubleClick?.(itemName, chartInstance);
-			if (enableAutoSelection) if (allLegendsVisible.current) {
-				selectedLegends.current.clear();
-				selectedLegends.current.add(itemName);
-				for (const name of allLegendNames) if (name !== itemName) chartInstance.dispatchAction({
-					type: "legendUnSelect",
-					name
-				});
-				chartInstance.dispatchAction({
-					type: "legendSelect",
-					name: itemName
-				});
-				allLegendsVisible.current = false;
-			} else {
-				selectedLegends.current.clear();
-				for (const name of allLegendNames) chartInstance.dispatchAction({
-					type: "legendSelect",
-					name
-				});
-				allLegendsVisible.current = true;
-			}
-			lastClickTime.current = 0;
-			lastClickedItem.current = null;
-			lastClickType.current = null;
-		} else {
-			lastClickTime.current = currentTime;
-			lastClickedItem.current = itemName;
-			lastClickType.current = type;
-			clickTimeout.current = setTimeout(() => {
-				lastClickTime.current = 0;
-				lastClickedItem.current = null;
-				lastClickType.current = null;
-				clickTimeout.current = null;
-			}, delay$1);
-		}
-	}, [
-		chartInstance,
-		onLegendDoubleClick,
-		onSeriesDoubleClick,
-		delay$1,
-		enableAutoSelection
-	]);
-	const handleLegendClick = (0, react.useCallback)((params, event) => {
-		handleItemClick(params, event, "legend");
-	}, [handleItemClick]);
-	const handleSeriesClick = (0, react.useCallback)((params, event) => {
-		handleItemClick(params, event, "series");
-	}, [handleItemClick]);
-	const cleanup = (0, react.useCallback)(() => {
-		if (clickTimeout.current) {
-			clearTimeout(clickTimeout.current);
-			clickTimeout.current = null;
-		}
-	}, []);
-	return {
-		handleLegendClick,
-		handleSeriesClick,
-		cleanup
-	};
-}
-
-//#endregion
-//#region src/utils/validation.ts
-/**
-* Create a validation result
-*/
-function createValidationResult(isValid = true, errors = [], warnings = []) {
-	return {
-		isValid,
-		errors,
-		warnings
-	};
-}
-/**
-* Combine multiple validation results
-*/
-function combineValidationResults(...results) {
-	const errors = [];
-	const warnings = [];
-	let isValid = true;
-	for (const result of results) {
-		if (!result.isValid) isValid = false;
-		errors.push(...result.errors);
-		warnings.push(...result.warnings);
-	}
-	return {
-		isValid,
-		errors,
-		warnings
-	};
-}
-/**
-* Validate that a value is not null or undefined
-*/
-function validateRequired(value, fieldName) {
-	if (value === null || value === void 0) return createValidationResult(false, [`${fieldName} is required`]);
-	return createValidationResult();
-}
-/**
-* Validate chart data for basic requirements
-*/
-function validateChartData(data) {
-	const result = validateRequired(data, "data");
-	if (!result.isValid) return result;
-	if (!Array.isArray(data)) return createValidationResult(false, ["data must be an array"]);
-	if (data.length === 0) return createValidationResult(false, ["data cannot be empty"]);
-	const warnings = [];
-	if (data.length > 1e4) warnings.push("Large dataset detected (>10k items), consider data aggregation for better performance");
-	const firstItem = data[0];
-	const firstItemType = typeof firstItem;
-	for (let i = 1; i < Math.min(data.length, 100); i++) if (typeof data[i] !== firstItemType) {
-		warnings.push("Inconsistent data types detected in dataset");
-		break;
-	}
-	return createValidationResult(true, [], warnings);
-}
-/**
-* Validate field mapping for ergonomic charts
-*/
-function validateFieldMapping(data, fieldName, fieldValue) {
-	if (!fieldValue) return createValidationResult();
-	const errors = [];
-	const fields = Array.isArray(fieldValue) ? fieldValue : [fieldValue];
-	if (data.length > 0 && typeof data[0] === "object" && data[0] !== null) {
-		const sampleObject = data[0];
-		for (const field of fields) if (!(field in sampleObject)) errors.push(`Field '${field}' not found in data objects. Available fields: ${Object.keys(sampleObject).join(", ")}`);
-	}
-	return createValidationResult(errors.length === 0, errors);
-}
-/**
-* Validate dimensions (width/height)
-*/
-function validateDimensions(width, height) {
-	const errors = [];
-	const warnings = [];
-	if (width !== void 0) {
-		if (typeof width === "number" && width <= 0) errors.push("Width must be a positive number");
-		else if (typeof width === "string" && width !== "100%" && !width.match(/^\d+(?:px|%|em|rem|vw|vh)$/)) warnings.push("Width should be a valid CSS dimension (e.g., \"100%\", \"400px\")");
-	}
-	if (height !== void 0) {
-		if (typeof height === "number" && height <= 0) errors.push("Height must be a positive number");
-		else if (typeof height === "string" && !height.match(/^\d+(?:px|%|em|rem|vw|vh)$/)) warnings.push("Height should be a valid CSS dimension (e.g., \"400px\", \"50vh\")");
-	}
-	return createValidationResult(errors.length === 0, errors, warnings);
-}
-/**
-* Validate theme value
-*/
-function validateTheme(theme) {
-	if (theme === void 0 || theme === null) return createValidationResult();
-	if (typeof theme === "string") {
-		const validThemes = ["light", "dark"];
-		if (!validThemes.includes(theme)) return createValidationResult(false, [`Invalid theme '${theme}'. Valid themes: ${validThemes.join(", ")}`]);
-	} else if (typeof theme === "object") {
-		const themeObj = theme;
-		const warnings = [];
-		if (!themeObj.backgroundColor) warnings.push("Custom theme is missing backgroundColor property");
-		if (!themeObj.color) warnings.push("Custom theme is missing color palette");
-		return createValidationResult(true, [], warnings);
-	} else return createValidationResult(false, ["Theme must be a string or object"]);
-	return createValidationResult();
-}
-/**
-* Main validation function for chart props
-*/
-function validateChartProps(props) {
-	const results = [];
-	if ("data" in props) results.push(validateChartData(props.data));
-	if ("width" in props || "height" in props) results.push(validateDimensions(props.width, props.height));
-	if ("theme" in props) results.push(validateTheme(props.theme));
-	return combineValidationResults(...results);
-}
-/**
-* Utility function to throw DataValidationError if validation fails
-*/
-function assertValidation(result, context) {
-	if (!result.isValid) throw new DataValidationError(result.errors.join("; "), context, ["Check the data format and required fields", "Refer to the documentation for examples"]);
-	if (result.warnings.length > 0) console.warn("AQC Charts validation warnings:", result.warnings);
-}
-/**
-* Development mode validator that logs detailed information
-*/
-function validateInDevelopment(value, validator, context = "component") {
-	{
-		const result = validator(value);
-		if (!result.isValid) console.error(`AQC Charts validation failed in ${context}:`, result.errors);
-		if (result.warnings.length > 0) console.warn(`AQC Charts validation warnings in ${context}:`, result.warnings);
-	}
-	return value;
-}
-
-//#endregion
-//#region src/utils/logo.ts
-const calculateLogoPosition = (logo, chartWidth, chartHeight) => {
-	const logoWidth = logo.width || 100;
-	const logoHeight = logo.height || 50;
-	const padding = 10;
-	if (logo.x !== void 0 && logo.y !== void 0) return {
-		x: logo.x,
-		y: logo.y
-	};
-	switch (logo.position || "bottom-right") {
-		case "top-left": return {
-			x: padding,
-			y: padding
-		};
-		case "top-right": return {
-			x: chartWidth - logoWidth - padding,
-			y: padding
-		};
-		case "bottom-left": return {
-			x: padding,
-			y: chartHeight - logoHeight - padding
-		};
-		case "bottom-right": return {
-			x: chartWidth - logoWidth - padding,
-			y: chartHeight - logoHeight - padding
-		};
-		case "center": return {
-			x: (chartWidth - logoWidth) / 2,
-			y: (chartHeight - logoHeight) / 2
-		};
-		default: return {
-			x: chartWidth - logoWidth - padding,
-			y: chartHeight - logoHeight - padding
-		};
-	}
-};
-const createLogoGraphic = (logo, chartWidth, chartHeight) => {
-	const position = calculateLogoPosition(logo, chartWidth, chartHeight);
-	return {
-		type: "image",
-		style: {
-			image: logo.src,
-			x: position.x,
-			y: position.y,
-			width: logo.width || 100,
-			height: logo.height || 50,
-			opacity: logo.opacity || 1
-		},
-		z: 1e3,
-		silent: true
-	};
-};
-const addLogoToOption = (option, logo, chartWidth, chartHeight) => {
-	if (!logo) return option;
-	const logoGraphic = createLogoGraphic(logo, chartWidth, chartHeight);
-	return {
-		...option,
-		graphic: [...Array.isArray(option.graphic) ? option.graphic : option.graphic ? [option.graphic] : [], logoGraphic]
-	};
-};
-const removeLogoFromOption = (option) => {
-	if (!option.graphic) return option;
-	const filteredGraphics = Array.isArray(option.graphic) ? option.graphic.filter((graphic) => graphic.type !== "image") : option.graphic.type !== "image" ? [option.graphic] : [];
-	return {
-		...option,
-		graphic: filteredGraphics.length > 0 ? filteredGraphics : void 0
-	};
-};
-
-//#endregion
-//#region src/components/BaseChart.tsx
-const BaseChart = (0, react.forwardRef)(({ title, width = "100%", height = 400, theme = "light", loading: externalLoading = false, notMerge = false, lazyUpdate = true, logo, onChartReady, onClick, onDoubleClick, onMouseOver, onMouseOut, onDataZoom, onBrush, onLegendDoubleClick, onSeriesDoubleClick, legendDoubleClickDelay = 300, enableLegendDoubleClickSelection = false, className = "", style = {}, option, renderer: _renderer = "canvas", locale: _locale = "en",...restProps }, ref) => {
-	(0, react.useMemo)(() => {
-		try {
-			const dimensionResult = validateDimensions(width, height);
-			if (dimensionResult.warnings.length > 0) console.warn("AQC Charts BaseChart validation warnings:", dimensionResult.warnings);
-			assertValidation(dimensionResult, {
-				component: "BaseChart",
-				width,
-				height
-			});
-			const themeResult = validateTheme(theme);
-			if (themeResult.warnings.length > 0) console.warn("AQC Charts BaseChart theme warnings:", themeResult.warnings);
-			assertValidation(themeResult, {
-				component: "BaseChart",
-				theme
-			});
-			if (option && typeof option === "object") {
-				const optionKeys = Object.keys(option);
-				if (optionKeys.length === 0) console.warn("AQC Charts: Empty chart option provided");
-			}
-		} catch (error$1) {
-			console.error("AQC Charts BaseChart validation failed:", error$1);
-		}
-	}, [
-		width,
-		height,
-		theme,
-		option
-	]);
+function useChartComponent({ props, buildOption, chartType: _chartType }) {
+	const { width = "100%", height = 400, className, style, theme = "light", loading = false, logo, backgroundColor, onChartReady, onDataPointClick, onDataPointHover, onLegendDoubleClick, onSeriesDoubleClick, legendDoubleClickDelay = 300, enableLegendDoubleClickSelection = true,...restProps } = props;
 	const chartOption = (0, react.useMemo)(() => {
-		let processedOption = option;
-		if (title && typeof title === "string") processedOption = {
-			...processedOption,
-			title: {
-				...processedOption.title,
-				text: title,
-				left: "center"
-			}
-		};
-		if (logo && !logo.onSaveOnly) {
-			const chartWidth = typeof width === "number" ? width : 600;
-			const chartHeight = typeof height === "number" ? height : 400;
-			processedOption = addLogoToOption(processedOption, logo, chartWidth, chartHeight);
-		}
-		return processedOption;
-	}, [
-		option,
-		title,
-		logo,
-		width,
-		height
-	]);
-	const { containerRef: echartsContainerRefFromHook, loading: chartLoading, error, refresh, getEChartsInstance, clear, resize: resizeChart, showLoading: showChartLoading, hideLoading: hideChartLoading, dispose } = useECharts({
+		return buildOption(props);
+	}, [buildOption, props]);
+	const { containerRef, loading: chartLoading, error, getEChartsInstance, resize, showLoading, hideLoading } = require_OldPieChart.useECharts({
 		option: chartOption,
 		theme,
-		notMerge,
-		lazyUpdate,
+		loading,
 		onChartReady
 	});
-	const chart = getEChartsInstance();
-	const { handleLegendClick, handleSeriesClick, cleanup: cleanupLegendDoubleClick } = useLegendDoubleClick({
-		chartInstance: chart,
+	const chartInstance = getEChartsInstance();
+	const { handleLegendClick, handleSeriesClick } = require_OldPieChart.useLegendDoubleClick({
+		chartInstance,
 		onLegendDoubleClick,
 		onSeriesDoubleClick,
 		delay: legendDoubleClickDelay,
 		enableAutoSelection: enableLegendDoubleClickSelection
 	});
+	const stableEventHandlers = (0, react.useMemo)(() => {
+		const handlers = {};
+		if (onDataPointClick) handlers.click = (params) => {
+			onDataPointClick(params, {
+				chart: chartInstance,
+				event: params
+			});
+		};
+		if (onDataPointHover) handlers.mouseover = (params) => {
+			onDataPointHover(params, {
+				chart: chartInstance,
+				event: params
+			});
+		};
+		return handlers;
+	}, [
+		onDataPointClick,
+		onDataPointHover,
+		chartInstance
+	]);
+	const eventHandlersRef = (0, react.useRef)([]);
 	(0, react.useEffect)(() => {
-		if (!chart) return;
-		const eventHandlers = [];
-		if (onClick) {
-			const handler = (params) => {
-				onClick(params, chart);
-			};
-			chart.on("click", handler);
-			eventHandlers.push(["click", handler]);
-		}
+		if (!chartInstance) return;
+		eventHandlersRef.current.forEach(([event, handler]) => {
+			chartInstance.off(event, handler);
+		});
+		eventHandlersRef.current = [];
+		Object.entries(stableEventHandlers).forEach(([event, handler]) => {
+			chartInstance.on(event, handler);
+			eventHandlersRef.current.push([event, handler]);
+		});
 		if (onSeriesDoubleClick || enableLegendDoubleClickSelection) {
-			const handler = (params) => {
+			const seriesClickHandler = (params) => {
 				handleSeriesClick(params);
 			};
-			chart.on("click", handler);
-			eventHandlers.push(["click", handler]);
-		}
-		if (onDoubleClick) {
-			const handler = (params) => {
-				onDoubleClick(params, chart);
-			};
-			chart.on("dblclick", handler);
-			eventHandlers.push(["dblclick", handler]);
-		}
-		if (onMouseOver) {
-			const handler = (params) => {
-				onMouseOver(params, chart);
-			};
-			chart.on("mouseover", handler);
-			eventHandlers.push(["mouseover", handler]);
-		}
-		if (onMouseOut) {
-			const handler = (params) => {
-				onMouseOut(params, chart);
-			};
-			chart.on("mouseout", handler);
-			eventHandlers.push(["mouseout", handler]);
-		}
-		if (onDataZoom) {
-			const handler = (params) => {
-				onDataZoom(params, chart);
-			};
-			chart.on("datazoom", handler);
-			eventHandlers.push(["datazoom", handler]);
-		}
-		if (onBrush) {
-			const handler = (params) => {
-				onBrush(params, chart);
-			};
-			chart.on("brush", handler);
-			eventHandlers.push(["brush", handler]);
+			chartInstance.on("click", seriesClickHandler);
+			eventHandlersRef.current.push(["click", seriesClickHandler]);
 		}
 		if (onLegendDoubleClick || enableLegendDoubleClickSelection) {
-			const handler = (params) => {
+			const legendHandler = (params) => {
 				handleLegendClick(params);
 			};
-			chart.on("legendselectchanged", handler);
-			eventHandlers.push(["legendselectchanged", handler]);
-			const containerElement = chart.getDom();
-			if (containerElement) {
-				let pendingLegendClick = null;
-				const mouseHandler = (event) => {
-					const target = event.target;
-					if (target && target.closest(".echarts-legend") && pendingLegendClick) {
-						handleLegendClick({ name: pendingLegendClick }, event);
-						pendingLegendClick = null;
-					}
-				};
-				const legendHandler = (params) => {
-					pendingLegendClick = params.name;
-					setTimeout(() => {
-						pendingLegendClick = null;
-					}, 100);
-				};
-				chart.on("legendselectchanged", legendHandler);
-				containerElement.addEventListener("click", mouseHandler);
-				eventHandlers.push(["legendselectchanged", legendHandler]);
-				eventHandlers.push(["DOM:click", {
-					element: containerElement,
-					handler: mouseHandler
-				}]);
-			}
+			chartInstance.on("legendselectchanged", legendHandler);
+			eventHandlersRef.current.push(["legendselectchanged", legendHandler]);
 		}
-		onChartReady?.(chart);
 		return () => {
-			for (const [event, handler] of eventHandlers) if (event.startsWith("DOM:")) {
-				const { element, handler: domHandler } = handler;
-				const eventType = event.replace("DOM:", "");
-				element.removeEventListener(eventType, domHandler);
-			} else chart.off(event, handler);
-			cleanupLegendDoubleClick();
+			eventHandlersRef.current.forEach(([event, handler]) => {
+				chartInstance.off(event, handler);
+			});
+			eventHandlersRef.current = [];
 		};
 	}, [
-		chart,
-		onClick,
-		onDoubleClick,
-		onMouseOver,
-		onMouseOut,
-		onDataZoom,
-		onBrush,
-		onChartReady,
-		handleLegendClick,
-		handleSeriesClick,
-		cleanupLegendDoubleClick,
-		onLegendDoubleClick,
+		chartInstance,
+		stableEventHandlers,
 		onSeriesDoubleClick,
-		enableLegendDoubleClickSelection
+		onLegendDoubleClick,
+		enableLegendDoubleClickSelection,
+		handleSeriesClick,
+		handleLegendClick
 	]);
-	(0, react.useEffect)(() => {
-		if (chart) if (externalLoading) chart.showLoading();
-		else chart.hideLoading();
-	}, [chart, externalLoading]);
-	const exportImage = (0, react.useCallback)((opts) => {
-		const chartInstance = getEChartsInstance();
-		if (!chartInstance) return "";
+	const exportImage = (0, react.useCallback)((format = "png", opts) => {
+		const chart = getEChartsInstance();
+		if (!chart) return "";
+		const chartWidth = typeof width === "number" ? width : 600;
+		const chartHeight = typeof height === "number" ? height : 400;
+		const bgColor = opts?.backgroundColor || backgroundColor || "#fff";
 		if (logo?.onSaveOnly) {
-			const currentOption = chartInstance.getOption();
-			const chartWidth = typeof width === "number" ? width : 600;
-			const chartHeight = typeof height === "number" ? height : 400;
-			const optionWithLogo = addLogoToOption(currentOption, logo, chartWidth, chartHeight);
-			chartInstance.setOption(optionWithLogo, {
+			const currentOption = chart.getOption();
+			const optionWithLogo = require_OldPieChart.addLogoToOption(currentOption, logo, chartWidth, chartHeight);
+			chart.setOption(optionWithLogo, {
 				notMerge: false,
 				lazyUpdate: false
 			});
-			const dataURL = chartInstance.getDataURL({
-				type: opts?.type || "png",
-				pixelRatio: opts?.pixelRatio || 1,
-				backgroundColor: opts?.backgroundColor || "#fff",
+			const dataURL = chart.getDataURL({
+				type: format,
+				pixelRatio: opts?.pixelRatio || 2,
+				backgroundColor: bgColor,
 				...opts?.excludeComponents && { excludeComponents: opts.excludeComponents }
 			});
-			const optionWithoutLogo = removeLogoFromOption(currentOption);
-			chartInstance.setOption(optionWithoutLogo, {
+			const optionWithoutLogo = require_OldPieChart.removeLogoFromOption(currentOption);
+			chart.setOption(optionWithoutLogo, {
 				notMerge: false,
 				lazyUpdate: false
 			});
 			return dataURL;
 		}
-		return chartInstance.getDataURL({
-			type: opts?.type || "png",
-			pixelRatio: opts?.pixelRatio || 1,
-			backgroundColor: opts?.backgroundColor || "#fff",
+		return chart.getDataURL({
+			type: format,
+			pixelRatio: opts?.pixelRatio || 2,
+			backgroundColor: bgColor,
 			...opts?.excludeComponents && { excludeComponents: opts.excludeComponents }
 		});
 	}, [
 		getEChartsInstance,
 		logo,
 		width,
-		height
+		height,
+		backgroundColor
 	]);
 	const saveAsImage = (0, react.useCallback)((filename, opts) => {
-		const dataURL = exportImage(opts);
+		const dataURL = exportImage(opts?.type || "png", opts);
 		if (!dataURL) return;
 		const link = document.createElement("a");
 		link.download = filename || `chart.${opts?.type || "png"}`;
@@ -1175,30 +166,38 @@ const BaseChart = (0, react.forwardRef)(({ title, width = "100%", height = 400, 
 		link.click();
 		document.body.removeChild(link);
 	}, [exportImage]);
-	(0, react.useImperativeHandle)(ref, () => ({
+	const highlight = (0, react.useCallback)((dataIndex, seriesIndex = 0) => {
+		const chart = getEChartsInstance();
+		if (!chart) return;
+		chart.dispatchAction({
+			type: "highlight",
+			seriesIndex,
+			dataIndex
+		});
+	}, [getEChartsInstance]);
+	const clearHighlight = (0, react.useCallback)(() => {
+		const chart = getEChartsInstance();
+		if (!chart) return;
+		chart.dispatchAction({ type: "downplay" });
+	}, [getEChartsInstance]);
+	const updateData = (0, react.useCallback)((newData) => {
+		const chart = getEChartsInstance();
+		if (!chart) return;
+		const newOption = buildOption({
+			...props,
+			data: newData
+		});
+		chart.setOption(newOption);
+	}, [
 		getEChartsInstance,
-		refresh,
-		clear,
-		resize: resizeChart,
-		showLoading: showChartLoading,
-		hideLoading: hideChartLoading,
-		dispose,
-		exportImage,
-		saveAsImage
-	}), [
-		getEChartsInstance,
-		refresh,
-		clear,
-		resizeChart,
-		showChartLoading,
-		hideChartLoading,
-		dispose,
-		exportImage,
-		saveAsImage
+		buildOption,
+		props
 	]);
 	const containerStyle = (0, react.useMemo)(() => ({
 		width,
 		height,
+		minWidth: typeof width === "string" && width.includes("%") ? "300px" : void 0,
+		minHeight: "300px",
 		position: "relative",
 		...style
 	}), [
@@ -1206,59 +205,38 @@ const BaseChart = (0, react.forwardRef)(({ title, width = "100%", height = 400, 
 		height,
 		style
 	]);
-	if (error) {
-		const errorMessage = isChartError(error) ? error.toUserMessage() : error?.message || "Unknown error";
-		const isRecoverable = isChartError(error) && error.recoverable;
-		return /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
-			className: `aqc-charts-error ${className}`,
-			style: containerStyle,
-			children: /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-				style: {
-					display: "flex",
-					flexDirection: "column",
-					alignItems: "center",
-					justifyContent: "center",
-					height: "100%",
-					color: "#ff4d4f",
-					fontSize: "14px",
-					padding: "20px",
-					textAlign: "center"
-				},
-				children: [
-					/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
-						style: {
-							marginBottom: "8px",
-							fontSize: "16px"
-						},
-						children: isRecoverable ? "⚠️" : "❌"
-					}),
-					/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
-						style: { marginBottom: isRecoverable ? "12px" : "0" },
-						children: errorMessage
-					}),
-					isRecoverable && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
-						style: {
-							fontSize: "12px",
-							color: "#ff7875",
-							fontStyle: "italic"
-						},
-						children: "This error is recoverable. Try refreshing the component."
-					})
-				]
-			})
+	const domProps = (0, react.useMemo)(() => {
+		const filtered = {};
+		Object.keys(restProps).forEach((key) => {
+			if (key === "id" || key.startsWith("data-") || key.startsWith("aria-") || key === "role" || key === "tabIndex") filtered[key] = restProps[key];
 		});
-	}
-	return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-		className: `aqc-charts-container ${className}`,
-		style: containerStyle,
-		...restProps,
-		children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
-			ref: echartsContainerRefFromHook,
-			style: {
-				width: "100%",
-				height: "100%"
-			}
-		}), (chartLoading || externalLoading) && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+		return filtered;
+	}, [restProps]);
+	const renderError = (0, react.useCallback)(() => /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+		className: `aqc-charts-error ${className || ""}`,
+		style: {
+			width,
+			height,
+			display: "flex",
+			alignItems: "center",
+			justifyContent: "center",
+			color: "#ff4d4f",
+			fontSize: "14px",
+			border: "1px dashed #ff4d4f",
+			borderRadius: "4px",
+			...style
+		},
+		children: ["Error: ", error?.message || "Failed to render chart"]
+	}), [
+		className,
+		width,
+		height,
+		style,
+		error
+	]);
+	const renderLoading = (0, react.useCallback)(() => {
+		if (!chartLoading && !loading) return null;
+		return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 			className: "aqc-charts-loading",
 			style: {
 				position: "absolute",
@@ -1270,23 +248,56 @@ const BaseChart = (0, react.forwardRef)(({ title, width = "100%", height = 400, 
 				alignItems: "center",
 				justifyContent: "center",
 				backgroundColor: "rgba(255, 255, 255, 0.8)",
-				zIndex: 1e3
+				fontSize: "14px",
+				color: "#666"
 			},
-			children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+			children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
 				className: "aqc-charts-spinner",
 				style: {
-					width: "32px",
-					height: "32px",
-					border: "3px solid #f3f3f3",
-					borderTop: "3px solid #1890ff",
+					width: "20px",
+					height: "20px",
+					border: "2px solid #f3f3f3",
+					borderTop: "2px solid #1890ff",
 					borderRadius: "50%",
-					animation: "aqc-charts-spin 1s linear infinite"
+					animation: "spin 1s linear infinite",
+					marginRight: "8px"
 				}
-			})
-		})]
-	});
-});
-BaseChart.displayName = "BaseChart";
+			}), "Loading..."]
+		});
+	}, [chartLoading, loading]);
+	const refMethods = (0, react.useMemo)(() => ({
+		getChart: getEChartsInstance,
+		exportImage,
+		saveAsImage,
+		resize,
+		showLoading: (_text) => showLoading(),
+		hideLoading,
+		highlight,
+		clearHighlight,
+		updateData
+	}), [
+		getEChartsInstance,
+		exportImage,
+		saveAsImage,
+		resize,
+		showLoading,
+		hideLoading,
+		highlight,
+		clearHighlight,
+		updateData
+	]);
+	return {
+		containerRef,
+		isLoading: chartLoading || loading,
+		error,
+		containerStyle,
+		domProps,
+		getEChartsInstance,
+		refMethods,
+		renderError,
+		renderLoading
+	};
+}
 
 //#endregion
 //#region src/utils/color-palettes.ts
@@ -1416,10 +427,19 @@ function buildBaseOption(props) {
 	const isDark = props.theme === "dark";
 	if (props.title) option.title = {
 		text: props.title,
-		subtext: props.subtitle,
+		...props.subtitle && { subtext: props.subtitle },
 		left: props.titlePosition || "center",
-		textStyle: { color: isDark ? "#ffffff" : "#333333" },
-		subtextStyle: { color: isDark ? "#cccccc" : "#666666" }
+		top: 10,
+		textStyle: {
+			color: isDark ? "#ffffff" : "#333333",
+			fontSize: 16,
+			fontWeight: "bold"
+		},
+		subtextStyle: {
+			color: isDark ? "#cccccc" : "#666666",
+			fontSize: 12
+		},
+		itemGap: 8
 	};
 	option.animation = props.animate !== false;
 	if (props.animationDuration) option.animationDuration = props.animationDuration;
@@ -1432,7 +452,7 @@ function buildBaseOption(props) {
 	if (props.logo && !props.logo.onSaveOnly) {
 		const chartWidth = typeof props.width === "number" ? props.width : 600;
 		const chartHeight = typeof props.height === "number" ? props.height : 400;
-		const logoGraphic = createLogoGraphic(props.logo, chartWidth, chartHeight);
+		const logoGraphic = require_OldPieChart.createLogoGraphic(props.logo, chartWidth, chartHeight);
 		option.graphic = option.graphic ? Array.isArray(option.graphic) ? [...option.graphic, logoGraphic] : [option.graphic, logoGraphic] : [logoGraphic];
 	}
 	return option;
@@ -1480,50 +500,30 @@ function buildLegendOption(config, hasTitle, hasSubtitle, hasDataZoom, theme) {
 	const orientation = config.orientation || (position === "left" || position === "right" ? "vertical" : "horizontal");
 	const align = config.align || "center";
 	let positioning = {};
+	const topOffset = hasTitle && hasSubtitle ? "10%" : hasTitle ? "8%" : "3%";
 	switch (position) {
 		case "top":
-			if (hasTitle && hasSubtitle) positioning = { top: "12%" };
-			else if (hasTitle) positioning = { top: "8%" };
-			else positioning = { top: "5%" };
-			if (align === "center") positioning = {
-				...positioning,
-				left: "center"
-			};
-			else if (align === "start") positioning = {
-				...positioning,
-				left: "5%"
-			};
-			else if (align === "end") positioning = {
-				...positioning,
-				right: "5%"
-			};
+			positioning = { top: topOffset };
+			if (align === "center") positioning.left = "center";
+			else if (align === "start") positioning.left = "10%";
+			else positioning.right = "5%";
 			break;
 		case "bottom":
-			if (hasDataZoom) positioning = { bottom: "15%" };
-			else positioning = { bottom: "8%" };
-			if (align === "center") positioning = {
-				...positioning,
-				left: "center"
-			};
-			else if (align === "start") positioning = {
-				...positioning,
-				left: "5%"
-			};
-			else if (align === "end") positioning = {
-				...positioning,
-				right: "5%"
-			};
+			positioning = { bottom: hasDataZoom ? "12%" : "3%" };
+			if (align === "center") positioning.left = "center";
+			else if (align === "start") positioning.left = "10%";
+			else positioning.right = "5%";
 			break;
 		case "left":
 			positioning = {
-				left: "5%",
-				top: hasTitle ? hasSubtitle ? "15%" : "12%" : "center"
+				left: "3%",
+				top: topOffset
 			};
 			break;
 		case "right":
 			positioning = {
-				right: "5%",
-				top: hasTitle ? hasSubtitle ? "15%" : "12%" : "center"
+				right: "3%",
+				top: topOffset
 			};
 			break;
 	}
@@ -1533,66 +533,37 @@ function buildLegendOption(config, hasTitle, hasSubtitle, hasDataZoom, theme) {
 		type: "scroll",
 		orient: orientation,
 		...positioning,
-		itemGap: 10,
+		itemGap: 12,
+		itemWidth: 20,
+		itemHeight: 12,
 		textStyle: {
 			fontSize: 12,
-			padding: [
-				2,
-				0,
-				0,
-				2
-			],
 			color: isDark ? "#cccccc" : "#666666"
 		}
 	};
 }
 function calculateGridSpacing(legendConfig, hasTitle, hasSubtitle, hasDataZoom) {
-	const defaultGrid = {
-		left: "3%",
-		right: "4%",
-		top: "10%",
-		bottom: "3%",
+	const hasLegendTop = legendConfig && legendConfig.show !== false && (legendConfig.position || "top") === "top";
+	const hasLegendBottom = legendConfig && legendConfig.show !== false && legendConfig.position === "bottom";
+	const hasLegendLeft = legendConfig && legendConfig.show !== false && legendConfig.position === "left";
+	const hasLegendRight = legendConfig && legendConfig.show !== false && legendConfig.position === "right";
+	let top = "10%";
+	if (hasTitle && hasSubtitle && hasLegendTop) top = "18%";
+	else if (hasTitle && hasSubtitle) top = "14%";
+	else if (hasTitle && hasLegendTop || hasSubtitle && hasLegendTop) top = "15%";
+	else if (hasTitle || hasSubtitle) top = "12%";
+	else if (hasLegendTop) top = "12%";
+	let bottom = "10%";
+	if (hasDataZoom && hasLegendBottom) bottom = "22%";
+	else if (hasDataZoom) bottom = "15%";
+	else if (hasLegendBottom) bottom = "15%";
+	return {
+		left: hasLegendLeft ? "15%" : "10%",
+		right: hasLegendRight ? "15%" : "5%",
+		top,
+		bottom,
 		containLabel: true
 	};
-	if (!legendConfig || legendConfig.show === false) {
-		let topSpacing = "10%";
-		if (hasTitle && hasSubtitle) topSpacing = "15%";
-		else if (hasTitle) topSpacing = "12%";
-		return {
-			...defaultGrid,
-			top: topSpacing,
-			bottom: hasDataZoom ? "12%" : "3%"
-		};
-	}
-	const position = legendConfig.position || "top";
-	let gridAdjustments = { ...defaultGrid };
-	switch (position) {
-		case "top":
-			if (hasTitle && hasSubtitle) gridAdjustments.top = "20%";
-			else if (hasTitle) gridAdjustments.top = "18%";
-			else gridAdjustments.top = "15%";
-			gridAdjustments.bottom = hasDataZoom ? "12%" : "3%";
-			break;
-		case "bottom":
-			let topSpacing = "10%";
-			if (hasTitle && hasSubtitle) topSpacing = "15%";
-			else if (hasTitle) topSpacing = "12%";
-			gridAdjustments.top = topSpacing;
-			if (hasDataZoom) gridAdjustments.bottom = "25%";
-			else gridAdjustments.bottom = "15%";
-			break;
-		case "left":
-			gridAdjustments.left = "15%";
-			gridAdjustments.top = hasTitle ? hasSubtitle ? "15%" : "12%" : "10%";
-			gridAdjustments.bottom = hasDataZoom ? "12%" : "3%";
-			break;
-		case "right":
-			gridAdjustments.right = "15%";
-			gridAdjustments.top = hasTitle ? hasSubtitle ? "15%" : "12%" : "10%";
-			gridAdjustments.bottom = hasDataZoom ? "12%" : "3%";
-			break;
-	}
-	return gridAdjustments;
 }
 function buildTooltipOption(config, theme) {
 	if (!config || config.show === false) return { show: false };
@@ -2061,9 +1032,17 @@ function buildPieChartOption(props) {
 			text: props.title,
 			...props.subtitle && { subtext: props.subtitle },
 			left: props.titlePosition || "center",
-			top: "2%",
-			textStyle: { color: isDark ? "#ffffff" : "#333333" },
-			subtextStyle: { color: isDark ? "#cccccc" : "#666666" }
+			top: 10,
+			textStyle: {
+				color: isDark ? "#ffffff" : "#333333",
+				fontSize: 16,
+				fontWeight: "bold"
+			},
+			subtextStyle: {
+				color: isDark ? "#cccccc" : "#666666",
+				fontSize: 12
+			},
+			itemGap: 8
 		} },
 		series: [{
 			type: "pie",
@@ -2135,20 +1114,38 @@ function buildPieChartOption(props) {
 
 //#endregion
 //#region src/utils/chart-builders/scatter-chart.ts
+/**
+* Build jitter configuration for ECharts 6 scatter series
+* Jittering adds random offsets to prevent point overlap while maintaining axis accuracy
+*/
+function buildJitterConfig(jitter) {
+	if (!jitter) return void 0;
+	if (jitter === true) return { jitter: .4 };
+	const config = {};
+	if (jitter.width !== void 0) config.jitter = jitter.width;
+	if (jitter.height !== void 0) config.jitterHeight = jitter.height;
+	return Object.keys(config).length > 0 ? config : { jitter: .4 };
+}
 function buildScatterChartOption(props) {
 	const baseOption = buildBaseOption(props);
+	const globalJitterConfig = buildJitterConfig(props.jitter);
 	let series = [];
-	if (props.series) series = props.series.map((s) => ({
-		name: s.name,
-		type: "scatter",
-		data: s.data,
-		itemStyle: {
-			color: s.color,
-			opacity: props.pointOpacity || .8
-		},
-		symbolSize: s.pointSize || props.pointSize || 10,
-		symbol: s.pointShape || props.pointShape || "circle"
-	}));
+	if (props.series) series = props.series.map((s) => {
+		const seriesJitterConfig = s.jitter !== void 0 ? buildJitterConfig(s.jitter) : globalJitterConfig;
+		return {
+			name: s.name,
+			type: "scatter",
+			data: s.data,
+			itemStyle: {
+				color: s.color,
+				opacity: props.pointOpacity || .8
+			},
+			symbolSize: s.pointSize || props.pointSize || 10,
+			symbol: s.pointShape || props.pointShape || "circle",
+			...seriesJitterConfig,
+			...s.jitterOverlap !== void 0 ? { jitterOverlap: s.jitterOverlap } : props.jitterOverlap !== void 0 ? { jitterOverlap: props.jitterOverlap } : {}
+		};
+	});
 	else if (props.data && props.data.length > 0) if (isObjectData(props.data)) if (props.seriesField) {
 		const groups = groupDataByField(props.data, props.seriesField);
 		series = Object.entries(groups).map(([name, groupData]) => {
@@ -2165,7 +1162,9 @@ function buildScatterChartOption(props) {
 				data: processedData,
 				symbolSize: props.sizeField ? (value) => Math.sqrt(value[2] || 1) * 5 : props.pointSize || 10,
 				symbol: props.pointShape || "circle",
-				itemStyle: { opacity: props.pointOpacity || .8 }
+				itemStyle: { opacity: props.pointOpacity || .8 },
+				...globalJitterConfig,
+				...props.jitterOverlap !== void 0 && { jitterOverlap: props.jitterOverlap }
 			};
 		});
 	} else {
@@ -2181,7 +1180,9 @@ function buildScatterChartOption(props) {
 			data: processedData,
 			symbolSize: props.sizeField ? (value) => Math.sqrt(value[2] || 1) * 5 : props.pointSize || 10,
 			symbol: props.pointShape || "circle",
-			itemStyle: { opacity: props.pointOpacity || .8 }
+			itemStyle: { opacity: props.pointOpacity || .8 },
+			...globalJitterConfig,
+			...props.jitterOverlap !== void 0 && { jitterOverlap: props.jitterOverlap }
 		}];
 	}
 	else series = [{
@@ -2189,7 +1190,9 @@ function buildScatterChartOption(props) {
 		data: [...props.data],
 		symbolSize: props.pointSize || 10,
 		symbol: props.pointShape || "circle",
-		itemStyle: { opacity: props.pointOpacity || .8 }
+		itemStyle: { opacity: props.pointOpacity || .8 },
+		...globalJitterConfig,
+		...props.jitterOverlap !== void 0 && { jitterOverlap: props.jitterOverlap }
 	}];
 	const xAxisOption = buildAxisOption(props.xAxis, "numeric", props.theme);
 	const yAxisOption = buildAxisOption(props.yAxis, "numeric", props.theme);
@@ -2776,14 +1779,15 @@ function buildGanttChartOption(props) {
 			}
 		});
 	}
+	const titleHeight = props.title ? props.subtitle ? 65 : 45 : 0;
 	return {
 		...baseOption,
 		grid: {
 			show: timelineStyle.showGrid || false,
 			left: categoryLabelStyle.width + 20 || 140,
 			right: 20,
-			top: timelineStyle.position === "top" ? 60 : 20,
-			bottom: (props.dataZoom !== false ? 40 : 20) + (timelineStyle.position === "bottom" ? 40 : 0),
+			top: titleHeight + (timelineStyle.position === "top" ? 50 : 20),
+			bottom: (props.dataZoom !== false ? 50 : 30) + (timelineStyle.position === "bottom" ? 40 : 0),
 			backgroundColor: isDark ? "#1a1a1a" : "#ffffff",
 			borderWidth: 0
 		},
@@ -2851,7 +1855,7 @@ function buildGanttChartOption(props) {
 				return "";
 			}
 		},
-		legend: props.legend ? buildLegendOption(props.legend, !!props.title, !!props.subtitle, false, props.theme) : void 0,
+		...props.legend && { legend: buildLegendOption(props.legend, !!props.title, !!props.subtitle, false, props.theme) },
 		...props.customOption
 	};
 }
@@ -2929,6 +1933,7 @@ function buildCombinedChartOption(params) {
 	const xAxisData = isObjectData(data) ? data.map((item) => item[xField]) : [];
 	const colors = colorPalette || COLOR_PALETTES[theme] || COLOR_PALETTES.default;
 	const baseOption = buildBaseOption({
+		theme,
 		title,
 		subtitle,
 		titlePosition,
@@ -3004,7 +2009,7 @@ function buildCombinedChartOption(params) {
 		show: true,
 		data: series.map((s) => s.name),
 		...legend
-	}) : void 0;
+	}, !!title, !!subtitle, zoom, theme) : void 0;
 	const builtTooltip = buildTooltipOption({
 		trigger: "axis",
 		axisPointer: {
@@ -3091,7 +2096,8 @@ function buildClusterChartOption(props) {
 		if (y !== void 0 && y < 0) hasNegativeY = true;
 	});
 	const outputClusterIndexDimension = 2;
-	const gridLeft = visualMapPosition === "left" ? 120 : 60;
+	const baseGrid = calculateGridSpacing(void 0, !!props.title, !!props.subtitle, false);
+	const gridLeft = visualMapPosition === "left" ? 120 : baseGrid.left || 50;
 	const pieces = Array.from({ length: clusterCount }, (_, i) => ({
 		value: i,
 		label: `cluster ${i}`,
@@ -3118,12 +2124,9 @@ function buildClusterChartOption(props) {
 		},
 		visualMap: {
 			type: "piecewise",
-			top: visualMapPosition === "top" ? 10 : visualMapPosition === "bottom" ? "bottom" : "middle",
+			top: visualMapPosition === "bottom" ? "auto" : visualMapPosition === "top" ? props.title ? 50 : 10 : props.title ? 60 : "middle",
 			...visualMapPosition === "left" && { left: 10 },
-			...visualMapPosition === "right" && {
-				left: "right",
-				right: 10
-			},
+			...visualMapPosition === "right" && { right: 10 },
 			...visualMapPosition === "bottom" && { bottom: 10 },
 			min: 0,
 			max: clusterCount,
@@ -3131,7 +2134,11 @@ function buildClusterChartOption(props) {
 			dimension: outputClusterIndexDimension,
 			pieces
 		},
-		grid: { left: gridLeft },
+		grid: {
+			...baseGrid,
+			left: gridLeft,
+			containLabel: true
+		},
 		xAxis: enhanceAxisForNegativeValues({
 			...buildAxisOption(props.xAxis, "numeric", props.theme),
 			type: "value",
@@ -3204,13 +2211,12 @@ function buildCalendarHeatmapOption(props) {
 	const minValue = Math.min(...values, 0);
 	const maxValue = Math.max(...values, 1);
 	const hasTitle = !!props.title;
+	const hasSubtitle = !!props.subtitle;
 	const isVertical = props.orient === "vertical";
-	const visualMapLegendConfig = {
-		show: true,
-		position: isVertical ? "right" : "bottom",
-		orientation: isVertical ? "vertical" : "horizontal"
-	};
-	const gridSpacing = calculateGridSpacing(visualMapLegendConfig, hasTitle, false, false);
+	const titleHeight = hasTitle && hasSubtitle ? 60 : hasTitle ? 40 : 0;
+	const monthLabelHeight = 25;
+	const topPadding = titleHeight + monthLabelHeight + 10;
+	const bottomPadding = isVertical ? 30 : 50;
 	const calendars = years.map((year, index) => {
 		const calendarConfig = {
 			orient: props.orient || "horizontal",
@@ -3236,21 +2242,22 @@ function buildCalendarHeatmapOption(props) {
 			}
 		};
 		if (isVertical) {
-			calendarConfig.left = gridSpacing.left;
-			calendarConfig.top = gridSpacing.top;
-			calendarConfig.bottom = gridSpacing.bottom;
-			calendarConfig.right = gridSpacing.right;
+			calendarConfig.left = 80;
+			calendarConfig.top = topPadding;
+			calendarConfig.bottom = bottomPadding;
+			calendarConfig.right = 100;
 		} else if (years.length > 1) {
-			const availableHeight = 100 - parseInt(gridSpacing.top) - parseInt(gridSpacing.bottom);
-			calendarConfig.top = `${parseInt(gridSpacing.top) + index * (availableHeight / years.length)}%`;
-			calendarConfig.height = `${Math.floor(availableHeight / years.length * .8)}%`;
-			calendarConfig.left = gridSpacing.left;
-			calendarConfig.right = gridSpacing.right;
+			const totalHeight = 100;
+			const availableHeight = totalHeight - topPadding - bottomPadding;
+			const heightPerYear = availableHeight / years.length;
+			calendarConfig.top = topPadding + index * heightPerYear;
+			calendarConfig.left = 50;
+			calendarConfig.right = 30;
 		} else {
-			calendarConfig.top = gridSpacing.top;
-			calendarConfig.left = gridSpacing.left;
-			calendarConfig.right = gridSpacing.right;
-			calendarConfig.bottom = gridSpacing.bottom;
+			calendarConfig.top = topPadding;
+			calendarConfig.left = 50;
+			calendarConfig.right = 30;
+			calendarConfig.bottom = bottomPadding;
 		}
 		return calendarConfig;
 	});
@@ -3274,31 +2281,29 @@ function buildCalendarHeatmapOption(props) {
 		...baseOption,
 		calendar: calendars,
 		series,
-		visualMap: (() => {
-			return {
-				type: "piecewise",
-				orient: isVertical ? "vertical" : "horizontal",
-				...isVertical ? {
-					right: "5%",
-					top: hasTitle ? gridSpacing.top : "center",
-					itemGap: 5
-				} : {
-					left: "center",
-					bottom: years.length > 1 ? "3%" : "5%"
-				},
-				min: minValue,
-				max: maxValue,
-				splitNumber: props.splitNumber || colorScale.length - 1,
-				inRange: { color: colorScale },
-				textStyle: {
-					color: isDark ? "#cccccc" : "#666666",
-					fontSize: isVertical ? 11 : 12
-				},
-				itemSymbol: "rect",
-				itemWidth: isVertical ? 15 : 20,
-				itemHeight: isVertical ? 12 : 14
-			};
-		})(),
+		visualMap: {
+			type: "piecewise",
+			orient: isVertical ? "vertical" : "horizontal",
+			...isVertical ? {
+				right: 20,
+				top: topPadding,
+				itemGap: 5
+			} : {
+				left: "center",
+				bottom: 10
+			},
+			min: minValue,
+			max: maxValue,
+			splitNumber: props.splitNumber || colorScale.length - 1,
+			inRange: { color: colorScale },
+			textStyle: {
+				color: isDark ? "#cccccc" : "#666666",
+				fontSize: isVertical ? 11 : 12
+			},
+			itemSymbol: "rect",
+			itemWidth: isVertical ? 15 : 20,
+			itemHeight: isVertical ? 12 : 14
+		},
 		tooltip: props.tooltip ? buildTooltipOption(props.tooltip, props.theme) : {
 			trigger: "item",
 			formatter: (params) => {
@@ -3505,6 +2510,7 @@ function buildSankeyChartOption(props) {
 		};
 		return processedLink;
 	});
+	const titleHeight = props.title ? props.subtitle ? 65 : 45 : 0;
 	const series = {
 		type: "sankey",
 		layout: props.layout || "none",
@@ -3519,15 +2525,15 @@ function buildSankeyChartOption(props) {
 			focus: props.focusMode || "adjacency",
 			...props.blurScope && { blurScope: props.blurScope }
 		},
-		left: "5%",
-		top: props.title ? "15%" : "5%",
-		right: "5%",
-		bottom: "5%"
+		left: 50,
+		top: titleHeight + 20,
+		right: 50,
+		bottom: 30
 	};
 	return {
 		...baseOption,
 		series: [series],
-		legend: props.legend ? buildLegendOption(props.legend, !!props.title, !!props.subtitle, false, props.theme) : void 0,
+		...props.legend && { legend: buildLegendOption(props.legend, !!props.title, !!props.subtitle, false, props.theme) },
 		tooltip: props.tooltip ? buildTooltipOption(props.tooltip, props.theme) : {
 			trigger: "item",
 			triggerOn: "mousemove",
@@ -3541,23 +2547,13 @@ function buildSankeyChartOption(props) {
 }
 
 //#endregion
-//#region src/utils/domProps.ts
-const filterDOMProps = (props) => {
-	const domProps = {};
-	Object.keys(props).forEach((key) => {
-		if (key === "id" || key === "className" || key === "style" || key.startsWith("data-") || key.startsWith("aria-") || key === "role" || key === "tabIndex" || key === "onClick" || key === "onMouseEnter" || key === "onMouseLeave" || key === "onFocus" || key === "onBlur" || key === "onKeyDown" || key === "onKeyUp" || key === "onKeyPress") domProps[key] = props[key];
-	});
-	return domProps;
-};
-
-//#endregion
 //#region src/components/LineChart.tsx
 /**
 * Ergonomic LineChart component with intuitive props
-* 
+*
 * @example
 * // Simple line chart with object data
-* <ErgonomicLineChart
+* <LineChart
 *   data={[
 *     { month: 'Jan', sales: 100, profit: 20 },
 *     { month: 'Feb', sales: 120, profit: 25 },
@@ -3568,10 +2564,10 @@ const filterDOMProps = (props) => {
 *   smooth
 *   showArea
 * />
-* 
+*
 * @example
 * // Multiple series with explicit configuration
-* <ErgonomicLineChart
+* <LineChart
 *   series={[
 *     {
 *       name: 'Sales',
@@ -3589,307 +2585,16 @@ const filterDOMProps = (props) => {
 *   yField="value"
 * />
 */
-const LineChart = (0, react.forwardRef)(({ width = "100%", height = 400, className, style, data, xField = "x", yField = "y", seriesField, series, seriesConfig, theme = "light", colorPalette, backgroundColor, title, subtitle, titlePosition = "center", logo, smooth = false, strokeWidth = 2, strokeStyle = "solid", showPoints = true, pointSize = 4, pointShape = "circle", showArea = false, areaOpacity = .3, areaGradient = false, xAxis, yAxis, legend, tooltip, zoom = false, pan = false, brush = false, loading = false, disabled: _disabled = false, animate = true, animationDuration, onChartReady, onDataPointClick, onDataPointHover, onLegendDoubleClick, onSeriesDoubleClick, legendDoubleClickDelay, enableLegendDoubleClickSelection = true, customOption, responsive: _responsive = true,...restProps }, ref) => {
-	const domProps = filterDOMProps(restProps);
-	const chartOption = (0, react.useMemo)(() => {
-		return buildLineChartOption({
-			data: data || void 0,
-			xField,
-			yField,
-			seriesField,
-			series,
-			seriesConfig,
-			theme,
-			colorPalette,
-			backgroundColor,
-			title,
-			subtitle,
-			titlePosition,
-			...logo && { logo },
-			...width && { width },
-			...height && { height },
-			smooth,
-			strokeWidth,
-			strokeStyle,
-			showPoints,
-			pointSize,
-			pointShape,
-			showArea,
-			areaOpacity,
-			areaGradient,
-			xAxis: xAxis || void 0,
-			yAxis: yAxis || void 0,
-			legend,
-			tooltip,
-			zoom,
-			pan,
-			brush,
-			animate,
-			animationDuration,
-			customOption
-		});
-	}, [
-		data,
-		xField,
-		yField,
-		seriesField,
-		series,
-		seriesConfig,
-		theme,
-		colorPalette,
-		backgroundColor,
-		title,
-		subtitle,
-		titlePosition,
-		logo,
-		width,
-		height,
-		smooth,
-		strokeWidth,
-		strokeStyle,
-		showPoints,
-		pointSize,
-		pointShape,
-		showArea,
-		areaOpacity,
-		areaGradient,
-		xAxis,
-		yAxis,
-		legend,
-		tooltip,
-		zoom,
-		pan,
-		brush,
-		animate,
-		animationDuration,
-		customOption
-	]);
-	const { containerRef, loading: chartLoading, error, getEChartsInstance, resize, showLoading, hideLoading } = useECharts({
-		option: chartOption,
-		theme,
-		loading,
-		onChartReady
+const LineChart = (0, react.forwardRef)((props, ref) => {
+	const { className } = props;
+	const buildOption = (0, react.useMemo)(() => buildLineChartOption, []);
+	const { containerRef, containerStyle, domProps, refMethods, renderError, renderLoading, error } = useChartComponent({
+		props,
+		buildOption,
+		chartType: "line"
 	});
-	const chartInstance = getEChartsInstance();
-	const { handleLegendClick, handleSeriesClick } = useLegendDoubleClick({
-		chartInstance,
-		onLegendDoubleClick,
-		onSeriesDoubleClick,
-		delay: legendDoubleClickDelay || 300,
-		enableAutoSelection: enableLegendDoubleClickSelection || true
-	});
-	const chartEvents = (0, react.useMemo)(() => {
-		const events = {};
-		if (onDataPointClick) events.click = (params, chart) => {
-			onDataPointClick(params, {
-				chart,
-				event: params
-			});
-		};
-		if (onSeriesDoubleClick || enableLegendDoubleClickSelection) {
-			const existingClick = events.click;
-			events.click = (params, chart) => {
-				if (existingClick) existingClick(params, chart);
-				handleSeriesClick(params);
-			};
-		} else if (!onDataPointClick) events.click = (params) => {
-			handleSeriesClick(params);
-		};
-		if (onDataPointHover) events.mouseover = (params, chart) => {
-			onDataPointHover(params, {
-				chart,
-				event: params
-			});
-		};
-		if (onLegendDoubleClick || enableLegendDoubleClickSelection) events.legendselectchanged = (params) => {
-			handleLegendClick(params);
-		};
-		return events;
-	}, [
-		onDataPointClick,
-		onDataPointHover,
-		onLegendDoubleClick,
-		onSeriesDoubleClick,
-		enableLegendDoubleClickSelection,
-		handleLegendClick,
-		handleSeriesClick
-	]);
-	(0, react.useEffect)(() => {
-		if (!chartInstance || Object.keys(chartEvents).length === 0) return;
-		const eventHandlers = [];
-		Object.entries(chartEvents).forEach(([event, handler]) => {
-			chartInstance.on(event, handler);
-			eventHandlers.push([event, handler]);
-		});
-		return () => {
-			eventHandlers.forEach(([event, handler]) => {
-				chartInstance.off(event, handler);
-			});
-		};
-	}, [chartInstance, chartEvents]);
-	const exportImage = (format = "png", opts) => {
-		const chart = getEChartsInstance();
-		if (!chart) return "";
-		if (logo?.onSaveOnly) {
-			const currentOption = chart.getOption();
-			const chartWidth = typeof width === "number" ? width : 600;
-			const chartHeight = typeof height === "number" ? height : 400;
-			const logoGraphic = {
-				type: "image",
-				style: {
-					image: logo.src,
-					x: logo.x !== void 0 ? logo.x : logo.position === "bottom-right" ? chartWidth - (logo.width || 100) - 10 : 10,
-					y: logo.y !== void 0 ? logo.y : logo.position === "bottom-right" ? chartHeight - (logo.height || 50) - 10 : 10,
-					width: logo.width || 100,
-					height: logo.height || 50,
-					opacity: logo.opacity || 1
-				},
-				z: 1e3,
-				silent: true
-			};
-			const optionWithLogo = {
-				...currentOption,
-				graphic: [...Array.isArray(currentOption.graphic) ? currentOption.graphic : currentOption.graphic ? [currentOption.graphic] : [], logoGraphic]
-			};
-			chart.setOption(optionWithLogo, {
-				notMerge: false,
-				lazyUpdate: false
-			});
-			const dataURL = chart.getDataURL({
-				type: format,
-				pixelRatio: opts?.pixelRatio || 2,
-				backgroundColor: opts?.backgroundColor || backgroundColor || "#fff",
-				...opts?.excludeComponents && { excludeComponents: opts.excludeComponents }
-			});
-			const filteredGraphics = Array.isArray(currentOption.graphic) ? currentOption.graphic.filter((g) => g.type !== "image") : currentOption.graphic && currentOption.graphic.type !== "image" ? [currentOption.graphic] : [];
-			const optionWithoutLogo = {
-				...currentOption,
-				graphic: filteredGraphics.length > 0 ? filteredGraphics : void 0
-			};
-			chart.setOption(optionWithoutLogo, {
-				notMerge: false,
-				lazyUpdate: false
-			});
-			return dataURL;
-		}
-		return chart.getDataURL({
-			type: format,
-			pixelRatio: opts?.pixelRatio || 2,
-			backgroundColor: opts?.backgroundColor || backgroundColor || "#fff",
-			...opts?.excludeComponents && { excludeComponents: opts.excludeComponents }
-		});
-	};
-	const saveAsImage = (filename, opts) => {
-		const dataURL = exportImage(opts?.type || "png", opts);
-		if (!dataURL) return;
-		const link = document.createElement("a");
-		link.download = filename || `chart.${opts?.type || "png"}`;
-		link.href = dataURL;
-		document.body.appendChild(link);
-		link.click();
-		document.body.removeChild(link);
-	};
-	const highlight = (dataIndex, seriesIndex = 0) => {
-		const chart = getEChartsInstance();
-		if (!chart) return;
-		chart.dispatchAction({
-			type: "highlight",
-			seriesIndex,
-			dataIndex
-		});
-	};
-	const clearHighlight = () => {
-		const chart = getEChartsInstance();
-		if (!chart) return;
-		chart.dispatchAction({ type: "downplay" });
-	};
-	const updateData = (newData) => {
-		const chart = getEChartsInstance();
-		if (!chart) return;
-		const newOption = buildLineChartOption({
-			data: newData,
-			xField,
-			yField,
-			seriesField: seriesField || void 0,
-			series,
-			seriesConfig,
-			theme,
-			colorPalette,
-			backgroundColor,
-			title,
-			subtitle,
-			titlePosition,
-			smooth,
-			strokeWidth,
-			strokeStyle,
-			showPoints,
-			pointSize,
-			pointShape,
-			showArea,
-			areaOpacity,
-			areaGradient,
-			xAxis: xAxis || void 0,
-			yAxis: yAxis || void 0,
-			legend,
-			tooltip,
-			zoom,
-			pan,
-			brush,
-			animate,
-			animationDuration,
-			customOption
-		});
-		chart.setOption(newOption);
-	};
-	(0, react.useImperativeHandle)(ref, () => ({
-		getChart: getEChartsInstance,
-		exportImage,
-		saveAsImage,
-		resize,
-		showLoading: () => showLoading(),
-		hideLoading,
-		highlight,
-		clearHighlight,
-		updateData
-	}), [
-		getEChartsInstance,
-		exportImage,
-		saveAsImage,
-		resize,
-		showLoading,
-		hideLoading,
-		highlight,
-		clearHighlight,
-		updateData
-	]);
-	if (error) return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-		className: `aqc-charts-error ${className || ""}`,
-		style: {
-			width,
-			height,
-			display: "flex",
-			alignItems: "center",
-			justifyContent: "center",
-			color: "#ff4d4f",
-			fontSize: "14px",
-			border: "1px dashed #ff4d4f",
-			borderRadius: "4px",
-			...style
-		},
-		children: ["Error: ", error.message || "Failed to render chart"]
-	});
-	const containerStyle = (0, react.useMemo)(() => ({
-		width,
-		height,
-		minWidth: typeof width === "string" && width.includes("%") ? "300px" : void 0,
-		minHeight: "300px",
-		position: "relative",
-		...style
-	}), [
-		width,
-		height,
-		style
-	]);
+	(0, react.useImperativeHandle)(ref, () => refMethods, [refMethods]);
+	if (error) return renderError();
 	return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 		className: `aqc-charts-container ${className || ""}`,
 		style: containerStyle,
@@ -3900,34 +2605,7 @@ const LineChart = (0, react.forwardRef)(({ width = "100%", height = 400, classNa
 				width: "100%",
 				height: "100%"
 			}
-		}), (chartLoading || loading) && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-			className: "aqc-charts-loading",
-			style: {
-				position: "absolute",
-				top: 0,
-				left: 0,
-				right: 0,
-				bottom: 0,
-				display: "flex",
-				alignItems: "center",
-				justifyContent: "center",
-				backgroundColor: "rgba(255, 255, 255, 0.8)",
-				fontSize: "14px",
-				color: "#666"
-			},
-			children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
-				className: "aqc-charts-spinner",
-				style: {
-					width: "20px",
-					height: "20px",
-					border: "2px solid #f3f3f3",
-					borderTop: "2px solid #1890ff",
-					borderRadius: "50%",
-					animation: "spin 1s linear infinite",
-					marginRight: "8px"
-				}
-			}), "Loading..."]
-		})]
+		}), renderLoading()]
 	});
 });
 LineChart.displayName = "LineChart";
@@ -3936,10 +2614,10 @@ LineChart.displayName = "LineChart";
 //#region src/components/BarChart.tsx
 /**
 * Ergonomic BarChart component with intuitive props
-* 
+*
 * @example
 * // Simple bar chart with object data
-* <ErgonomicBarChart
+* <BarChart
 *   data={[
 *     { category: 'Q1', sales: 100, profit: 20 },
 *     { category: 'Q2', sales: 120, profit: 25 },
@@ -3950,10 +2628,10 @@ LineChart.displayName = "LineChart";
 *   valueField={['sales', 'profit']}
 *   orientation="vertical"
 * />
-* 
+*
 * @example
 * // Stacked bar chart
-* <ErgonomicBarChart
+* <BarChart
 *   data={salesData}
 *   categoryField="month"
 *   valueField="amount"
@@ -3961,10 +2639,10 @@ LineChart.displayName = "LineChart";
 *   stack="normal"
 *   orientation="horizontal"
 * />
-* 
+*
 * @example
 * // Multiple series with explicit configuration
-* <ErgonomicBarChart
+* <BarChart
 *   series={[
 *     {
 *       name: 'Sales',
@@ -3981,304 +2659,16 @@ LineChart.displayName = "LineChart";
 *   valueField="value"
 * />
 */
-const BarChart = (0, react.forwardRef)(({ width = "100%", height = 400, className, style, data, categoryField = "category", valueField = "value", seriesField, series, theme = "light", colorPalette, backgroundColor, title, subtitle, titlePosition = "center", logo, orientation = "vertical", barWidth, barGap, borderRadius = 0, stack = false, stackType = "normal", showPercentage = false, showLabels = false, showAbsoluteValues = false, showPercentageLabels = false, xAxis, yAxis, legend, tooltip, sortBy = "none", sortOrder = "asc", loading = false, disabled: _disabled = false, animate = true, animationDuration, onChartReady, onDataPointClick, onDataPointHover, onLegendDoubleClick, onSeriesDoubleClick, legendDoubleClickDelay, enableLegendDoubleClickSelection = true, customOption, responsive: _responsive = true,...restProps }, ref) => {
-	const domProps = filterDOMProps(restProps);
-	const chartOption = (0, react.useMemo)(() => {
-		return buildBarChartOption({
-			data: data || void 0,
-			categoryField,
-			valueField,
-			seriesField,
-			series,
-			theme,
-			colorPalette,
-			backgroundColor,
-			title,
-			subtitle,
-			titlePosition,
-			...logo && { logo },
-			...width && { width },
-			...height && { height },
-			orientation,
-			barWidth,
-			barGap,
-			borderRadius,
-			stack,
-			stackType,
-			showPercentage,
-			showLabels,
-			showAbsoluteValues,
-			showPercentageLabels,
-			xAxis: xAxis || void 0,
-			yAxis: yAxis || void 0,
-			legend,
-			tooltip,
-			sortBy,
-			sortOrder,
-			animate,
-			animationDuration,
-			customOption
-		});
-	}, [
-		data,
-		categoryField,
-		valueField,
-		seriesField,
-		series,
-		theme,
-		colorPalette,
-		backgroundColor,
-		title,
-		subtitle,
-		titlePosition,
-		logo,
-		width,
-		height,
-		orientation,
-		barWidth,
-		barGap,
-		borderRadius,
-		stack,
-		stackType,
-		showPercentage,
-		showLabels,
-		showAbsoluteValues,
-		showPercentageLabels,
-		xAxis,
-		yAxis,
-		legend,
-		tooltip,
-		sortBy,
-		sortOrder,
-		animate,
-		animationDuration,
-		customOption
-	]);
-	const { containerRef, loading: chartLoading, error, getEChartsInstance, resize, showLoading, hideLoading } = useECharts({
-		option: chartOption,
-		theme,
-		loading,
-		onChartReady
+const BarChart = (0, react.forwardRef)((props, ref) => {
+	const { className } = props;
+	const buildOption = (0, react.useMemo)(() => buildBarChartOption, []);
+	const { containerRef, containerStyle, domProps, refMethods, renderError, renderLoading, error } = useChartComponent({
+		props,
+		buildOption,
+		chartType: "bar"
 	});
-	const chartInstance = getEChartsInstance();
-	const { handleLegendClick, handleSeriesClick } = useLegendDoubleClick({
-		chartInstance,
-		onLegendDoubleClick,
-		onSeriesDoubleClick,
-		delay: legendDoubleClickDelay || 300,
-		enableAutoSelection: enableLegendDoubleClickSelection || false
-	});
-	const chartEvents = (0, react.useMemo)(() => {
-		const events = {};
-		if (onDataPointClick) events.click = (params, chart) => {
-			onDataPointClick(params, {
-				chart,
-				event: params
-			});
-		};
-		if (onSeriesDoubleClick || enableLegendDoubleClickSelection) {
-			const existingClick = events.click;
-			events.click = (params, chart) => {
-				if (existingClick) existingClick(params, chart);
-				handleSeriesClick(params);
-			};
-		} else if (!onDataPointClick) events.click = (params) => {
-			handleSeriesClick(params);
-		};
-		if (onDataPointHover) events.mouseover = (params, chart) => {
-			onDataPointHover(params, {
-				chart,
-				event: params
-			});
-		};
-		if (onLegendDoubleClick || enableLegendDoubleClickSelection) events.legendselectchanged = (params) => {
-			handleLegendClick(params);
-		};
-		return events;
-	}, [
-		onDataPointClick,
-		onDataPointHover,
-		onLegendDoubleClick,
-		onSeriesDoubleClick,
-		enableLegendDoubleClickSelection,
-		handleLegendClick,
-		handleSeriesClick
-	]);
-	(0, react.useEffect)(() => {
-		if (!chartInstance || Object.keys(chartEvents).length === 0) return;
-		const eventHandlers = [];
-		Object.entries(chartEvents).forEach(([event, handler]) => {
-			chartInstance.on(event, handler);
-			eventHandlers.push([event, handler]);
-		});
-		return () => {
-			eventHandlers.forEach(([event, handler]) => {
-				chartInstance.off(event, handler);
-			});
-		};
-	}, [chartInstance, chartEvents]);
-	const exportImage = (format = "png", opts) => {
-		const chart = getEChartsInstance();
-		if (!chart) return "";
-		if (logo?.onSaveOnly) {
-			const currentOption = chart.getOption();
-			const chartWidth = typeof width === "number" ? width : 600;
-			const chartHeight = typeof height === "number" ? height : 400;
-			const logoGraphic = {
-				type: "image",
-				style: {
-					image: logo.src,
-					x: logo.x !== void 0 ? logo.x : logo.position === "bottom-right" ? chartWidth - (logo.width || 100) - 10 : 10,
-					y: logo.y !== void 0 ? logo.y : logo.position === "bottom-right" ? chartHeight - (logo.height || 50) - 10 : 10,
-					width: logo.width || 100,
-					height: logo.height || 50,
-					opacity: logo.opacity || 1
-				},
-				z: 1e3,
-				silent: true
-			};
-			const optionWithLogo = {
-				...currentOption,
-				graphic: [...Array.isArray(currentOption.graphic) ? currentOption.graphic : currentOption.graphic ? [currentOption.graphic] : [], logoGraphic]
-			};
-			chart.setOption(optionWithLogo, {
-				notMerge: false,
-				lazyUpdate: false
-			});
-			const dataURL = chart.getDataURL({
-				type: format,
-				pixelRatio: opts?.pixelRatio || 2,
-				backgroundColor: opts?.backgroundColor || backgroundColor || "#fff",
-				...opts?.excludeComponents && { excludeComponents: opts.excludeComponents }
-			});
-			const filteredGraphics = Array.isArray(currentOption.graphic) ? currentOption.graphic.filter((g) => g.type !== "image") : currentOption.graphic && currentOption.graphic.type !== "image" ? [currentOption.graphic] : [];
-			const optionWithoutLogo = {
-				...currentOption,
-				graphic: filteredGraphics.length > 0 ? filteredGraphics : void 0
-			};
-			chart.setOption(optionWithoutLogo, {
-				notMerge: false,
-				lazyUpdate: false
-			});
-			return dataURL;
-		}
-		return chart.getDataURL({
-			type: format,
-			pixelRatio: opts?.pixelRatio || 2,
-			backgroundColor: opts?.backgroundColor || backgroundColor || "#fff",
-			...opts?.excludeComponents && { excludeComponents: opts.excludeComponents }
-		});
-	};
-	const saveAsImage = (filename, opts) => {
-		const dataURL = exportImage(opts?.type || "png", opts);
-		if (!dataURL) return;
-		const link = document.createElement("a");
-		link.download = filename || `chart.${opts?.type || "png"}`;
-		link.href = dataURL;
-		document.body.appendChild(link);
-		link.click();
-		document.body.removeChild(link);
-	};
-	const highlight = (dataIndex, seriesIndex = 0) => {
-		const chart = getEChartsInstance();
-		if (!chart) return;
-		chart.dispatchAction({
-			type: "highlight",
-			seriesIndex,
-			dataIndex
-		});
-	};
-	const clearHighlight = () => {
-		const chart = getEChartsInstance();
-		if (!chart) return;
-		chart.dispatchAction({ type: "downplay" });
-	};
-	const updateData = (newData) => {
-		const chart = getEChartsInstance();
-		if (!chart) return;
-		const newOption = buildBarChartOption({
-			data: newData,
-			categoryField,
-			valueField,
-			seriesField,
-			series,
-			theme,
-			colorPalette,
-			backgroundColor,
-			title,
-			subtitle,
-			titlePosition,
-			orientation,
-			barWidth,
-			barGap,
-			borderRadius,
-			stack,
-			stackType,
-			showPercentage,
-			showLabels,
-			showAbsoluteValues,
-			showPercentageLabels,
-			xAxis: xAxis || void 0,
-			yAxis: yAxis || void 0,
-			legend,
-			tooltip,
-			sortBy,
-			sortOrder,
-			animate,
-			animationDuration,
-			customOption
-		});
-		chart.setOption(newOption);
-	};
-	(0, react.useImperativeHandle)(ref, () => ({
-		getChart: getEChartsInstance,
-		exportImage,
-		saveAsImage,
-		resize,
-		showLoading: () => showLoading(),
-		hideLoading,
-		highlight,
-		clearHighlight,
-		updateData
-	}), [
-		getEChartsInstance,
-		exportImage,
-		saveAsImage,
-		resize,
-		showLoading,
-		hideLoading,
-		highlight,
-		clearHighlight,
-		updateData
-	]);
-	if (error) return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-		className: `aqc-charts-error ${className || ""}`,
-		style: {
-			width,
-			height,
-			display: "flex",
-			alignItems: "center",
-			justifyContent: "center",
-			color: "#ff4d4f",
-			fontSize: "14px",
-			border: "1px dashed #ff4d4f",
-			borderRadius: "4px",
-			...style
-		},
-		children: ["Error: ", error.message || "Failed to render chart"]
-	});
-	const containerStyle = (0, react.useMemo)(() => ({
-		width,
-		height,
-		minWidth: typeof width === "string" && width.includes("%") ? "300px" : void 0,
-		minHeight: "300px",
-		position: "relative",
-		...style
-	}), [
-		width,
-		height,
-		style
-	]);
+	(0, react.useImperativeHandle)(ref, () => refMethods, [refMethods]);
+	if (error) return renderError();
 	return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 		className: `aqc-charts-container ${className || ""}`,
 		style: containerStyle,
@@ -4289,34 +2679,7 @@ const BarChart = (0, react.forwardRef)(({ width = "100%", height = 400, classNam
 				width: "100%",
 				height: "100%"
 			}
-		}), (chartLoading || loading) && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-			className: "aqc-charts-loading",
-			style: {
-				position: "absolute",
-				top: 0,
-				left: 0,
-				right: 0,
-				bottom: 0,
-				display: "flex",
-				alignItems: "center",
-				justifyContent: "center",
-				backgroundColor: "rgba(255, 255, 255, 0.8)",
-				fontSize: "14px",
-				color: "#666"
-			},
-			children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
-				className: "aqc-charts-spinner",
-				style: {
-					width: "20px",
-					height: "20px",
-					border: "2px solid #f3f3f3",
-					borderTop: "2px solid #1890ff",
-					borderRadius: "50%",
-					animation: "spin 1s linear infinite",
-					marginRight: "8px"
-				}
-			}), "Loading..."]
-		})]
+		}), renderLoading()]
 	});
 });
 BarChart.displayName = "BarChart";
@@ -4325,10 +2688,10 @@ BarChart.displayName = "BarChart";
 //#region src/components/PieChart.tsx
 /**
 * Ergonomic PieChart component with intuitive props
-* 
+*
 * @example
 * // Simple pie chart with object data
-* <ErgonomicPieChart
+* <PieChart
 *   data={[
 *     { category: 'Desktop', sales: 4200 },
 *     { category: 'Mobile', sales: 3800 },
@@ -4338,10 +2701,10 @@ BarChart.displayName = "BarChart";
 *   valueField="sales"
 *   title="Sales by Platform"
 * />
-* 
+*
 * @example
 * // Donut chart with custom styling
-* <ErgonomicPieChart
+* <PieChart
 *   data={marketData}
 *   nameField="segment"
 *   valueField="share"
@@ -4350,10 +2713,10 @@ BarChart.displayName = "BarChart";
 *   showPercentages
 *   labelPosition="outside"
 * />
-* 
+*
 * @example
 * // Rose/nightingale chart
-* <ErgonomicPieChart
+* <PieChart
 *   data={performanceData}
 *   nameField="department"
 *   valueField="score"
@@ -4362,158 +2725,15 @@ BarChart.displayName = "BarChart";
 *   showLabels
 * />
 */
-const PieChart = (0, react.forwardRef)(({ width = "100%", height = 400, className, style, data, nameField = "name", valueField = "value", theme = "light", colorPalette, backgroundColor, title, subtitle, titlePosition = "center", radius = 75, startAngle = 90, roseType = false, showLabels = true, labelPosition = "outside", showValues = false, showPercentages = true, labelFormat, labelWrapLength, legend, tooltip, selectedMode = false, emphasis = true, loading = false, disabled: _disabled = false, animate = true, animationDuration, onChartReady, onDataPointClick, onDataPointHover, onLegendDoubleClick, onSeriesDoubleClick, legendDoubleClickDelay, enableLegendDoubleClickSelection = true, customOption, responsive: _responsive = true,...restProps }, ref) => {
-	const domProps = filterDOMProps(restProps);
-	const chartOption = (0, react.useMemo)(() => {
-		return buildPieChartOption({
-			data,
-			nameField,
-			valueField,
-			theme,
-			colorPalette,
-			backgroundColor,
-			title,
-			subtitle,
-			titlePosition,
-			radius,
-			startAngle,
-			roseType,
-			showLabels,
-			labelPosition,
-			showValues,
-			showPercentages,
-			labelFormat,
-			labelWrapLength,
-			legend,
-			tooltip,
-			selectedMode,
-			emphasis,
-			animate,
-			animationDuration,
-			customOption
-		});
-	}, [
-		data,
-		nameField,
-		valueField,
-		theme,
-		colorPalette,
-		backgroundColor,
-		title,
-		subtitle,
-		titlePosition,
-		radius,
-		startAngle,
-		roseType,
-		showLabels,
-		labelPosition,
-		showValues,
-		showPercentages,
-		labelFormat,
-		labelWrapLength,
-		legend,
-		tooltip,
-		selectedMode,
-		emphasis,
-		animate,
-		animationDuration,
-		customOption
-	]);
-	const { containerRef, loading: chartLoading, error, getEChartsInstance, resize, showLoading, hideLoading } = useECharts({
-		option: chartOption,
-		theme,
-		loading,
-		onChartReady
+const PieChart = (0, react.forwardRef)((props, ref) => {
+	const { className } = props;
+	const buildOption = (0, react.useMemo)(() => buildPieChartOption, []);
+	const { containerRef, containerStyle, domProps, refMethods, renderError, renderLoading, error, getEChartsInstance } = useChartComponent({
+		props,
+		buildOption,
+		chartType: "pie"
 	});
-	const chartInstance = getEChartsInstance();
-	const { handleLegendClick, handleSeriesClick } = useLegendDoubleClick({
-		chartInstance,
-		onLegendDoubleClick,
-		onSeriesDoubleClick,
-		delay: legendDoubleClickDelay || 300,
-		enableAutoSelection: enableLegendDoubleClickSelection
-	});
-	const chartEvents = (0, react.useMemo)(() => {
-		const events = {};
-		if (onDataPointClick) events.click = (params, chart) => {
-			onDataPointClick(params, {
-				chart,
-				event: params
-			});
-		};
-		if (onSeriesDoubleClick || enableLegendDoubleClickSelection) {
-			const existingClick = events.click;
-			events.click = (params, chart) => {
-				if (existingClick) existingClick(params, chart);
-				const enhancedParams = {
-					...params,
-					seriesName: params.name
-				};
-				handleSeriesClick(enhancedParams);
-			};
-		} else if (!onDataPointClick) events.click = (params, _chart) => {
-			const enhancedParams = {
-				...params,
-				seriesName: params.name
-			};
-			handleSeriesClick(enhancedParams);
-		};
-		if (onDataPointHover) events.mouseover = (params, chart) => {
-			onDataPointHover(params, {
-				chart,
-				event: params
-			});
-		};
-		if (onLegendDoubleClick || enableLegendDoubleClickSelection) events.legendselectchanged = (params) => {
-			handleLegendClick(params);
-		};
-		return events;
-	}, [
-		onDataPointClick,
-		onDataPointHover,
-		onLegendDoubleClick,
-		onSeriesDoubleClick,
-		enableLegendDoubleClickSelection,
-		handleLegendClick,
-		handleSeriesClick
-	]);
-	(0, react.useEffect)(() => {
-		if (!chartInstance || Object.keys(chartEvents).length === 0) return;
-		const eventHandlers = [];
-		Object.entries(chartEvents).forEach(([event, handler]) => {
-			chartInstance.on(event, handler);
-			eventHandlers.push([event, handler]);
-		});
-		return () => {
-			eventHandlers.forEach(([event, handler]) => {
-				chartInstance.off(event, handler);
-			});
-		};
-	}, [chartInstance, chartEvents]);
-	const exportImage = (format = "png") => {
-		const chart = getEChartsInstance();
-		if (!chart) return "";
-		return chart.getDataURL({
-			type: format,
-			pixelRatio: 2,
-			backgroundColor: backgroundColor || "#fff"
-		});
-	};
-	const highlight = (dataIndex) => {
-		const chart = getEChartsInstance();
-		if (!chart) return;
-		chart.dispatchAction({
-			type: "highlight",
-			seriesIndex: 0,
-			dataIndex
-		});
-	};
-	const clearHighlight = () => {
-		const chart = getEChartsInstance();
-		if (!chart) return;
-		chart.dispatchAction({ type: "downplay" });
-	};
-	const selectSlice = (dataIndex) => {
+	const selectSlice = (0, react.useCallback)((dataIndex) => {
 		const chart = getEChartsInstance();
 		if (!chart) return;
 		chart.dispatchAction({
@@ -4521,8 +2741,8 @@ const PieChart = (0, react.forwardRef)(({ width = "100%", height = 400, classNam
 			seriesIndex: 0,
 			dataIndex
 		});
-	};
-	const unselectSlice = (dataIndex) => {
+	}, [getEChartsInstance]);
+	const unselectSlice = (0, react.useCallback)((dataIndex) => {
 		const chart = getEChartsInstance();
 		if (!chart) return;
 		chart.dispatchAction({
@@ -4530,90 +2750,17 @@ const PieChart = (0, react.forwardRef)(({ width = "100%", height = 400, classNam
 			seriesIndex: 0,
 			dataIndex
 		});
-	};
-	const updateData = (newData) => {
-		const chart = getEChartsInstance();
-		if (!chart) return;
-		const newOption = buildPieChartOption({
-			data: newData,
-			nameField,
-			valueField,
-			theme,
-			colorPalette,
-			backgroundColor,
-			title,
-			subtitle,
-			titlePosition,
-			radius,
-			startAngle,
-			roseType,
-			showLabels,
-			labelPosition,
-			showValues,
-			showPercentages,
-			labelFormat,
-			labelWrapLength,
-			legend,
-			tooltip,
-			selectedMode,
-			emphasis,
-			animate,
-			animationDuration,
-			customOption
-		});
-		chart.setOption(newOption);
-	};
+	}, [getEChartsInstance]);
 	(0, react.useImperativeHandle)(ref, () => ({
-		getChart: getEChartsInstance,
-		exportImage,
-		resize,
-		showLoading: () => showLoading(),
-		hideLoading,
-		highlight,
-		clearHighlight,
-		updateData,
+		...refMethods,
 		selectSlice,
 		unselectSlice
 	}), [
-		getEChartsInstance,
-		exportImage,
-		resize,
-		showLoading,
-		hideLoading,
-		highlight,
-		clearHighlight,
-		updateData,
+		refMethods,
 		selectSlice,
 		unselectSlice
 	]);
-	if (error) return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-		className: `aqc-charts-error ${className || ""}`,
-		style: {
-			width,
-			height,
-			display: "flex",
-			alignItems: "center",
-			justifyContent: "center",
-			color: "#ff4d4f",
-			fontSize: "14px",
-			border: "1px dashed #ff4d4f",
-			borderRadius: "4px",
-			...style
-		},
-		children: ["Error: ", error.message || "Failed to render chart"]
-	});
-	const containerStyle = (0, react.useMemo)(() => ({
-		width,
-		height,
-		minWidth: typeof width === "string" && width.includes("%") ? "300px" : void 0,
-		minHeight: "300px",
-		position: "relative",
-		...style
-	}), [
-		width,
-		height,
-		style
-	]);
+	if (error) return renderError();
 	return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 		className: `aqc-charts-container ${className || ""}`,
 		style: containerStyle,
@@ -4624,34 +2771,7 @@ const PieChart = (0, react.forwardRef)(({ width = "100%", height = 400, classNam
 				width: "100%",
 				height: "100%"
 			}
-		}), (chartLoading || loading) && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-			className: "aqc-charts-loading",
-			style: {
-				position: "absolute",
-				top: 0,
-				left: 0,
-				right: 0,
-				bottom: 0,
-				display: "flex",
-				alignItems: "center",
-				justifyContent: "center",
-				backgroundColor: "rgba(255, 255, 255, 0.8)",
-				fontSize: "14px",
-				color: "#666"
-			},
-			children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
-				className: "aqc-charts-spinner",
-				style: {
-					width: "20px",
-					height: "20px",
-					border: "2px solid #f3f3f3",
-					borderTop: "2px solid #1890ff",
-					borderRadius: "50%",
-					animation: "spin 1s linear infinite",
-					marginRight: "8px"
-				}
-			}), "Loading..."]
-		})]
+		}), renderLoading()]
 	});
 });
 PieChart.displayName = "PieChart";
@@ -4660,7 +2780,7 @@ PieChart.displayName = "PieChart";
 //#region src/components/ScatterChart.tsx
 /**
 * Ergonomic ScatterChart component with intuitive props
-* 
+*
 * @example
 * // Simple scatter plot with object data
 * <ScatterChart
@@ -4673,7 +2793,7 @@ PieChart.displayName = "PieChart";
 *   yField="y"
 *   pointSize={8}
 * />
-* 
+*
 * @example
 * // Bubble chart with size dimension
 * <ScatterChart
@@ -4687,7 +2807,7 @@ PieChart.displayName = "PieChart";
 *   sizeField="employees"
 *   pointSize={[5, 30]}
 * />
-* 
+*
 * @example
 * // Multiple series with explicit configuration
 * <ScatterChart
@@ -4709,230 +2829,16 @@ PieChart.displayName = "PieChart";
 *   yField="y"
 * />
 */
-const ScatterChart = (0, react.forwardRef)(({ width = "100%", height = 400, className, style, data, xField = "x", yField = "y", sizeField, colorField, seriesField, series, theme = "light", colorPalette, backgroundColor, title, subtitle, titlePosition = "center", pointSize = 10, pointShape = "circle", pointOpacity = .8, xAxis, yAxis, legend, tooltip, showTrendline = false, trendlineType = "linear", loading = false, disabled: _disabled = false, animate = true, animationDuration, onChartReady, onDataPointClick, onDataPointHover, onLegendDoubleClick, onSeriesDoubleClick, legendDoubleClickDelay, enableLegendDoubleClickSelection = true, customOption, responsive: _responsive = true,...restProps }, ref) => {
-	const domProps = filterDOMProps(restProps);
-	const chartOption = (0, react.useMemo)(() => {
-		const optionProps = {
-			data: data || [],
-			xField,
-			yField,
-			theme,
-			colorPalette,
-			backgroundColor,
-			title,
-			subtitle,
-			titlePosition,
-			pointSize,
-			pointShape,
-			pointOpacity,
-			animate,
-			animationDuration,
-			customOption
-		};
-		if (sizeField) optionProps.sizeField = sizeField;
-		if (colorField) optionProps.colorField = colorField;
-		if (seriesField) optionProps.seriesField = seriesField;
-		if (series) optionProps.series = series;
-		if (xAxis) optionProps.xAxis = xAxis;
-		if (yAxis) optionProps.yAxis = yAxis;
-		if (legend) optionProps.legend = legend;
-		if (tooltip) optionProps.tooltip = tooltip;
-		if (showTrendline) optionProps.showTrendline = showTrendline;
-		if (trendlineType) optionProps.trendlineType = trendlineType;
-		return buildScatterChartOption(optionProps);
-	}, [
-		data,
-		xField,
-		yField,
-		sizeField,
-		colorField,
-		seriesField,
-		series,
-		theme,
-		colorPalette,
-		backgroundColor,
-		title,
-		subtitle,
-		titlePosition,
-		pointSize,
-		pointShape,
-		pointOpacity,
-		xAxis,
-		yAxis,
-		legend,
-		tooltip,
-		showTrendline,
-		trendlineType,
-		animate,
-		animationDuration,
-		customOption
-	]);
-	const { containerRef, loading: chartLoading, error, getEChartsInstance, resize, showLoading, hideLoading } = useECharts({
-		option: chartOption,
-		theme,
-		loading,
-		onChartReady
+const ScatterChart = (0, react.forwardRef)((props, ref) => {
+	const { className } = props;
+	const buildOption = (0, react.useMemo)(() => buildScatterChartOption, []);
+	const { containerRef, containerStyle, domProps, refMethods, renderError, renderLoading, error } = useChartComponent({
+		props,
+		buildOption,
+		chartType: "scatter"
 	});
-	const chartInstance = getEChartsInstance();
-	const { handleLegendClick, handleSeriesClick } = useLegendDoubleClick({
-		chartInstance,
-		onLegendDoubleClick,
-		onSeriesDoubleClick,
-		delay: legendDoubleClickDelay || 300,
-		enableAutoSelection: enableLegendDoubleClickSelection
-	});
-	const chartEvents = (0, react.useMemo)(() => {
-		const events = {};
-		if (onDataPointClick) events.click = (params, chart) => {
-			onDataPointClick(params, {
-				chart,
-				event: params
-			});
-		};
-		if (onSeriesDoubleClick || enableLegendDoubleClickSelection) {
-			const existingClick = events.click;
-			events.click = (params, chart) => {
-				if (existingClick) existingClick(params, chart);
-				handleSeriesClick(params);
-			};
-		} else if (!onDataPointClick) events.click = (params) => {
-			handleSeriesClick(params);
-		};
-		if (onDataPointHover) events.mouseover = (params, chart) => {
-			onDataPointHover(params, {
-				chart,
-				event: params
-			});
-		};
-		if (onLegendDoubleClick || enableLegendDoubleClickSelection) events.legendselectchanged = (params) => {
-			handleLegendClick(params);
-		};
-		return events;
-	}, [
-		onDataPointClick,
-		onDataPointHover,
-		onLegendDoubleClick,
-		onSeriesDoubleClick,
-		enableLegendDoubleClickSelection,
-		handleLegendClick,
-		handleSeriesClick
-	]);
-	(0, react.useEffect)(() => {
-		if (!chartInstance || Object.keys(chartEvents).length === 0) return;
-		const eventHandlers = [];
-		Object.entries(chartEvents).forEach(([event, handler]) => {
-			chartInstance.on(event, handler);
-			eventHandlers.push([event, handler]);
-		});
-		return () => {
-			eventHandlers.forEach(([event, handler]) => {
-				chartInstance.off(event, handler);
-			});
-		};
-	}, [chartInstance, chartEvents]);
-	const exportImage = (format = "png") => {
-		const chart = getEChartsInstance();
-		if (!chart) return "";
-		return chart.getDataURL({
-			type: format,
-			pixelRatio: 2,
-			backgroundColor: backgroundColor || "#fff"
-		});
-	};
-	const highlight = (dataIndex, seriesIndex = 0) => {
-		const chart = getEChartsInstance();
-		if (!chart) return;
-		chart.dispatchAction({
-			type: "highlight",
-			seriesIndex,
-			dataIndex
-		});
-	};
-	const clearHighlight = () => {
-		const chart = getEChartsInstance();
-		if (!chart) return;
-		chart.dispatchAction({ type: "downplay" });
-	};
-	const updateData = (newData) => {
-		const chart = getEChartsInstance();
-		if (!chart) return;
-		const optionProps = {
-			data: newData,
-			xField,
-			yField,
-			theme,
-			colorPalette,
-			backgroundColor,
-			title,
-			subtitle,
-			titlePosition,
-			pointSize,
-			pointShape,
-			pointOpacity,
-			animate,
-			animationDuration,
-			customOption
-		};
-		if (sizeField) optionProps.sizeField = sizeField;
-		if (colorField) optionProps.colorField = colorField;
-		if (seriesField) optionProps.seriesField = seriesField;
-		if (series) optionProps.series = series;
-		if (xAxis) optionProps.xAxis = xAxis;
-		if (yAxis) optionProps.yAxis = yAxis;
-		if (legend) optionProps.legend = legend;
-		if (tooltip) optionProps.tooltip = tooltip;
-		if (showTrendline) optionProps.showTrendline = showTrendline;
-		if (trendlineType) optionProps.trendlineType = trendlineType;
-		const newOption = buildScatterChartOption(optionProps);
-		chart.setOption(newOption);
-	};
-	(0, react.useImperativeHandle)(ref, () => ({
-		getChart: getEChartsInstance,
-		exportImage,
-		resize,
-		showLoading: () => showLoading(),
-		hideLoading,
-		highlight,
-		clearHighlight,
-		updateData
-	}), [
-		getEChartsInstance,
-		exportImage,
-		resize,
-		showLoading,
-		hideLoading,
-		highlight,
-		clearHighlight,
-		updateData
-	]);
-	if (error) return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-		className: `aqc-charts-error ${className || ""}`,
-		style: {
-			width,
-			height,
-			display: "flex",
-			alignItems: "center",
-			justifyContent: "center",
-			color: "#ff4d4f",
-			fontSize: "14px",
-			border: "1px dashed #ff4d4f",
-			borderRadius: "4px",
-			...style
-		},
-		children: ["Error: ", error.message || "Failed to render chart"]
-	});
-	const containerStyle = (0, react.useMemo)(() => ({
-		width,
-		height,
-		minWidth: typeof width === "string" && width.includes("%") ? "300px" : void 0,
-		minHeight: "300px",
-		position: "relative",
-		...style
-	}), [
-		width,
-		height,
-		style
-	]);
+	(0, react.useImperativeHandle)(ref, () => refMethods, [refMethods]);
+	if (error) return renderError();
 	return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 		className: `aqc-charts-container ${className || ""}`,
 		style: containerStyle,
@@ -4943,367 +2849,39 @@ const ScatterChart = (0, react.forwardRef)(({ width = "100%", height = 400, clas
 				width: "100%",
 				height: "100%"
 			}
-		}), (chartLoading || loading) && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-			className: "aqc-charts-loading",
-			style: {
-				position: "absolute",
-				top: 0,
-				left: 0,
-				right: 0,
-				bottom: 0,
-				display: "flex",
-				alignItems: "center",
-				justifyContent: "center",
-				backgroundColor: "rgba(255, 255, 255, 0.8)",
-				fontSize: "14px",
-				color: "#666"
-			},
-			children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
-				className: "aqc-charts-spinner",
-				style: {
-					width: "20px",
-					height: "20px",
-					border: "2px solid #f3f3f3",
-					borderTop: "2px solid #1890ff",
-					borderRadius: "50%",
-					animation: "spin 1s linear infinite",
-					marginRight: "8px"
-				}
-			}), "Loading..."]
-		})]
+		}), renderLoading()]
 	});
 });
 ScatterChart.displayName = "ScatterChart";
 
 //#endregion
 //#region src/components/StackedAreaChart.tsx
-const StackedAreaChart = (0, react.forwardRef)(({ width = "100%", height = 400, className, style, data, xField = "x", yField = "y", seriesField, series, seriesConfig, theme = "light", colorPalette, backgroundColor, title, subtitle, titlePosition = "center", logo, stacked = true, stackType = "normal", opacity = .7, smooth = false, strokeWidth = 2, strokeStyle = "solid", showPoints = false, pointSize = 4, pointShape = "circle", areaOpacity = .3, areaGradient = true, xAxis, yAxis, legend, tooltip, zoom = false, pan = false, brush = false, loading = false, disabled: _disabled = false, animate = true, animationDuration, onChartReady, onDataPointClick, onDataPointHover, onLegendDoubleClick, onSeriesDoubleClick, legendDoubleClickDelay, enableLegendDoubleClickSelection = true, customOption, responsive: _responsive = true,...restProps }, ref) => {
-	const domProps = filterDOMProps(restProps);
-	const chartOption = (0, react.useMemo)(() => {
-		return buildStackedAreaChartOption({
-			data: data || void 0,
-			xField,
-			yField,
-			seriesField,
-			series,
-			seriesConfig,
-			theme,
-			colorPalette,
-			backgroundColor,
-			title,
-			subtitle,
-			titlePosition,
-			...logo && { logo },
-			...width && { width },
-			...height && { height },
-			stacked,
-			stackType,
-			opacity,
-			smooth,
-			strokeWidth,
-			strokeStyle,
-			showPoints,
-			pointSize,
-			pointShape,
-			areaOpacity,
-			areaGradient,
-			xAxis: xAxis || void 0,
-			yAxis: yAxis || void 0,
-			legend,
-			tooltip,
-			zoom,
-			pan,
-			brush,
-			animate,
-			animationDuration,
-			customOption
-		});
-	}, [
-		data,
-		xField,
-		yField,
-		seriesField,
-		series,
-		seriesConfig,
-		theme,
-		colorPalette,
-		backgroundColor,
-		title,
-		subtitle,
-		titlePosition,
-		logo,
-		width,
-		height,
-		stacked,
-		stackType,
-		opacity,
-		smooth,
-		strokeWidth,
-		strokeStyle,
-		showPoints,
-		pointSize,
-		pointShape,
-		areaOpacity,
-		areaGradient,
-		xAxis,
-		yAxis,
-		legend,
-		tooltip,
-		zoom,
-		pan,
-		brush,
-		animate,
-		animationDuration,
-		customOption
-	]);
-	const { containerRef, loading: chartLoading, error, getEChartsInstance, resize, showLoading, hideLoading } = useECharts({
-		option: chartOption,
-		theme,
-		loading,
-		onChartReady
+/**
+* Ergonomic StackedAreaChart component with intuitive props
+*
+* @example
+* // Simple stacked area chart
+* <StackedAreaChart
+*   data={[
+*     { month: 'Jan', sales: 100, costs: 60 },
+*     { month: 'Feb', sales: 120, costs: 70 },
+*     { month: 'Mar', sales: 110, costs: 65 }
+*   ]}
+*   xField="month"
+*   yField={['sales', 'costs']}
+*   stacked
+* />
+*/
+const StackedAreaChart = (0, react.forwardRef)((props, ref) => {
+	const { className } = props;
+	const buildOption = (0, react.useMemo)(() => buildStackedAreaChartOption, []);
+	const { containerRef, containerStyle, domProps, refMethods, renderError, renderLoading, error } = useChartComponent({
+		props,
+		buildOption,
+		chartType: "stacked-area"
 	});
-	const chartInstance = getEChartsInstance();
-	const { handleLegendClick, handleSeriesClick } = useLegendDoubleClick({
-		chartInstance,
-		onLegendDoubleClick,
-		onSeriesDoubleClick,
-		delay: legendDoubleClickDelay || 300,
-		enableAutoSelection: enableLegendDoubleClickSelection
-	});
-	const chartEvents = (0, react.useMemo)(() => {
-		const events = {};
-		if (onDataPointClick) events.click = (params, chart) => {
-			onDataPointClick(params, {
-				chart,
-				event: params
-			});
-		};
-		if (onSeriesDoubleClick || enableLegendDoubleClickSelection) {
-			const existingClick = events.click;
-			events.click = (params, chart) => {
-				if (existingClick) existingClick(params, chart);
-				const activeChart = chart || chartInstance;
-				if (activeChart) try {
-					const option = activeChart.getOption();
-					const enhancedParams = {
-						...params,
-						seriesName: params.seriesName || params.name || option.series?.[params.seriesIndex]?.name
-					};
-					handleSeriesClick(enhancedParams);
-				} catch (_error) {
-					handleSeriesClick(params);
-				}
-				else handleSeriesClick(params);
-			};
-		} else if (!onDataPointClick) events.click = (params, chart) => {
-			const activeChart = chart || chartInstance;
-			if (activeChart) try {
-				const option = activeChart.getOption();
-				const enhancedParams = {
-					...params,
-					seriesName: params.seriesName || params.name || option.series?.[params.seriesIndex]?.name
-				};
-				handleSeriesClick(enhancedParams);
-			} catch (_error) {
-				handleSeriesClick(params);
-			}
-			else handleSeriesClick(params);
-		};
-		if (onDataPointHover) events.mouseover = (params, chart) => {
-			onDataPointHover(params, {
-				chart,
-				event: params
-			});
-		};
-		if (onLegendDoubleClick || enableLegendDoubleClickSelection) events.legendselectchanged = (params) => {
-			handleLegendClick(params);
-		};
-		return events;
-	}, [
-		onDataPointClick,
-		onDataPointHover,
-		onLegendDoubleClick,
-		onSeriesDoubleClick,
-		enableLegendDoubleClickSelection,
-		handleLegendClick,
-		handleSeriesClick
-	]);
-	(0, react.useEffect)(() => {
-		if (!chartInstance || Object.keys(chartEvents).length === 0) return;
-		const eventHandlers = [];
-		Object.entries(chartEvents).forEach(([event, handler]) => {
-			chartInstance.on(event, handler);
-			eventHandlers.push([event, handler]);
-		});
-		return () => {
-			eventHandlers.forEach(([event, handler]) => {
-				chartInstance.off(event, handler);
-			});
-		};
-	}, [chartInstance, chartEvents]);
-	const exportImage = (format = "png", opts) => {
-		const chart = getEChartsInstance();
-		if (!chart) return "";
-		if (logo?.onSaveOnly) {
-			const currentOption = chart.getOption();
-			const chartWidth = typeof width === "number" ? width : 600;
-			const chartHeight = typeof height === "number" ? height : 400;
-			const logoGraphic = {
-				type: "image",
-				style: {
-					image: logo.src,
-					x: logo.x !== void 0 ? logo.x : logo.position === "bottom-right" ? chartWidth - (logo.width || 100) - 10 : 10,
-					y: logo.y !== void 0 ? logo.y : logo.position === "bottom-right" ? chartHeight - (logo.height || 50) - 10 : 10,
-					width: logo.width || 100,
-					height: logo.height || 50,
-					opacity: logo.opacity || 1
-				},
-				z: 1e3,
-				silent: true
-			};
-			const optionWithLogo = {
-				...currentOption,
-				graphic: [...Array.isArray(currentOption.graphic) ? currentOption.graphic : currentOption.graphic ? [currentOption.graphic] : [], logoGraphic]
-			};
-			chart.setOption(optionWithLogo, {
-				notMerge: false,
-				lazyUpdate: false
-			});
-			const dataURL = chart.getDataURL({
-				type: format,
-				pixelRatio: opts?.pixelRatio || 2,
-				backgroundColor: opts?.backgroundColor || backgroundColor || "#fff",
-				...opts?.excludeComponents && { excludeComponents: opts.excludeComponents }
-			});
-			const filteredGraphics = Array.isArray(currentOption.graphic) ? currentOption.graphic.filter((g) => g.type !== "image") : currentOption.graphic && currentOption.graphic.type !== "image" ? [currentOption.graphic] : [];
-			const optionWithoutLogo = {
-				...currentOption,
-				graphic: filteredGraphics.length > 0 ? filteredGraphics : void 0
-			};
-			chart.setOption(optionWithoutLogo, {
-				notMerge: false,
-				lazyUpdate: false
-			});
-			return dataURL;
-		}
-		return chart.getDataURL({
-			type: format,
-			pixelRatio: opts?.pixelRatio || 2,
-			backgroundColor: opts?.backgroundColor || backgroundColor || "#fff",
-			...opts?.excludeComponents && { excludeComponents: opts.excludeComponents }
-		});
-	};
-	const saveAsImage = (filename, opts) => {
-		const dataURL = exportImage(opts?.type || "png", opts);
-		if (!dataURL) return;
-		const link = document.createElement("a");
-		link.download = filename || `stacked-area-chart.${opts?.type || "png"}`;
-		link.href = dataURL;
-		document.body.appendChild(link);
-		link.click();
-		document.body.removeChild(link);
-	};
-	const highlight = (dataIndex, seriesIndex = 0) => {
-		const chart = getEChartsInstance();
-		if (!chart) return;
-		chart.dispatchAction({
-			type: "highlight",
-			seriesIndex,
-			dataIndex
-		});
-	};
-	const clearHighlight = () => {
-		const chart = getEChartsInstance();
-		if (!chart) return;
-		chart.dispatchAction({ type: "downplay" });
-	};
-	const updateData = (newData) => {
-		const chart = getEChartsInstance();
-		if (!chart) return;
-		const newOption = buildStackedAreaChartOption({
-			data: newData,
-			xField,
-			yField,
-			seriesField: seriesField || void 0,
-			series,
-			seriesConfig,
-			theme,
-			colorPalette,
-			backgroundColor,
-			title,
-			subtitle,
-			titlePosition,
-			stacked,
-			stackType,
-			opacity,
-			smooth,
-			strokeWidth,
-			strokeStyle,
-			showPoints,
-			pointSize,
-			pointShape,
-			areaOpacity,
-			areaGradient,
-			xAxis: xAxis || void 0,
-			yAxis: yAxis || void 0,
-			legend,
-			tooltip,
-			zoom,
-			pan,
-			brush,
-			animate,
-			animationDuration,
-			customOption
-		});
-		chart.setOption(newOption);
-	};
-	(0, react.useImperativeHandle)(ref, () => ({
-		getChart: getEChartsInstance,
-		exportImage,
-		saveAsImage,
-		resize,
-		showLoading: () => showLoading(),
-		hideLoading,
-		highlight,
-		clearHighlight,
-		updateData
-	}), [
-		getEChartsInstance,
-		exportImage,
-		saveAsImage,
-		resize,
-		showLoading,
-		hideLoading,
-		highlight,
-		clearHighlight,
-		updateData
-	]);
-	if (error) return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-		className: `aqc-charts-error ${className || ""}`,
-		style: {
-			width,
-			height,
-			display: "flex",
-			alignItems: "center",
-			justifyContent: "center",
-			color: "#ff4d4f",
-			fontSize: "14px",
-			border: "1px dashed #ff4d4f",
-			borderRadius: "4px",
-			...style
-		},
-		children: ["Error: ", error.message || "Failed to render chart"]
-	});
-	const containerStyle = (0, react.useMemo)(() => ({
-		width,
-		height,
-		position: "relative",
-		...style
-	}), [
-		width,
-		height,
-		style
-	]);
+	(0, react.useImperativeHandle)(ref, () => refMethods, [refMethods]);
+	if (error) return renderError();
 	return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 		className: `aqc-charts-container ${className || ""}`,
 		style: containerStyle,
@@ -5314,34 +2892,7 @@ const StackedAreaChart = (0, react.forwardRef)(({ width = "100%", height = 400, 
 				width: "100%",
 				height: "100%"
 			}
-		}), (chartLoading || loading) && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-			className: "aqc-charts-loading",
-			style: {
-				position: "absolute",
-				top: 0,
-				left: 0,
-				right: 0,
-				bottom: 0,
-				display: "flex",
-				alignItems: "center",
-				justifyContent: "center",
-				backgroundColor: "rgba(255, 255, 255, 0.8)",
-				fontSize: "14px",
-				color: "#666"
-			},
-			children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
-				className: "aqc-charts-spinner",
-				style: {
-					width: "20px",
-					height: "20px",
-					border: "2px solid #f3f3f3",
-					borderTop: "2px solid #1890ff",
-					borderRadius: "50%",
-					animation: "spin 1s linear infinite",
-					marginRight: "8px"
-				}
-			}), "Loading..."]
-		})]
+		}), renderLoading()]
 	});
 });
 StackedAreaChart.displayName = "StackedAreaChart";
@@ -5350,7 +2901,7 @@ StackedAreaChart.displayName = "StackedAreaChart";
 //#region src/components/CombinedChart.tsx
 /**
 * Combined Chart component that can mix line and bar series in the same visualization
-* 
+*
 * @example
 * // Combined chart with sales bars and temperature line
 * <CombinedChart
@@ -5369,7 +2920,7 @@ StackedAreaChart.displayName = "StackedAreaChart";
 *     { name: 'Temperature (°C)', position: 'right' }
 *   ]}
 * />
-* 
+*
 * @example
 * // Simple combined chart with default styling
 * <CombinedChart
@@ -5381,208 +2932,38 @@ StackedAreaChart.displayName = "StackedAreaChart";
 *   ]}
 * />
 */
-const CombinedChart = (0, react.forwardRef)(({ width = "100%", height = 400, className, style, data, xField = "x", series = [], theme = "light", colorPalette, backgroundColor, title, subtitle, titlePosition = "center", xAxis, yAxis = [{ type: "value" }], legend, tooltip, zoom = false, pan = false, brush = false, loading = false, disabled: _disabled = false, animate = true, animationDuration, onChartReady, onDataPointClick, onDataPointHover, onLegendDoubleClick, onSeriesDoubleClick, legendDoubleClickDelay, enableLegendDoubleClickSelection = true, customOption, responsive: _responsive = true,...restProps }, ref) => {
-	const domProps = filterDOMProps(restProps);
-	const chartOption = (0, react.useMemo)(() => {
+const CombinedChart = (0, react.forwardRef)((props, ref) => {
+	const { className } = props;
+	const buildOption = (0, react.useCallback)((chartProps) => {
 		return buildCombinedChartOption({
-			data: data || [],
-			xField,
-			series,
-			theme,
-			colorPalette,
-			backgroundColor,
-			title,
-			subtitle,
-			titlePosition,
-			xAxis: xAxis || void 0,
-			yAxis: yAxis || [{ type: "value" }],
-			legend,
-			tooltip,
-			zoom,
-			pan,
-			brush,
-			animate,
-			animationDuration,
-			customOption
+			data: chartProps.data || [],
+			xField: chartProps.xField || "x",
+			series: chartProps.series || [],
+			theme: chartProps.theme,
+			colorPalette: chartProps.colorPalette,
+			backgroundColor: chartProps.backgroundColor,
+			title: chartProps.title,
+			subtitle: chartProps.subtitle,
+			titlePosition: chartProps.titlePosition,
+			xAxis: chartProps.xAxis,
+			yAxis: chartProps.yAxis,
+			legend: chartProps.legend,
+			tooltip: chartProps.tooltip,
+			zoom: chartProps.zoom,
+			pan: chartProps.pan,
+			brush: chartProps.brush,
+			animate: chartProps.animate,
+			animationDuration: chartProps.animationDuration,
+			customOption: chartProps.customOption
 		});
-	}, [
-		data,
-		xField,
-		series,
-		theme,
-		colorPalette,
-		backgroundColor,
-		title,
-		subtitle,
-		titlePosition,
-		xAxis,
-		yAxis,
-		legend,
-		tooltip,
-		zoom,
-		pan,
-		brush,
-		animate,
-		animationDuration,
-		customOption
-	]);
-	const { containerRef, loading: chartLoading, error, getEChartsInstance, resize, showLoading, hideLoading } = useECharts({
-		option: chartOption,
-		theme,
-		loading,
-		onChartReady
+	}, []);
+	const { containerRef, containerStyle, domProps, refMethods, renderError, renderLoading, error } = useChartComponent({
+		props,
+		buildOption,
+		chartType: "combined"
 	});
-	const chartInstance = getEChartsInstance();
-	const { handleLegendClick, handleSeriesClick } = useLegendDoubleClick({
-		chartInstance,
-		onLegendDoubleClick,
-		onSeriesDoubleClick,
-		delay: legendDoubleClickDelay || 300,
-		enableAutoSelection: enableLegendDoubleClickSelection || false
-	});
-	const chartEvents = (0, react.useMemo)(() => {
-		const events = {};
-		if (onDataPointClick) events.click = (params, chart) => {
-			onDataPointClick(params, {
-				chart,
-				event: params
-			});
-		};
-		if (onSeriesDoubleClick || enableLegendDoubleClickSelection) {
-			const existingClick = events.click;
-			events.click = (params, chart) => {
-				if (existingClick) existingClick(params, chart);
-				handleSeriesClick(params);
-			};
-		} else if (!onDataPointClick) events.click = (params) => {
-			handleSeriesClick(params);
-		};
-		if (onDataPointHover) events.mouseover = (params, chart) => {
-			onDataPointHover(params, {
-				chart,
-				event: params
-			});
-		};
-		if (onLegendDoubleClick || enableLegendDoubleClickSelection) events.legendselectchanged = (params) => {
-			handleLegendClick(params);
-		};
-		return events;
-	}, [
-		onDataPointClick,
-		onDataPointHover,
-		onLegendDoubleClick,
-		onSeriesDoubleClick,
-		enableLegendDoubleClickSelection,
-		handleLegendClick,
-		handleSeriesClick
-	]);
-	(0, react.useEffect)(() => {
-		if (!chartInstance || Object.keys(chartEvents).length === 0) return;
-		const eventHandlers = [];
-		Object.entries(chartEvents).forEach(([event, handler]) => {
-			chartInstance.on(event, handler);
-			eventHandlers.push([event, handler]);
-		});
-		return () => {
-			eventHandlers.forEach(([event, handler]) => {
-				chartInstance.off(event, handler);
-			});
-		};
-	}, [chartInstance, chartEvents]);
-	const exportImage = (format = "png") => {
-		const chart = getEChartsInstance();
-		if (!chart) return "";
-		return chart.getDataURL({
-			type: format,
-			pixelRatio: 2,
-			backgroundColor: backgroundColor || "#fff"
-		});
-	};
-	const highlight = (dataIndex, seriesIndex = 0) => {
-		const chart = getEChartsInstance();
-		if (!chart) return;
-		chart.dispatchAction({
-			type: "highlight",
-			seriesIndex,
-			dataIndex
-		});
-	};
-	const clearHighlight = () => {
-		const chart = getEChartsInstance();
-		if (!chart) return;
-		chart.dispatchAction({ type: "downplay" });
-	};
-	const updateData = (newData) => {
-		const chart = getEChartsInstance();
-		if (!chart) return;
-		const newOption = buildCombinedChartOption({
-			data: newData,
-			xField,
-			series,
-			theme,
-			colorPalette,
-			backgroundColor,
-			title,
-			subtitle,
-			titlePosition,
-			xAxis: xAxis || void 0,
-			yAxis: yAxis || [{ type: "value" }],
-			legend,
-			tooltip,
-			zoom,
-			pan,
-			brush,
-			animate,
-			animationDuration,
-			customOption
-		});
-		chart.setOption(newOption);
-	};
-	(0, react.useImperativeHandle)(ref, () => ({
-		getChart: getEChartsInstance,
-		exportImage,
-		resize,
-		showLoading: () => showLoading(),
-		hideLoading,
-		highlight,
-		clearHighlight,
-		updateData
-	}), [
-		getEChartsInstance,
-		exportImage,
-		resize,
-		showLoading,
-		hideLoading,
-		highlight,
-		clearHighlight,
-		updateData
-	]);
-	if (error) return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-		className: `aqc-charts-error ${className || ""}`,
-		style: {
-			width,
-			height,
-			display: "flex",
-			alignItems: "center",
-			justifyContent: "center",
-			color: "#ff4d4f",
-			fontSize: "14px",
-			border: "1px dashed #ff4d4f",
-			borderRadius: "4px",
-			...style
-		},
-		children: ["Error: ", error.message || "Failed to render chart"]
-	});
-	const containerStyle = (0, react.useMemo)(() => ({
-		width,
-		height,
-		position: "relative",
-		...style
-	}), [
-		width,
-		height,
-		style
-	]);
+	(0, react.useImperativeHandle)(ref, () => refMethods, [refMethods]);
+	if (error) return renderError();
 	return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 		className: `aqc-charts-container ${className || ""}`,
 		style: containerStyle,
@@ -5593,34 +2974,7 @@ const CombinedChart = (0, react.forwardRef)(({ width = "100%", height = 400, cla
 				width: "100%",
 				height: "100%"
 			}
-		}), (chartLoading || loading) && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-			className: "aqc-charts-loading",
-			style: {
-				position: "absolute",
-				top: 0,
-				left: 0,
-				right: 0,
-				bottom: 0,
-				display: "flex",
-				alignItems: "center",
-				justifyContent: "center",
-				backgroundColor: "rgba(255, 255, 255, 0.8)",
-				fontSize: "14px",
-				color: "#666"
-			},
-			children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
-				className: "aqc-charts-spinner",
-				style: {
-					width: "20px",
-					height: "20px",
-					border: "2px solid #f3f3f3",
-					borderTop: "2px solid #1890ff",
-					borderRadius: "50%",
-					animation: "spin 1s linear infinite",
-					marginRight: "8px"
-				}
-			}), "Loading..."]
-		})]
+		}), renderLoading()]
 	});
 });
 CombinedChart.displayName = "CombinedChart";
@@ -5630,7 +2984,7 @@ CombinedChart.displayName = "CombinedChart";
 /**
 * Ergonomic ClusterChart component with intuitive props
 * Uses K-means clustering to automatically group data points and visualize clusters
-* 
+*
 * @example
 * // Simple cluster chart with object data
 * <ClusterChart
@@ -5644,7 +2998,7 @@ CombinedChart.displayName = "CombinedChart";
 *   yField="y"
 *   clusterCount={2}
 * />
-* 
+*
 * @example
 * // Advanced clustering with custom styling
 * <ClusterChart
@@ -5660,233 +3014,16 @@ CombinedChart.displayName = "CombinedChart";
 *   visualMapPosition="right"
 * />
 */
-const ClusterChart = (0, react.forwardRef)(({ width = "100%", height = 400, className, style, data, xField = "x", yField = "y", nameField, clusterCount = 6, clusterMethod = "kmeans", theme = "light", colorPalette, backgroundColor, title, subtitle, titlePosition = "center", pointSize = 15, pointOpacity = .8, showClusterCenters = false, centerSymbol = "diamond", centerSize = 20, clusterColors, showVisualMap = true, visualMapPosition = "left", xAxis, yAxis, legend, tooltip, loading = false, disabled: _disabled = false, animate = true, animationDuration, onChartReady, onDataPointClick, onDataPointHover, onLegendDoubleClick, onSeriesDoubleClick, legendDoubleClickDelay, enableLegendDoubleClickSelection = true, customOption, responsive: _responsive = true,...restProps }, ref) => {
-	const domProps = filterDOMProps(restProps);
-	const dataKey = (0, react.useMemo)(() => JSON.stringify(data), [data]);
-	const chartOption = (0, react.useMemo)(() => {
-		const optionProps = {
-			data: data || [],
-			xField,
-			yField,
-			nameField,
-			clusterCount,
-			clusterMethod,
-			theme,
-			colorPalette: clusterColors || colorPalette,
-			backgroundColor,
-			title,
-			subtitle,
-			titlePosition,
-			pointSize,
-			pointOpacity,
-			showClusterCenters,
-			centerSymbol,
-			centerSize,
-			showVisualMap,
-			visualMapPosition,
-			animate,
-			animationDuration,
-			customOption
-		};
-		if (xAxis) optionProps.xAxis = xAxis;
-		if (yAxis) optionProps.yAxis = yAxis;
-		if (legend) optionProps.legend = legend;
-		if (tooltip) optionProps.tooltip = tooltip;
-		return buildClusterChartOption(optionProps);
-	}, [
-		dataKey,
-		xField,
-		yField,
-		nameField,
-		clusterCount,
-		clusterMethod,
-		theme,
-		clusterColors,
-		colorPalette,
-		backgroundColor,
-		title,
-		subtitle,
-		titlePosition,
-		pointSize,
-		pointOpacity,
-		showClusterCenters,
-		centerSymbol,
-		centerSize,
-		showVisualMap,
-		visualMapPosition,
-		xAxis,
-		yAxis,
-		legend,
-		tooltip,
-		animate,
-		animationDuration,
-		customOption
-	]);
-	const { containerRef, loading: chartLoading, error, getEChartsInstance, resize, showLoading, hideLoading } = useECharts({
-		option: chartOption,
-		theme,
-		loading,
-		onChartReady
+const ClusterChart = (0, react.forwardRef)((props, ref) => {
+	const { className } = props;
+	const buildOption = (0, react.useMemo)(() => buildClusterChartOption, []);
+	const { containerRef, containerStyle, domProps, refMethods, renderError, renderLoading, error } = useChartComponent({
+		props,
+		buildOption,
+		chartType: "cluster"
 	});
-	const chartInstance = getEChartsInstance();
-	const { handleLegendClick, handleSeriesClick } = useLegendDoubleClick({
-		chartInstance,
-		onLegendDoubleClick,
-		onSeriesDoubleClick,
-		delay: legendDoubleClickDelay || 300,
-		enableAutoSelection: enableLegendDoubleClickSelection
-	});
-	const chartEvents = (0, react.useMemo)(() => {
-		const events = {};
-		if (onDataPointClick) events.click = (params, chart) => {
-			onDataPointClick(params, {
-				chart,
-				event: params
-			});
-		};
-		if (onSeriesDoubleClick || enableLegendDoubleClickSelection) {
-			const existingClick = events.click;
-			events.click = (params, chart) => {
-				if (existingClick) existingClick(params, chart);
-				handleSeriesClick(params);
-			};
-		} else if (!onDataPointClick) events.click = (params) => {
-			handleSeriesClick(params);
-		};
-		if (onDataPointHover) events.mouseover = (params, chart) => {
-			onDataPointHover(params, {
-				chart,
-				event: params
-			});
-		};
-		if (onLegendDoubleClick || enableLegendDoubleClickSelection) events.legendselectchanged = (params) => {
-			handleLegendClick(params);
-		};
-		return events;
-	}, [
-		onDataPointClick,
-		onDataPointHover,
-		onLegendDoubleClick,
-		onSeriesDoubleClick,
-		enableLegendDoubleClickSelection,
-		handleLegendClick,
-		handleSeriesClick
-	]);
-	(0, react.useEffect)(() => {
-		if (!chartInstance || Object.keys(chartEvents).length === 0) return;
-		const eventHandlers = [];
-		Object.entries(chartEvents).forEach(([event, handler]) => {
-			chartInstance.on(event, handler);
-			eventHandlers.push([event, handler]);
-		});
-		return () => {
-			eventHandlers.forEach(([event, handler]) => {
-				chartInstance.off(event, handler);
-			});
-		};
-	}, [chartInstance, chartEvents]);
-	const exportImage = (format = "png") => {
-		const chart = getEChartsInstance();
-		if (!chart) return "";
-		return chart.getDataURL({
-			type: format,
-			pixelRatio: 2,
-			backgroundColor: backgroundColor || "#fff"
-		});
-	};
-	const highlight = (dataIndex, seriesIndex = 0) => {
-		const chart = getEChartsInstance();
-		if (!chart) return;
-		chart.dispatchAction({
-			type: "highlight",
-			seriesIndex,
-			dataIndex
-		});
-	};
-	const clearHighlight = () => {
-		const chart = getEChartsInstance();
-		if (!chart) return;
-		chart.dispatchAction({ type: "downplay" });
-	};
-	const updateData = (newData) => {
-		const chart = getEChartsInstance();
-		if (!chart) return;
-		const optionProps = {
-			data: newData,
-			xField,
-			yField,
-			nameField,
-			clusterCount,
-			clusterMethod,
-			theme,
-			colorPalette: clusterColors || colorPalette,
-			backgroundColor,
-			title,
-			subtitle,
-			titlePosition,
-			pointSize,
-			pointOpacity,
-			showClusterCenters,
-			centerSymbol,
-			centerSize,
-			showVisualMap,
-			visualMapPosition,
-			animate,
-			animationDuration,
-			customOption
-		};
-		if (xAxis) optionProps.xAxis = xAxis;
-		if (yAxis) optionProps.yAxis = yAxis;
-		if (legend) optionProps.legend = legend;
-		if (tooltip) optionProps.tooltip = tooltip;
-		const newOption = buildClusterChartOption(optionProps);
-		chart.setOption(newOption);
-	};
-	(0, react.useImperativeHandle)(ref, () => ({
-		getChart: getEChartsInstance,
-		exportImage,
-		resize,
-		showLoading: () => showLoading(),
-		hideLoading,
-		highlight,
-		clearHighlight,
-		updateData
-	}), [
-		getEChartsInstance,
-		exportImage,
-		resize,
-		showLoading,
-		hideLoading,
-		highlight,
-		clearHighlight,
-		updateData
-	]);
-	if (error) return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-		className: `aqc-charts-error ${className || ""}`,
-		style: {
-			width,
-			height,
-			display: "flex",
-			alignItems: "center",
-			justifyContent: "center",
-			color: "#ff4d4f",
-			fontSize: "14px",
-			border: "1px dashed #ff4d4f",
-			borderRadius: "4px",
-			...style
-		},
-		children: ["Error: ", error.message || "Failed to render chart"]
-	});
-	const containerStyle = (0, react.useMemo)(() => ({
-		width,
-		height,
-		position: "relative",
-		...style
-	}), [
-		width,
-		height,
-		style
-	]);
+	(0, react.useImperativeHandle)(ref, () => refMethods, [refMethods]);
+	if (error) return renderError();
 	return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 		className: `aqc-charts-container ${className || ""}`,
 		style: containerStyle,
@@ -5897,34 +3034,7 @@ const ClusterChart = (0, react.forwardRef)(({ width = "100%", height = 400, clas
 				width: "100%",
 				height: "100%"
 			}
-		}), (chartLoading || loading) && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-			className: "aqc-charts-loading",
-			style: {
-				position: "absolute",
-				top: 0,
-				left: 0,
-				right: 0,
-				bottom: 0,
-				display: "flex",
-				alignItems: "center",
-				justifyContent: "center",
-				backgroundColor: "rgba(255, 255, 255, 0.8)",
-				fontSize: "14px",
-				color: "#666"
-			},
-			children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
-				className: "aqc-charts-spinner",
-				style: {
-					width: "20px",
-					height: "20px",
-					border: "2px solid #f3f3f3",
-					borderTop: "2px solid #1890ff",
-					borderRadius: "50%",
-					animation: "spin 1s linear infinite",
-					marginRight: "8px"
-				}
-			}), "Loading..."]
-		})]
+		}), renderLoading()]
 	});
 });
 ClusterChart.displayName = "ClusterChart";
@@ -5933,7 +3043,7 @@ ClusterChart.displayName = "ClusterChart";
 //#region src/components/CalendarHeatmapChart.tsx
 /**
 * Ergonomic CalendarHeatmapChart component with intuitive props
-* 
+*
 * @example
 * // Simple calendar heatmap with object data
 * <CalendarHeatmapChart
@@ -5945,7 +3055,7 @@ ClusterChart.displayName = "ClusterChart";
 *   year={2023}
 *   colorScale={['#ebedf0', '#c6e48b', '#7bc96f', '#239a3b', '#196127']}
 * />
-* 
+*
 * @example
 * // Multi-year calendar heatmap with custom fields
 * <CalendarHeatmapChart
@@ -5956,7 +3066,7 @@ ClusterChart.displayName = "ClusterChart";
 *   showValues
 *   cellSize={[20, 20]}
 * />
-* 
+*
 * @example
 * // Calendar heatmap with custom styling
 * <CalendarHeatmapChart
@@ -5968,241 +3078,16 @@ ClusterChart.displayName = "ClusterChart";
 *   showWeekLabel={false}
 * />
 */
-const CalendarHeatmapChart = (0, react.forwardRef)(({ width = "100%", height = 400, className, style, data, dateField = "date", valueField = "value", theme = "light", colorPalette, backgroundColor, title, subtitle, titlePosition = "center", year, range, startOfWeek = "sunday", cellSize, colorScale, showWeekLabel = true, showMonthLabel = true, showYearLabel = true, valueFormat, showValues = false, cellBorderColor, cellBorderWidth, splitNumber, orient = "horizontal", monthGap, yearGap, legend, tooltip, loading = false, disabled: _disabled = false, animate = true, animationDuration, onChartReady, onDataPointClick, onDataPointHover, onLegendDoubleClick, onSeriesDoubleClick, legendDoubleClickDelay, enableLegendDoubleClickSelection = true, customOption, responsive: _responsive = true,...restProps }, ref) => {
-	const domProps = filterDOMProps(restProps);
-	const chartOption = (0, react.useMemo)(() => {
-		return buildCalendarHeatmapOption({
-			data: data || [],
-			dateField,
-			valueField,
-			theme,
-			colorPalette,
-			backgroundColor,
-			title,
-			subtitle,
-			titlePosition,
-			year,
-			range,
-			startOfWeek,
-			cellSize,
-			colorScale,
-			showWeekLabel,
-			showMonthLabel,
-			showYearLabel,
-			valueFormat,
-			showValues,
-			cellBorderColor,
-			cellBorderWidth,
-			splitNumber,
-			orient,
-			monthGap,
-			yearGap,
-			legend,
-			tooltip,
-			animate,
-			animationDuration,
-			customOption
-		});
-	}, [
-		data,
-		dateField,
-		valueField,
-		theme,
-		colorPalette,
-		backgroundColor,
-		title,
-		subtitle,
-		titlePosition,
-		year,
-		range,
-		startOfWeek,
-		cellSize,
-		colorScale,
-		showWeekLabel,
-		showMonthLabel,
-		showYearLabel,
-		valueFormat,
-		showValues,
-		cellBorderColor,
-		cellBorderWidth,
-		splitNumber,
-		orient,
-		monthGap,
-		yearGap,
-		legend,
-		tooltip,
-		animate,
-		animationDuration,
-		customOption
-	]);
-	const { containerRef, loading: chartLoading, error, getEChartsInstance, resize, showLoading, hideLoading } = useECharts({
-		option: chartOption,
-		theme,
-		loading,
-		onChartReady
+const CalendarHeatmapChart = (0, react.forwardRef)((props, ref) => {
+	const { className } = props;
+	const buildOption = (0, react.useMemo)(() => buildCalendarHeatmapOption, []);
+	const { containerRef, containerStyle, domProps, refMethods, renderError, renderLoading, error } = useChartComponent({
+		props,
+		buildOption,
+		chartType: "calendar-heatmap"
 	});
-	const chartInstance = getEChartsInstance();
-	const { handleLegendClick, handleSeriesClick } = useLegendDoubleClick({
-		chartInstance,
-		onLegendDoubleClick,
-		onSeriesDoubleClick,
-		delay: legendDoubleClickDelay || 300,
-		enableAutoSelection: enableLegendDoubleClickSelection
-	});
-	const chartEvents = (0, react.useMemo)(() => {
-		const events = {};
-		if (onDataPointClick) events.click = (params, chart) => {
-			onDataPointClick(params, {
-				chart,
-				event: params
-			});
-		};
-		if (onSeriesDoubleClick || enableLegendDoubleClickSelection) {
-			const existingClick = events.click;
-			events.click = (params, chart) => {
-				if (existingClick) existingClick(params, chart);
-				handleSeriesClick(params);
-			};
-		} else if (!onDataPointClick) events.click = (params) => {
-			handleSeriesClick(params);
-		};
-		if (onDataPointHover) events.mouseover = (params, chart) => {
-			onDataPointHover(params, {
-				chart,
-				event: params
-			});
-		};
-		if (onLegendDoubleClick || enableLegendDoubleClickSelection) events.legendselectchanged = (params) => {
-			handleLegendClick(params);
-		};
-		return events;
-	}, [
-		onDataPointClick,
-		onDataPointHover,
-		onLegendDoubleClick,
-		onSeriesDoubleClick,
-		enableLegendDoubleClickSelection,
-		handleLegendClick,
-		handleSeriesClick
-	]);
-	(0, react.useEffect)(() => {
-		if (!chartInstance || Object.keys(chartEvents).length === 0) return;
-		const eventHandlers = [];
-		Object.entries(chartEvents).forEach(([event, handler]) => {
-			chartInstance.on(event, handler);
-			eventHandlers.push([event, handler]);
-		});
-		return () => {
-			eventHandlers.forEach(([event, handler]) => {
-				chartInstance.off(event, handler);
-			});
-		};
-	}, [chartInstance, chartEvents]);
-	const exportImage = (format = "png") => {
-		const chart = getEChartsInstance();
-		if (!chart) return "";
-		return chart.getDataURL({
-			type: format,
-			pixelRatio: 2,
-			backgroundColor: backgroundColor || "#fff"
-		});
-	};
-	const highlight = (dataIndex, seriesIndex = 0) => {
-		const chart = getEChartsInstance();
-		if (!chart) return;
-		chart.dispatchAction({
-			type: "highlight",
-			seriesIndex,
-			dataIndex
-		});
-	};
-	const clearHighlight = () => {
-		const chart = getEChartsInstance();
-		if (!chart) return;
-		chart.dispatchAction({ type: "downplay" });
-	};
-	const updateData = (newData) => {
-		const chart = getEChartsInstance();
-		if (!chart) return;
-		const newOption = buildCalendarHeatmapOption({
-			data: newData,
-			dateField,
-			valueField,
-			theme,
-			colorPalette,
-			backgroundColor,
-			title,
-			subtitle,
-			titlePosition,
-			year,
-			range,
-			startOfWeek,
-			cellSize,
-			colorScale,
-			showWeekLabel,
-			showMonthLabel,
-			showYearLabel,
-			valueFormat,
-			showValues,
-			cellBorderColor,
-			cellBorderWidth,
-			splitNumber,
-			orient,
-			monthGap,
-			yearGap,
-			legend,
-			tooltip,
-			animate,
-			animationDuration,
-			customOption
-		});
-		chart.setOption(newOption);
-	};
-	(0, react.useImperativeHandle)(ref, () => ({
-		getChart: getEChartsInstance,
-		exportImage,
-		resize,
-		showLoading: () => showLoading(),
-		hideLoading,
-		highlight,
-		clearHighlight,
-		updateData
-	}), [
-		getEChartsInstance,
-		exportImage,
-		resize,
-		showLoading,
-		hideLoading,
-		highlight,
-		clearHighlight,
-		updateData
-	]);
-	if (error) return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-		className: `aqc-charts-error ${className || ""}`,
-		style: {
-			width,
-			height,
-			display: "flex",
-			alignItems: "center",
-			justifyContent: "center",
-			color: "#ff4d4f",
-			fontSize: "14px",
-			border: "1px dashed #ff4d4f",
-			borderRadius: "4px",
-			...style
-		},
-		children: ["Error: ", error.message || "Failed to render chart"]
-	});
-	const containerStyle = (0, react.useMemo)(() => ({
-		width,
-		height,
-		position: "relative",
-		...style
-	}), [
-		width,
-		height,
-		style
-	]);
+	(0, react.useImperativeHandle)(ref, () => refMethods, [refMethods]);
+	if (error) return renderError();
 	return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 		className: `aqc-charts-container ${className || ""}`,
 		style: containerStyle,
@@ -6213,34 +3098,7 @@ const CalendarHeatmapChart = (0, react.forwardRef)(({ width = "100%", height = 4
 				width: "100%",
 				height: "100%"
 			}
-		}), (chartLoading || loading) && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-			className: "aqc-charts-loading",
-			style: {
-				position: "absolute",
-				top: 0,
-				left: 0,
-				right: 0,
-				bottom: 0,
-				display: "flex",
-				alignItems: "center",
-				justifyContent: "center",
-				backgroundColor: "rgba(255, 255, 255, 0.8)",
-				fontSize: "14px",
-				color: "#666"
-			},
-			children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
-				className: "aqc-charts-spinner",
-				style: {
-					width: "20px",
-					height: "20px",
-					border: "2px solid #f3f3f3",
-					borderTop: "2px solid #1890ff",
-					borderRadius: "50%",
-					animation: "spin 1s linear infinite",
-					marginRight: "8px"
-				}
-			}), "Loading..."]
-		})]
+		}), renderLoading()]
 	});
 });
 CalendarHeatmapChart.displayName = "CalendarHeatmapChart";
@@ -6249,7 +3107,7 @@ CalendarHeatmapChart.displayName = "CalendarHeatmapChart";
 //#region src/components/SankeyChart.tsx
 /**
 * Ergonomic SankeyChart component with intuitive props
-* 
+*
 * @example
 * // Simple sankey chart with nodes and links data structure
 * <SankeyChart
@@ -6266,7 +3124,7 @@ CalendarHeatmapChart.displayName = "CalendarHeatmapChart";
 *   }}
 *   title="Flow Diagram"
 * />
-* 
+*
 * @example
 * // Sankey chart with flat data structure
 * <SankeyChart
@@ -6281,189 +3139,16 @@ CalendarHeatmapChart.displayName = "CalendarHeatmapChart";
 *   orient="horizontal"
 *   nodeAlign="left"
 * />
-* 
-* @example
-* // Highly customized sankey chart
-* <SankeyChart
-*   nodes={[
-*     { name: 'Revenue', value: 1000 },
-*     { name: 'Costs', value: 400 },
-*     { name: 'Profit', value: 600 }
-*   ]}
-*   links={[
-*     { source: 'Revenue', target: 'Costs', value: 400 },
-*     { source: 'Revenue', target: 'Profit', value: 600 }
-*   ]}
-*   nodeColors={['#5470c6', '#91cc75', '#fac858']}
-*   linkColors={['#ff6b6b', '#4ecdc4']}
-*   linkOpacity={0.8}
-*   linkCurveness={0.7}
-*   showNodeValues
-*   showLinkLabels
-* />
 */
-const SankeyChart = (0, react.forwardRef)(({ width = "100%", height = 400, className, style, data, sourceField = "source", targetField = "target", valueField = "value", nodeNameField, nodes, links, theme = "light", colorPalette, backgroundColor, title, subtitle, titlePosition = "center", layout = "none", orient = "horizontal", nodeAlign = "justify", nodeGap = 8, nodeWidth = 20, iterations = 32, nodeColors, showNodeValues = false, nodeLabels = true, nodeLabelPosition, linkColors, linkOpacity = .6, linkCurveness = .5, showLinkLabels = false, focusMode = "adjacency", blurScope, legend, tooltip, loading = false, disabled: _disabled = false, animate = true, animationDuration, onChartReady, onDataPointClick, onDataPointHover, onLegendDoubleClick, onSeriesDoubleClick, legendDoubleClickDelay, enableLegendDoubleClickSelection = true, customOption, responsive: _responsive = true,...restProps }, ref) => {
-	const domProps = filterDOMProps(restProps);
-	const chartOption = (0, react.useMemo)(() => {
-		return buildSankeyChartOption({
-			data: data || void 0,
-			sourceField,
-			targetField,
-			valueField,
-			nodeNameField,
-			nodes,
-			links,
-			theme,
-			colorPalette,
-			backgroundColor,
-			title,
-			subtitle,
-			titlePosition,
-			layout,
-			orient,
-			nodeAlign,
-			nodeGap,
-			nodeWidth,
-			iterations,
-			nodeColors,
-			showNodeValues,
-			nodeLabels,
-			nodeLabelPosition,
-			linkColors,
-			linkOpacity,
-			linkCurveness,
-			showLinkLabels,
-			focusMode,
-			blurScope,
-			legend,
-			tooltip,
-			animate,
-			animationDuration,
-			customOption
-		});
-	}, [
-		data,
-		sourceField,
-		targetField,
-		valueField,
-		nodeNameField,
-		nodes,
-		links,
-		theme,
-		colorPalette,
-		backgroundColor,
-		title,
-		subtitle,
-		titlePosition,
-		layout,
-		orient,
-		nodeAlign,
-		nodeGap,
-		nodeWidth,
-		iterations,
-		nodeColors,
-		showNodeValues,
-		nodeLabels,
-		nodeLabelPosition,
-		linkColors,
-		linkOpacity,
-		linkCurveness,
-		showLinkLabels,
-		focusMode,
-		blurScope,
-		legend,
-		tooltip,
-		animate,
-		animationDuration,
-		customOption
-	]);
-	const { containerRef, loading: chartLoading, error, getEChartsInstance, resize, showLoading, hideLoading } = useECharts({
-		option: chartOption,
-		theme,
-		loading,
-		onChartReady
+const SankeyChart = (0, react.forwardRef)((props, ref) => {
+	const { className } = props;
+	const buildOption = (0, react.useMemo)(() => buildSankeyChartOption, []);
+	const { containerRef, containerStyle, domProps, refMethods, renderError, renderLoading, error, getEChartsInstance } = useChartComponent({
+		props,
+		buildOption,
+		chartType: "sankey"
 	});
-	const chartInstance = getEChartsInstance();
-	const { handleLegendClick, handleSeriesClick } = useLegendDoubleClick({
-		chartInstance,
-		onLegendDoubleClick,
-		onSeriesDoubleClick,
-		delay: legendDoubleClickDelay || 300,
-		enableAutoSelection: enableLegendDoubleClickSelection
-	});
-	const chartEvents = (0, react.useMemo)(() => {
-		const events = {};
-		if (onDataPointClick) events.click = (params, chart) => {
-			onDataPointClick(params, {
-				chart,
-				event: params
-			});
-		};
-		if (onSeriesDoubleClick || enableLegendDoubleClickSelection) {
-			const existingClick = events.click;
-			events.click = (params, chart) => {
-				if (existingClick) existingClick(params, chart);
-				handleSeriesClick(params);
-			};
-		} else if (!onDataPointClick) events.click = (params) => {
-			handleSeriesClick(params);
-		};
-		if (onDataPointHover) events.mouseover = (params, chart) => {
-			onDataPointHover(params, {
-				chart,
-				event: params
-			});
-		};
-		if (onLegendDoubleClick || enableLegendDoubleClickSelection) events.legendselectchanged = (params) => {
-			handleLegendClick(params);
-		};
-		return events;
-	}, [
-		onDataPointClick,
-		onDataPointHover,
-		onLegendDoubleClick,
-		onSeriesDoubleClick,
-		enableLegendDoubleClickSelection,
-		handleLegendClick,
-		handleSeriesClick
-	]);
-	(0, react.useEffect)(() => {
-		if (!chartInstance || Object.keys(chartEvents).length === 0) return;
-		const eventHandlers = [];
-		Object.entries(chartEvents).forEach(([event, handler]) => {
-			chartInstance.on(event, handler);
-			eventHandlers.push([event, handler]);
-		});
-		return () => {
-			eventHandlers.forEach(([event, handler]) => {
-				chartInstance.off(event, handler);
-			});
-		};
-	}, [chartInstance, chartEvents]);
-	const exportImage = (format = "png") => {
-		const chart = getEChartsInstance();
-		if (!chart) return "";
-		return chart.getDataURL({
-			type: format,
-			pixelRatio: 2,
-			backgroundColor: backgroundColor || "#fff"
-		});
-	};
-	const highlight = (dataIndex, seriesIndex = 0) => {
-		const chart = getEChartsInstance();
-		if (!chart) return;
-		chart.dispatchAction({
-			type: "highlight",
-			seriesIndex,
-			dataIndex
-		});
-	};
-	const clearHighlight = () => {
-		const chart = getEChartsInstance();
-		if (!chart) return;
-		chart.dispatchAction({ type: "downplay" });
-	};
-	const focusNode = (nodeName) => {
+	const focusNode = (0, react.useCallback)((nodeName) => {
 		const chart = getEChartsInstance();
 		if (!chart) return;
 		const option = chart.getOption();
@@ -6475,95 +3160,12 @@ const SankeyChart = (0, react.forwardRef)(({ width = "100%", height = 400, class
 			seriesIndex: 0,
 			dataIndex: nodeIndex
 		});
-	};
-	const updateData = (newData) => {
-		const chart = getEChartsInstance();
-		if (!chart) return;
-		const newOption = buildSankeyChartOption({
-			data: newData,
-			sourceField,
-			targetField,
-			valueField,
-			nodeNameField,
-			nodes,
-			links,
-			theme,
-			colorPalette,
-			backgroundColor,
-			title,
-			subtitle,
-			titlePosition,
-			layout,
-			orient,
-			nodeAlign,
-			nodeGap,
-			nodeWidth,
-			iterations,
-			nodeColors,
-			showNodeValues,
-			nodeLabels,
-			nodeLabelPosition,
-			linkColors,
-			linkOpacity,
-			linkCurveness,
-			showLinkLabels,
-			focusMode,
-			blurScope,
-			legend,
-			tooltip,
-			animate,
-			animationDuration,
-			customOption
-		});
-		chart.setOption(newOption);
-	};
+	}, [getEChartsInstance]);
 	(0, react.useImperativeHandle)(ref, () => ({
-		getChart: getEChartsInstance,
-		exportImage,
-		resize,
-		showLoading: () => showLoading(),
-		hideLoading,
-		highlight,
-		clearHighlight,
-		updateData,
+		...refMethods,
 		focusNode
-	}), [
-		getEChartsInstance,
-		exportImage,
-		resize,
-		showLoading,
-		hideLoading,
-		highlight,
-		clearHighlight,
-		updateData,
-		focusNode
-	]);
-	if (error) return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-		className: `aqc-charts-error ${className || ""}`,
-		style: {
-			width,
-			height,
-			display: "flex",
-			alignItems: "center",
-			justifyContent: "center",
-			color: "#ff4d4f",
-			fontSize: "14px",
-			border: "1px dashed #ff4d4f",
-			borderRadius: "4px",
-			...style
-		},
-		children: ["Error: ", error.message || "Failed to render chart"]
-	});
-	const containerStyle = (0, react.useMemo)(() => ({
-		width,
-		height,
-		position: "relative",
-		...style
-	}), [
-		width,
-		height,
-		style
-	]);
+	}), [refMethods, focusNode]);
+	if (error) return renderError();
 	return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 		className: `aqc-charts-container ${className || ""}`,
 		style: containerStyle,
@@ -6574,34 +3176,7 @@ const SankeyChart = (0, react.forwardRef)(({ width = "100%", height = 400, class
 				width: "100%",
 				height: "100%"
 			}
-		}), (chartLoading || loading) && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-			className: "aqc-charts-loading",
-			style: {
-				position: "absolute",
-				top: 0,
-				left: 0,
-				right: 0,
-				bottom: 0,
-				display: "flex",
-				alignItems: "center",
-				justifyContent: "center",
-				backgroundColor: "rgba(255, 255, 255, 0.8)",
-				fontSize: "14px",
-				color: "#666"
-			},
-			children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
-				className: "aqc-charts-spinner",
-				style: {
-					width: "20px",
-					height: "20px",
-					border: "2px solid #f3f3f3",
-					borderTop: "2px solid #1890ff",
-					borderRadius: "50%",
-					animation: "spin 1s linear infinite",
-					marginRight: "8px"
-				}
-			}), "Loading..."]
-		})]
+		}), renderLoading()]
 	});
 });
 SankeyChart.displayName = "SankeyChart";
@@ -6610,7 +3185,7 @@ SankeyChart.displayName = "SankeyChart";
 //#region src/components/GanttChart.tsx
 /**
 * Ergonomic GanttChart component with extensive customization options
-* 
+*
 * @example
 * // Simple project timeline with tasks and categories
 * <GanttChart
@@ -6643,179 +3218,19 @@ SankeyChart.displayName = "SankeyChart";
 *   showTaskProgress
 *   todayMarker
 * />
-* 
-* @example
-* // Highly customized Gantt chart with status-based styling
-* <GanttChart
-*   tasks={projectTasks}
-*   categories={departments}
-*   title="Q1 Project Schedule"
-*   theme="dark"
-*   taskBarStyle={{
-*     height: 0.8,
-*     borderRadius: 6,
-*     showProgress: true,
-*     textStyle: { 
-*       position: 'inside',
-*       showDuration: true 
-*     }
-*   }}
-*   categoryLabelStyle={{
-*     width: 150,
-*     shape: 'pill',
-*     backgroundColor: '#2a2a2a',
-*     textColor: '#ffffff'
-*   }}
-*   statusStyles={{
-*     'completed': { backgroundColor: '#4CAF50' },
-*     'in-progress': { backgroundColor: '#2196F3' },
-*     'delayed': { backgroundColor: '#FF9800' }
-*   }}
-*   dataZoom={{ type: 'both' }}
-*   sortBy="priority"
-*   sortOrder="desc"
-*   onTaskClick={(task) => alert('Task clicked: ' + task.name)}
-* />
 */
-const GanttChart = (0, react.forwardRef)(({ width = "100%", height = 600, className, style, data, idField = "id", nameField = "name", categoryField = "category", startTimeField = "startTime", endTimeField = "endTime", colorField = "color", statusField = "status", priorityField = "priority", progressField = "progress", assigneeField = "assignee", tasks, categories, theme = "light", colorPalette, backgroundColor, title, subtitle, titlePosition = "center", categoryWidth = 120, taskHeight = .6, categorySpacing = 2, groupSpacing = 8, taskBarStyle, statusStyles, priorityStyles, categoryLabelStyle, showCategoryLabels = true, categoryColors, timelineStyle, timeRange, timeFormat, dataZoom = true, allowPan = true, allowZoom = true, initialZoomLevel, draggable = false, resizable = false, selectable = false, showTaskTooltips = true, showDependencies = false, showMilestones = false, milestoneStyle, todayMarker = false, showProgress = false, showTaskProgress = true, progressStyle, groupByCategory = false, groupByAssignee = false, filterByStatus, filterByPriority, sortBy, sortOrder = "asc", legend, tooltip, loading = false, disabled: _disabled = false, animate = true, animationDuration, onChartReady, onDataPointClick, onDataPointHover, onLegendDoubleClick, legendDoubleClickDelay, enableLegendDoubleClickSelection, onTaskClick, onTaskDrag: _onTaskDrag, onTaskResize: _onTaskResize, onCategoryClick, onTimeRangeChange, customOption, responsive: _responsive = true,...restProps }, ref) => {
-	const domProps = filterDOMProps(restProps);
-	const chartOption = (0, react.useMemo)(() => {
-		return buildGanttChartOption({
-			data: data || void 0,
-			idField,
-			nameField,
-			categoryField,
-			startTimeField,
-			endTimeField,
-			colorField,
-			statusField,
-			priorityField,
-			progressField,
-			assigneeField,
-			tasks,
-			categories,
-			theme,
-			colorPalette,
-			backgroundColor,
-			title,
-			subtitle,
-			titlePosition,
-			categoryWidth,
-			taskHeight,
-			categorySpacing,
-			groupSpacing,
-			taskBarStyle,
-			statusStyles,
-			priorityStyles,
-			categoryLabelStyle,
-			showCategoryLabels,
-			categoryColors,
-			timelineStyle,
-			timeRange,
-			timeFormat,
-			dataZoom,
-			allowPan,
-			allowZoom,
-			initialZoomLevel,
-			draggable,
-			resizable,
-			selectable,
-			showTaskTooltips,
-			showDependencies,
-			showMilestones,
-			milestoneStyle,
-			todayMarker,
-			showProgress,
-			showTaskProgress,
-			progressStyle,
-			groupByCategory,
-			groupByAssignee,
-			filterByStatus,
-			filterByPriority,
-			sortBy,
-			sortOrder,
-			legend,
-			tooltip,
-			animate,
-			animationDuration,
-			customOption
-		});
-	}, [
-		data,
-		idField,
-		nameField,
-		categoryField,
-		startTimeField,
-		endTimeField,
-		colorField,
-		statusField,
-		priorityField,
-		progressField,
-		assigneeField,
-		tasks,
-		categories,
-		theme,
-		colorPalette,
-		backgroundColor,
-		title,
-		subtitle,
-		titlePosition,
-		categoryWidth,
-		taskHeight,
-		categorySpacing,
-		groupSpacing,
-		taskBarStyle,
-		statusStyles,
-		priorityStyles,
-		categoryLabelStyle,
-		showCategoryLabels,
-		categoryColors,
-		timelineStyle,
-		timeRange,
-		timeFormat,
-		dataZoom,
-		allowPan,
-		allowZoom,
-		initialZoomLevel,
-		draggable,
-		resizable,
-		selectable,
-		showTaskTooltips,
-		showDependencies,
-		showMilestones,
-		milestoneStyle,
-		todayMarker,
-		showProgress,
-		showTaskProgress,
-		progressStyle,
-		groupByCategory,
-		groupByAssignee,
-		filterByStatus,
-		filterByPriority,
-		sortBy,
-		sortOrder,
-		legend,
-		tooltip,
-		animate,
-		animationDuration,
-		customOption
-	]);
-	const { containerRef, loading: chartLoading, error, getEChartsInstance, resize, showLoading, hideLoading } = useECharts({
-		option: chartOption,
-		theme,
-		loading,
-		onChartReady
+const GanttChart = (0, react.forwardRef)((props, ref) => {
+	const { className, onTaskClick, onCategoryClick, onTimeRangeChange, onDataPointClick } = props;
+	const buildOption = (0, react.useMemo)(() => buildGanttChartOption, []);
+	const { containerRef, containerStyle, domProps, refMethods, renderError, renderLoading, error, getEChartsInstance } = useChartComponent({
+		props,
+		buildOption,
+		chartType: "gantt"
 	});
 	const chartInstance = getEChartsInstance();
-	const { handleLegendClick } = useLegendDoubleClick({
-		chartInstance,
-		onLegendDoubleClick,
-		delay: legendDoubleClickDelay || 300,
-		enableAutoSelection: enableLegendDoubleClickSelection || false
-	});
-	const chartEvents = (0, react.useMemo)(() => {
-		const events = {};
-		if (onDataPointClick || onTaskClick) events.click = (params, chart) => {
+	(0, react.useEffect)(() => {
+		if (!chartInstance) return;
+		const handleClick = (params, chart) => {
 			if (params.seriesIndex === 0) {
 				const [_categoryIndex, startTime, endTime, taskName, taskId] = params.value;
 				const taskData = {
@@ -6839,48 +3254,17 @@ const GanttChart = (0, react.forwardRef)(({ width = "100%", height = 600, classN
 				onCategoryClick?.(categoryData, params);
 			}
 		};
-		if (onDataPointHover) events.mouseover = (params, chart) => {
-			onDataPointHover(params, {
-				chart,
-				event: params
-			});
-		};
-		if (onLegendDoubleClick || enableLegendDoubleClickSelection) events.legendselectchanged = (params) => {
-			handleLegendClick(params);
-		};
-		return events;
-	}, [
-		onDataPointClick,
-		onDataPointHover,
-		onLegendDoubleClick,
-		enableLegendDoubleClickSelection,
-		handleLegendClick,
-		onTaskClick,
-		onCategoryClick
-	]);
-	(0, react.useEffect)(() => {
-		if (!chartInstance || Object.keys(chartEvents).length === 0) return;
-		const eventHandlers = [];
-		Object.entries(chartEvents).forEach(([event, handler]) => {
-			chartInstance.on(event, handler);
-			eventHandlers.push([event, handler]);
-		});
+		if (onTaskClick || onCategoryClick || onDataPointClick) chartInstance.on("click", handleClick);
 		return () => {
-			eventHandlers.forEach(([event, handler]) => {
-				chartInstance.off(event, handler);
-			});
+			chartInstance.off("click", handleClick);
 		};
-	}, [chartInstance, chartEvents]);
-	const exportImage = (format = "png") => {
-		const chart = getEChartsInstance();
-		if (!chart) return "";
-		return chart.getDataURL({
-			type: format,
-			pixelRatio: 2,
-			backgroundColor: backgroundColor || "#fff"
-		});
-	};
-	const highlight = (taskId) => {
+	}, [
+		chartInstance,
+		onTaskClick,
+		onCategoryClick,
+		onDataPointClick
+	]);
+	const highlightTask = (0, react.useCallback)((taskId) => {
 		const chart = getEChartsInstance();
 		if (!chart) return;
 		const option = chart.getOption();
@@ -6892,13 +3276,8 @@ const GanttChart = (0, react.forwardRef)(({ width = "100%", height = 600, classN
 			seriesIndex: 0,
 			dataIndex: taskIndex
 		});
-	};
-	const clearHighlight = () => {
-		const chart = getEChartsInstance();
-		if (!chart) return;
-		chart.dispatchAction({ type: "downplay" });
-	};
-	const zoomToRange = (startTime, endTime) => {
+	}, [getEChartsInstance]);
+	const zoomToRange = (0, react.useCallback)((startTime, endTime) => {
 		const chart = getEChartsInstance();
 		if (!chart) return;
 		const startMs = startTime.getTime();
@@ -6909,8 +3288,8 @@ const GanttChart = (0, react.forwardRef)(({ width = "100%", height = 600, classN
 			endValue: endMs
 		});
 		onTimeRangeChange?.(startTime, endTime);
-	};
-	const focusTask = (taskId) => {
+	}, [getEChartsInstance, onTimeRangeChange]);
+	const focusTask = (0, react.useCallback)((taskId) => {
 		const chart = getEChartsInstance();
 		if (!chart) return;
 		const option = chart.getOption();
@@ -6921,124 +3300,26 @@ const GanttChart = (0, react.forwardRef)(({ width = "100%", height = 600, classN
 			const [, startTime, endTime] = task.value;
 			const buffer = (endTime - startTime) * .2;
 			zoomToRange(new Date(startTime - buffer), new Date(endTime + buffer));
-			highlight(taskId);
+			highlightTask(taskId);
 		}
-	};
-	const updateData = (newData) => {
-		const chart = getEChartsInstance();
-		if (!chart) return;
-		const newOption = buildGanttChartOption({
-			data: newData,
-			idField,
-			nameField,
-			categoryField,
-			startTimeField,
-			endTimeField,
-			colorField,
-			statusField,
-			priorityField,
-			progressField,
-			assigneeField,
-			tasks,
-			categories,
-			theme,
-			colorPalette,
-			backgroundColor,
-			title,
-			subtitle,
-			titlePosition,
-			categoryWidth,
-			taskHeight,
-			categorySpacing,
-			groupSpacing,
-			taskBarStyle,
-			statusStyles,
-			priorityStyles,
-			categoryLabelStyle,
-			showCategoryLabels,
-			categoryColors,
-			timelineStyle,
-			timeRange,
-			timeFormat,
-			dataZoom,
-			allowPan,
-			allowZoom,
-			initialZoomLevel,
-			draggable,
-			resizable,
-			selectable,
-			showTaskTooltips,
-			showDependencies,
-			showMilestones,
-			milestoneStyle,
-			todayMarker,
-			showProgress,
-			showTaskProgress,
-			progressStyle,
-			groupByCategory,
-			groupByAssignee,
-			filterByStatus,
-			filterByPriority,
-			sortBy,
-			sortOrder,
-			legend,
-			tooltip,
-			animate,
-			animationDuration,
-			customOption
-		});
-		chart.setOption(newOption);
-	};
+	}, [
+		getEChartsInstance,
+		zoomToRange,
+		highlightTask
+	]);
 	(0, react.useImperativeHandle)(ref, () => ({
-		getChart: getEChartsInstance,
-		exportImage,
-		resize,
-		showLoading: () => showLoading(),
-		hideLoading,
-		highlight: (dataIndex) => highlight(String(dataIndex)),
-		clearHighlight,
-		updateData,
+		...refMethods,
+		highlight: (dataIndex) => highlightTask(String(dataIndex)),
 		focusTask,
 		zoomToRange,
-		highlightTask: highlight
+		highlightTask
 	}), [
-		getEChartsInstance,
-		exportImage,
-		resize,
-		showLoading,
-		hideLoading,
-		highlight,
-		clearHighlight,
-		updateData,
+		refMethods,
 		focusTask,
-		zoomToRange
+		zoomToRange,
+		highlightTask
 	]);
-	if (error) return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-		className: `aqc-charts-error ${className || ""}`,
-		style: {
-			width,
-			height,
-			display: "flex",
-			alignItems: "center",
-			justifyContent: "center",
-			color: "#ff4d4f",
-			fontSize: "14px",
-			border: "1px dashed #ff4d4f",
-			borderRadius: "4px",
-			...style
-		},
-		children: ["Error: ", error.message || "Failed to render chart"]
-	});
-	const containerStyle = (0, react.useMemo)(() => ({
-		width,
-		height,
-		position: "relative",
-		...style
-	}), [
-		width,
-		height,
-		style
-	]);
+	if (error) return renderError();
 	return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 		className: `aqc-charts-container ${className || ""}`,
 		style: containerStyle,
@@ -7049,34 +3330,7 @@ const GanttChart = (0, react.forwardRef)(({ width = "100%", height = 600, classN
 				width: "100%",
 				height: "100%"
 			}
-		}), (chartLoading || loading) && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-			className: "aqc-charts-loading",
-			style: {
-				position: "absolute",
-				top: 0,
-				left: 0,
-				right: 0,
-				bottom: 0,
-				display: "flex",
-				alignItems: "center",
-				justifyContent: "center",
-				backgroundColor: "rgba(255, 255, 255, 0.8)",
-				fontSize: "14px",
-				color: "#666"
-			},
-			children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
-				className: "aqc-charts-spinner",
-				style: {
-					width: "20px",
-					height: "20px",
-					border: "2px solid #f3f3f3",
-					borderTop: "2px solid #1890ff",
-					borderRadius: "50%",
-					animation: "spin 1s linear infinite",
-					marginRight: "8px"
-				}
-			}), "Loading..."]
-		})]
+		}), renderLoading()]
 	});
 });
 GanttChart.displayName = "GanttChart";
@@ -7085,7 +3339,7 @@ GanttChart.displayName = "GanttChart";
 //#region src/components/RegressionChart.tsx
 /**
 * Ergonomic RegressionChart component with intuitive props
-* 
+*
 * @example
 * // Simple regression chart with array data
 * <RegressionChart
@@ -7095,7 +3349,7 @@ GanttChart.displayName = "GanttChart";
 *   method="linear"
 *   title="Linear Regression"
 * />
-* 
+*
 * @example
 * // Regression chart with object data
 * <RegressionChart
@@ -7112,7 +3366,7 @@ GanttChart.displayName = "GanttChart";
 *   showEquation={true}
 *   equationPosition="top-left"
 * />
-* 
+*
 * @example
 * // Polynomial regression with custom styling
 * <RegressionChart
@@ -7126,250 +3380,16 @@ GanttChart.displayName = "GanttChart";
 *   showRSquared={true}
 * />
 */
-const RegressionChart = (0, react.forwardRef)(({ width = "100%", height = 400, className, style, data, xField = "x", yField = "y", method = "linear", order = 2, theme = "light", colorPalette, backgroundColor, title, subtitle, titlePosition = "center", pointSize = 8, pointShape = "circle", pointOpacity = .7, showPoints = true, lineWidth = 2, lineStyle = "solid", lineColor, lineOpacity = 1, showLine = true, showEquation = false, equationPosition = "top-right", showRSquared = true, equationFormatter, xAxis, yAxis, legend, tooltip, pointsLabel = "Data Points", regressionLabel = "Regression Line", loading = false, disabled: _disabled = false, animate = true, animationDuration, onChartReady, onDataPointClick, onDataPointHover, onLegendDoubleClick, onSeriesDoubleClick, legendDoubleClickDelay, enableLegendDoubleClickSelection = true, customOption, responsive: _responsive = true,...restProps }, ref) => {
-	const domProps = filterDOMProps(restProps);
-	const chartOption = (0, react.useMemo)(() => {
-		return buildRegressionChartOption({
-			data: data || [],
-			xField,
-			yField,
-			method,
-			order,
-			theme,
-			colorPalette,
-			backgroundColor,
-			title,
-			subtitle,
-			titlePosition,
-			pointSize,
-			pointShape,
-			pointOpacity,
-			showPoints,
-			lineWidth,
-			lineStyle,
-			lineColor,
-			lineOpacity,
-			showLine,
-			showEquation,
-			equationPosition,
-			showRSquared,
-			equationFormatter,
-			xAxis: xAxis || void 0,
-			yAxis: yAxis || void 0,
-			legend,
-			tooltip,
-			pointsLabel,
-			regressionLabel,
-			animate,
-			animationDuration,
-			customOption
-		});
-	}, [
-		data,
-		xField,
-		yField,
-		method,
-		order,
-		theme,
-		colorPalette,
-		backgroundColor,
-		title,
-		subtitle,
-		titlePosition,
-		pointSize,
-		pointShape,
-		pointOpacity,
-		showPoints,
-		lineWidth,
-		lineStyle,
-		lineColor,
-		lineOpacity,
-		showLine,
-		showEquation,
-		equationPosition,
-		showRSquared,
-		equationFormatter,
-		xAxis,
-		yAxis,
-		legend,
-		tooltip,
-		pointsLabel,
-		regressionLabel,
-		animate,
-		animationDuration,
-		customOption
-	]);
-	const { containerRef, loading: chartLoading, error, getEChartsInstance, resize, showLoading, hideLoading } = useECharts({
-		option: chartOption,
-		theme,
-		loading,
-		onChartReady
+const RegressionChart = (0, react.forwardRef)((props, ref) => {
+	const { className } = props;
+	const buildOption = (0, react.useMemo)(() => buildRegressionChartOption, []);
+	const { containerRef, containerStyle, domProps, refMethods, renderError, renderLoading, error } = useChartComponent({
+		props,
+		buildOption,
+		chartType: "regression"
 	});
-	const chartInstance = getEChartsInstance();
-	const { handleLegendClick, handleSeriesClick } = useLegendDoubleClick({
-		chartInstance,
-		onLegendDoubleClick,
-		onSeriesDoubleClick,
-		delay: legendDoubleClickDelay || 300,
-		enableAutoSelection: enableLegendDoubleClickSelection
-	});
-	const chartEvents = (0, react.useMemo)(() => {
-		const events = {};
-		if (onDataPointClick) events.click = (params, chart) => {
-			onDataPointClick(params, {
-				chart,
-				event: params
-			});
-		};
-		if (onSeriesDoubleClick || enableLegendDoubleClickSelection) {
-			const existingClick = events.click;
-			events.click = (params, chart) => {
-				if (existingClick) existingClick(params, chart);
-				handleSeriesClick(params);
-			};
-		} else if (!onDataPointClick) events.click = (params) => {
-			handleSeriesClick(params);
-		};
-		if (onDataPointHover) events.mouseover = (params, chart) => {
-			onDataPointHover(params, {
-				chart,
-				event: params
-			});
-		};
-		if (onLegendDoubleClick || enableLegendDoubleClickSelection) events.legendselectchanged = (params) => {
-			handleLegendClick(params);
-		};
-		return events;
-	}, [
-		onDataPointClick,
-		onDataPointHover,
-		onLegendDoubleClick,
-		onSeriesDoubleClick,
-		enableLegendDoubleClickSelection,
-		handleLegendClick,
-		handleSeriesClick
-	]);
-	(0, react.useEffect)(() => {
-		if (!chartInstance || Object.keys(chartEvents).length === 0) return;
-		const eventHandlers = [];
-		Object.entries(chartEvents).forEach(([event, handler]) => {
-			chartInstance.on(event, handler);
-			eventHandlers.push([event, handler]);
-		});
-		return () => {
-			eventHandlers.forEach(([event, handler]) => {
-				chartInstance.off(event, handler);
-			});
-		};
-	}, [chartInstance, chartEvents]);
-	const exportImage = (format = "png") => {
-		const chart = getEChartsInstance();
-		if (!chart) return "";
-		return chart.getDataURL({
-			type: format,
-			pixelRatio: 2,
-			backgroundColor: backgroundColor || "#fff"
-		});
-	};
-	const highlight = (dataIndex, seriesIndex = 0) => {
-		const chart = getEChartsInstance();
-		if (!chart) return;
-		chart.dispatchAction({
-			type: "highlight",
-			seriesIndex,
-			dataIndex
-		});
-	};
-	const clearHighlight = () => {
-		const chart = getEChartsInstance();
-		if (!chart) return;
-		chart.dispatchAction({ type: "downplay" });
-	};
-	const updateData = (newData) => {
-		const chart = getEChartsInstance();
-		if (!chart) return;
-		const newOption = buildRegressionChartOption({
-			data: newData,
-			xField,
-			yField,
-			method,
-			order,
-			theme,
-			colorPalette,
-			backgroundColor,
-			title,
-			subtitle,
-			titlePosition,
-			pointSize,
-			pointShape,
-			pointOpacity,
-			showPoints,
-			lineWidth,
-			lineStyle,
-			lineColor,
-			lineOpacity,
-			showLine,
-			showEquation,
-			equationPosition,
-			showRSquared,
-			equationFormatter,
-			xAxis: xAxis || void 0,
-			yAxis: yAxis || void 0,
-			legend,
-			tooltip,
-			pointsLabel,
-			regressionLabel,
-			animate,
-			animationDuration,
-			customOption
-		});
-		chart.setOption(newOption);
-	};
-	(0, react.useImperativeHandle)(ref, () => ({
-		getChart: getEChartsInstance,
-		exportImage,
-		resize,
-		showLoading: () => showLoading(),
-		hideLoading,
-		highlight,
-		clearHighlight,
-		updateData
-	}), [
-		getEChartsInstance,
-		exportImage,
-		resize,
-		showLoading,
-		hideLoading,
-		highlight,
-		clearHighlight,
-		updateData
-	]);
-	if (error) return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-		className: `aqc-charts-error ${className || ""}`,
-		style: {
-			width,
-			height,
-			display: "flex",
-			alignItems: "center",
-			justifyContent: "center",
-			color: "#ff4d4f",
-			fontSize: "14px",
-			border: "1px dashed #ff4d4f",
-			borderRadius: "4px",
-			...style
-		},
-		children: ["Error: ", error.message || "Failed to render chart"]
-	});
-	const containerStyle = (0, react.useMemo)(() => ({
-		width,
-		height,
-		position: "relative",
-		...style
-	}), [
-		width,
-		height,
-		style
-	]);
+	(0, react.useImperativeHandle)(ref, () => refMethods, [refMethods]);
+	if (error) return renderError();
 	return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 		className: `aqc-charts-container ${className || ""}`,
 		style: containerStyle,
@@ -7380,34 +3400,7 @@ const RegressionChart = (0, react.forwardRef)(({ width = "100%", height = 400, c
 				width: "100%",
 				height: "100%"
 			}
-		}), (chartLoading || loading) && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-			className: "aqc-charts-loading",
-			style: {
-				position: "absolute",
-				top: 0,
-				left: 0,
-				right: 0,
-				bottom: 0,
-				display: "flex",
-				alignItems: "center",
-				justifyContent: "center",
-				backgroundColor: "rgba(255, 255, 255, 0.8)",
-				fontSize: "14px",
-				color: "#666"
-			},
-			children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
-				className: "aqc-charts-spinner",
-				style: {
-					width: "20px",
-					height: "20px",
-					border: "2px solid #f3f3f3",
-					borderTop: "2px solid #1890ff",
-					borderRadius: "50%",
-					animation: "spin 1s linear infinite",
-					marginRight: "8px"
-				}
-			}), "Loading..."]
-		})]
+		}), renderLoading()]
 	});
 });
 RegressionChart.displayName = "RegressionChart";
@@ -7425,7 +3418,6 @@ const GeoChart = (0, react.forwardRef)(({ data, mapName, mapUrl, mapType = "geoj
 	}, [onMapError]);
 	const loadMapData = (0, react.useCallback)(async () => {
 		try {
-			const echarts = await loadECharts();
 			if (!mapUrl) {
 				setIsMapLoaded(true);
 				return;
@@ -7442,13 +3434,13 @@ const GeoChart = (0, react.forwardRef)(({ data, mapName, mapUrl, mapType = "geoj
 			if (mapType === "svg") {
 				const svgText = await response.text();
 				console.log(`Registering SVG map "${mapName}" with ${svgText.length} characters`);
-				echarts.registerMap(mapName, { svg: svgText }, mapSpecialAreas);
+				require_OldPieChart.getEChartsModule().registerMap(mapName, { svg: svgText }, mapSpecialAreas);
 				console.log(`SVG map "${mapName}" registered successfully`);
 				await new Promise((resolve) => setTimeout(resolve, 200));
 			} else {
 				const geoJson = await response.json();
 				console.log(`Registering GeoJSON map "${mapName}"`);
-				echarts.registerMap(mapName, geoJson, mapSpecialAreas);
+				require_OldPieChart.registerMap(mapName, geoJson, mapSpecialAreas);
 				console.log(`GeoJSON map "${mapName}" registered successfully`);
 			}
 			registeredMapsRef.current.add(mapKey);
@@ -7641,7 +3633,7 @@ const GeoChart = (0, react.forwardRef)(({ data, mapName, mapUrl, mapType = "geoj
 		},
 		children: "Loading map data..."
 	});
-	return /* @__PURE__ */ (0, react_jsx_runtime.jsx)(BaseChart, {
+	return /* @__PURE__ */ (0, react_jsx_runtime.jsx)(require_OldPieChart.BaseChart, {
 		ref,
 		option: chartOption,
 		theme: validTheme,
@@ -7919,1165 +3911,6 @@ function ExportPreviewModal({ isOpen, onClose, chartProps, chartComponent: Chart
 }
 
 //#endregion
-//#region src/components/legacy/OldCalendarHeatmapChart.tsx
-const OldCalendarHeatmapChart = (0, react.forwardRef)(({ data, year, calendar = {}, visualMap = {}, tooltipFormatter, title,...props }, ref) => {
-	const chartOption = (0, react.useMemo)(() => {
-		const seriesData = data.map((item) => [item.date, item.value]);
-		const values = data.map((item) => item.value);
-		const minValue = Math.min(...values);
-		const maxValue = Math.max(...values);
-		const titleConfig = typeof title === "string" ? { text: title } : title;
-		return {
-			...titleConfig && { title: {
-				top: 30,
-				left: "center",
-				...titleConfig
-			} },
-			tooltip: { formatter: tooltipFormatter ? (params) => {
-				return tooltipFormatter(params);
-			} : (params) => {
-				const [date, value] = params.value;
-				return `${date}<br/>Value: ${value}`;
-			} },
-			visualMap: {
-				min: minValue,
-				max: maxValue,
-				type: "piecewise",
-				orient: "horizontal",
-				left: "center",
-				top: titleConfig ? 65 : 35,
-				inRange: { color: [
-					"#ebedf0",
-					"#c6e48b",
-					"#7bc96f",
-					"#239a3b",
-					"#196127"
-				] },
-				...visualMap
-			},
-			calendar: {
-				top: titleConfig ? 120 : 90,
-				left: 30,
-				right: 30,
-				cellSize: ["auto", 13],
-				range: year.toString(),
-				itemStyle: {
-					borderWidth: .5,
-					borderColor: "#fff"
-				},
-				yearLabel: { show: false },
-				dayLabel: {
-					firstDay: 1,
-					nameMap: [
-						"S",
-						"M",
-						"T",
-						"W",
-						"T",
-						"F",
-						"S"
-					]
-				},
-				monthLabel: { nameMap: "en" },
-				...calendar
-			},
-			series: {
-				type: "heatmap",
-				coordinateSystem: "calendar",
-				data: seriesData
-			}
-		};
-	}, [
-		data,
-		year,
-		calendar,
-		visualMap,
-		tooltipFormatter,
-		title
-	]);
-	return /* @__PURE__ */ (0, react_jsx_runtime.jsx)(BaseChart, {
-		ref,
-		option: chartOption,
-		...props
-	});
-});
-OldCalendarHeatmapChart.displayName = "OldCalendarHeatmapChart";
-
-//#endregion
-//#region src/components/legacy/OldStackedBarChart.tsx
-const OldStackedBarChart = (0, react.forwardRef)(({ data, horizontal = false, showPercentage = false, showValues = false, barWidth = "60%", barMaxWidth, stackName = "total", showLegend = true, legend, tooltip, xAxis, yAxis, grid, series: customSeries,...props }, ref) => {
-	const series = (0, react.useMemo)(() => {
-		if (customSeries) return customSeries;
-		const { series: rawSeries } = data;
-		const totalData = [];
-		if (showPercentage) for (let i = 0; i < data.categories.length; i++) {
-			let sum = 0;
-			for (const seriesItem of rawSeries) sum += seriesItem.data[i] || 0;
-			totalData.push(sum);
-		}
-		return rawSeries.map((seriesItem) => {
-			const processedData = showPercentage ? seriesItem.data.map((value, index) => {
-				const total = totalData[index];
-				return total === void 0 || total <= 0 ? 0 : value / total;
-			}) : seriesItem.data;
-			return {
-				name: seriesItem.name,
-				type: "bar",
-				stack: stackName,
-				barWidth,
-				...barMaxWidth && { barMaxWidth },
-				data: [...processedData],
-				...seriesItem.color && { itemStyle: { color: seriesItem.color } },
-				...showValues && { label: {
-					show: true,
-					position: horizontal ? "right" : "top",
-					...showPercentage && { formatter: (params) => `${Math.round(params.value * 1e3) / 10}%` }
-				} }
-			};
-		});
-	}, [
-		data,
-		showPercentage,
-		stackName,
-		barWidth,
-		barMaxWidth,
-		showValues,
-		horizontal,
-		customSeries
-	]);
-	const chartOption = (0, react.useMemo)(() => ({
-		tooltip: {
-			trigger: "axis",
-			axisPointer: { type: "shadow" },
-			...showPercentage && { formatter: (params) => {
-				if (!Array.isArray(params)) return "";
-				let result = `${params[0].name}<br/>`;
-				for (const param of params) {
-					const percentage = Math.round(param.value * 1e3) / 10;
-					result += `${param.marker}${param.seriesName}: ${percentage}%<br/>`;
-				}
-				return result;
-			} },
-			...tooltip
-		},
-		legend: showLegend && data?.series && data.series.length > 1 ? {
-			data: data.series.map((s) => s.name),
-			top: 20,
-			selectedMode: "multiple",
-			...legend
-		} : void 0,
-		grid: {
-			left: 100,
-			right: 100,
-			top: showLegend && data?.series && data.series.length > 1 ? 60 : 40,
-			bottom: 50,
-			containLabel: true,
-			...grid
-		},
-		xAxis: horizontal ? {
-			type: "value",
-			...showPercentage && { axisLabel: { formatter: (value) => `${Math.round(value * 100)}%` } },
-			...xAxis
-		} : {
-			type: "category",
-			data: data.categories,
-			...xAxis
-		},
-		yAxis: horizontal ? {
-			type: "category",
-			data: data.categories,
-			...yAxis
-		} : {
-			type: "value",
-			...showPercentage && { axisLabel: { formatter: (value) => `${Math.round(value * 100)}%` } },
-			...yAxis
-		},
-		series
-	}), [
-		data,
-		horizontal,
-		showPercentage,
-		showLegend,
-		tooltip,
-		legend,
-		grid,
-		xAxis,
-		yAxis,
-		series
-	]);
-	return /* @__PURE__ */ (0, react_jsx_runtime.jsx)(BaseChart, {
-		ref,
-		option: chartOption,
-		...props
-	});
-});
-OldStackedBarChart.displayName = "OldStackedBarChart";
-
-//#endregion
-//#region src/utils/legacy/chartHelpers.ts
-/**
-* Create a basic line chart option
-*/
-function createLineChartOption(data) {
-	const option = {
-		tooltip: {
-			trigger: "axis",
-			axisPointer: { type: "cross" }
-		},
-		grid: {
-			left: "3%",
-			right: "4%",
-			bottom: "3%",
-			top: data.title ? data.series.length > 1 ? 100 : 80 : data.series.length > 1 ? 60 : 40,
-			containLabel: true
-		},
-		xAxis: {
-			type: "category",
-			data: data.categories,
-			boundaryGap: false
-		},
-		yAxis: { type: "value" },
-		series: data.series.map((s) => {
-			const seriesItem = {
-				name: s.name,
-				type: "line",
-				data: s.data
-			};
-			if (s.color) seriesItem.itemStyle = { color: s.color };
-			return seriesItem;
-		})
-	};
-	if (data.title) option.title = {
-		text: data.title,
-		left: "center"
-	};
-	if (data.series.length > 1) option.legend = {
-		data: data.series.map((s) => s.name),
-		top: data.title ? 60 : 20
-	};
-	return option;
-}
-/**
-* Create a basic sankey chart option
-*/
-function createSankeyChartOption(data) {
-	const option = {
-		tooltip: {
-			trigger: "item",
-			triggerOn: "mousemove"
-		},
-		series: [{
-			type: "sankey",
-			layout: data.layout || "none",
-			orient: data.orient || "horizontal",
-			nodeAlign: data.nodeAlign || "justify",
-			nodeGap: data.nodeGap || 8,
-			nodeWidth: data.nodeWidth || 20,
-			iterations: data.iterations || 32,
-			emphasis: { focus: "adjacency" },
-			data: data.nodes.map((node) => {
-				const result = { name: node.name };
-				if (node.value !== void 0) result.value = node.value;
-				if (node.depth !== void 0) result.depth = node.depth;
-				if (node.itemStyle) result.itemStyle = node.itemStyle;
-				if (node.label) result.label = node.label;
-				if (node.emphasis) result.emphasis = node.emphasis;
-				return result;
-			}),
-			links: data.links.map((link) => {
-				const result = {
-					source: link.source,
-					target: link.target,
-					value: link.value
-				};
-				if (link.lineStyle) result.lineStyle = link.lineStyle;
-				if (link.emphasis) result.emphasis = link.emphasis;
-				return result;
-			})
-		}]
-	};
-	if (data.title) option.title = {
-		text: data.title,
-		left: "center"
-	};
-	return option;
-}
-/**
-* Merge ECharts options (simple deep merge)
-*/
-function mergeOptions(base, override) {
-	const result = { ...base };
-	for (const key in override) {
-		const overrideValue = override[key];
-		const baseValue = result[key];
-		if (overrideValue !== void 0) if (typeof overrideValue === "object" && overrideValue !== null && !Array.isArray(overrideValue) && typeof baseValue === "object" && baseValue !== null && !Array.isArray(baseValue)) result[key] = {
-			...baseValue,
-			...overrideValue
-		};
-		else result[key] = overrideValue;
-	}
-	return result;
-}
-
-//#endregion
-//#region src/components/legacy/OldSankeyChart.tsx
-const OldSankeyChart = (0, react.forwardRef)(({ data, layout = "none", orient = "horizontal", nodeAlign = "justify", nodeGap = 8, nodeWidth = 20, iterations = 32, title, option: customOption,...props }, ref) => {
-	const chartOption = (0, react.useMemo)(() => {
-		if (!data?.nodes || !data?.links || !Array.isArray(data.nodes) || !Array.isArray(data.links)) return { series: [] };
-		const baseOption = createSankeyChartOption({
-			nodes: data.nodes,
-			links: data.links,
-			layout,
-			orient,
-			nodeAlign,
-			nodeGap,
-			nodeWidth,
-			iterations,
-			...title && { title }
-		});
-		return customOption ? mergeOptions(baseOption, customOption) : baseOption;
-	}, [
-		data,
-		layout,
-		orient,
-		nodeAlign,
-		nodeGap,
-		nodeWidth,
-		iterations,
-		title,
-		customOption
-	]);
-	return /* @__PURE__ */ (0, react_jsx_runtime.jsx)(BaseChart, {
-		ref,
-		option: chartOption,
-		...props
-	});
-});
-OldSankeyChart.displayName = "OldSankeyChart";
-
-//#endregion
-//#region src/components/legacy/OldScatterChart.tsx
-const OldScatterChart = (0, react.forwardRef)(({ data, symbolSize = 10, symbol = "circle", large = false, largeThreshold = 2e3, progressive = 400, progressiveThreshold = 3e3, enableAdvancedFeatures = false, title, option: customOption, series: customSeries,...props }, ref) => {
-	const chartOption = (0, react.useMemo)(() => {
-		if (customSeries) return {
-			xAxis: {
-				type: "value",
-				scale: true,
-				...data.xAxis
-			},
-			yAxis: {
-				type: "value",
-				scale: true,
-				...data.yAxis
-			},
-			series: customSeries,
-			tooltip: {
-				trigger: "item",
-				formatter: (params) => {
-					const value = params.value;
-					const name = params.seriesName;
-					const dataName = params.name || "";
-					if (Array.isArray(value)) {
-						if (value.length === 3) return `${name}<br/>${dataName}<br/>X: ${value[0]}<br/>Y: ${value[1]}<br/>Size: ${value[2]}`;
-						return `${name}<br/>${dataName}<br/>X: ${value[0]}<br/>Y: ${value[1]}`;
-					}
-					return `${name}<br/>${dataName}<br/>Value: ${value}`;
-				}
-			},
-			...title && { title: {
-				text: title,
-				left: "center"
-			} },
-			...customOption
-		};
-		if (!data?.series || !Array.isArray(data.series)) return { series: [] };
-		const baseOption = {
-			xAxis: {
-				type: "value",
-				scale: true,
-				...data.xAxis
-			},
-			yAxis: {
-				type: "value",
-				scale: true,
-				...data.yAxis
-			},
-			series: data.series.map((series) => ({
-				...series,
-				type: "scatter",
-				symbolSize: series.symbolSize ?? symbolSize,
-				symbol: series.symbol ?? symbol,
-				large: series.large ?? large,
-				largeThreshold: series.largeThreshold ?? largeThreshold,
-				progressive: series.progressive ?? progressive,
-				progressiveThreshold: series.progressiveThreshold ?? progressiveThreshold
-			})),
-			tooltip: {
-				trigger: "item",
-				formatter: (params) => {
-					const value = params.value;
-					const name = params.seriesName;
-					const dataName = params.name || "";
-					if (Array.isArray(value)) {
-						if (value.length === 3) return `${name}<br/>${dataName}<br/>X: ${value[0]}<br/>Y: ${value[1]}<br/>Size: ${value[2]}`;
-						return `${name}<br/>${dataName}<br/>X: ${value[0]}<br/>Y: ${value[1]}`;
-					}
-					return `${name}<br/>${dataName}<br/>Value: ${value}`;
-				}
-			},
-			...title && { title: {
-				text: title,
-				left: "center"
-			} }
-		};
-		return customOption ? {
-			...baseOption,
-			...customOption
-		} : baseOption;
-	}, [
-		data,
-		symbolSize,
-		symbol,
-		large,
-		largeThreshold,
-		progressive,
-		progressiveThreshold,
-		enableAdvancedFeatures,
-		title,
-		customOption,
-		customSeries
-	]);
-	return /* @__PURE__ */ (0, react_jsx_runtime.jsx)(BaseChart, {
-		ref,
-		option: chartOption,
-		...props
-	});
-});
-OldScatterChart.displayName = "OldScatterChart";
-
-//#endregion
-//#region src/components/legacy/OldClusterChart.tsx
-const DEFAULT_COLORS = [
-	"#37A2DA",
-	"#e06343",
-	"#37a354",
-	"#b55dba",
-	"#b5bd48",
-	"#8378EA",
-	"#96BFFF"
-];
-const OldClusterChart = (0, react.forwardRef)(({ data, clusterCount = 6, outputClusterIndexDimension = 2, colors = DEFAULT_COLORS, symbolSize = 15, itemStyle = { borderColor: "#555" }, visualMapPosition = "left", gridLeft = 120, title, option: customOption,...props }, ref) => {
-	const chartOption = (0, react.useMemo)(() => {
-		if (!data?.data || !Array.isArray(data.data)) return { series: [] };
-		const sourceData = data.data.map((point) => [point.value[0], point.value[1]]);
-		const pieces = [];
-		for (let i = 0; i < clusterCount; i++) pieces.push({
-			value: i,
-			label: `cluster ${i}`,
-			color: colors[i] || colors[0] || DEFAULT_COLORS[0] || "#37A2DA"
-		});
-		const baseOption = {
-			dataset: [{ source: sourceData }, { transform: {
-				type: "ecStat:clustering",
-				print: true,
-				config: {
-					clusterCount,
-					outputType: "single",
-					outputClusterIndexDimension
-				}
-			} }],
-			tooltip: {
-				position: "top",
-				formatter: (params) => {
-					const [x, y, cluster] = params.value;
-					const name = params.name || "";
-					return `${name ? name + "<br/>" : ""}X: ${x}<br/>Y: ${y}<br/>Cluster: ${cluster}`;
-				}
-			},
-			visualMap: {
-				type: "piecewise",
-				top: visualMapPosition === "top" ? 10 : visualMapPosition === "bottom" ? "bottom" : "middle",
-				...visualMapPosition === "left" && { left: 10 },
-				...visualMapPosition === "right" && {
-					left: "right",
-					right: 10
-				},
-				...visualMapPosition === "bottom" && { bottom: 10 },
-				min: 0,
-				max: clusterCount,
-				splitNumber: clusterCount,
-				dimension: outputClusterIndexDimension,
-				pieces
-			},
-			grid: { left: gridLeft },
-			xAxis: {
-				type: "value",
-				scale: true,
-				...data.xAxis
-			},
-			yAxis: {
-				type: "value",
-				scale: true,
-				...data.yAxis
-			},
-			series: {
-				type: "scatter",
-				encode: {
-					tooltip: [0, 1],
-					x: 0,
-					y: 1
-				},
-				symbolSize,
-				itemStyle,
-				datasetIndex: 1
-			},
-			...title && { title: {
-				text: title,
-				left: "center"
-			} }
-		};
-		return customOption ? {
-			...baseOption,
-			...customOption
-		} : baseOption;
-	}, [
-		data,
-		clusterCount,
-		outputClusterIndexDimension,
-		colors,
-		symbolSize,
-		itemStyle,
-		visualMapPosition,
-		gridLeft,
-		title,
-		customOption
-	]);
-	return /* @__PURE__ */ (0, react_jsx_runtime.jsx)(BaseChart, {
-		ref,
-		option: chartOption,
-		...props
-	});
-});
-OldClusterChart.displayName = "OldClusterChart";
-
-//#endregion
-//#region src/components/legacy/OldRegressionChart.tsx
-const OldRegressionChart = (0, react.forwardRef)(({ data, method = "linear", formulaOn = "end", scatterName = "scatter", lineName = "regression", scatterColor = "#5470c6", lineColor = "#91cc75", symbolSize = 8, showFormula = true, formulaFontSize = 16, formulaPosition = { dx: -20 }, splitLineStyle = "dashed", legendPosition = "bottom", title, option: customOption,...props }, ref) => {
-	const chartOption = (0, react.useMemo)(() => {
-		if (!data?.data || !Array.isArray(data.data)) return { series: [] };
-		const sourceData = data.data.map((point) => [point.value[0], point.value[1]]);
-		const baseOption = {
-			dataset: [{ source: sourceData }, { transform: {
-				type: "ecStat:regression",
-				config: {
-					method,
-					...formulaOn !== false && { formulaOn }
-				}
-			} }],
-			...title && { title: {
-				text: title,
-				subtext: `By ecStat.regression (${method})`,
-				sublink: "https://github.com/ecomfe/echarts-stat",
-				left: "center"
-			} },
-			legend: {
-				[legendPosition]: legendPosition === "top" || legendPosition === "bottom" ? 5 : void 0,
-				[legendPosition === "left" ? "left" : legendPosition === "right" ? "right" : "bottom"]: legendPosition === "left" || legendPosition === "right" ? 5 : 5
-			},
-			tooltip: {
-				trigger: "axis",
-				axisPointer: { type: "cross" }
-			},
-			xAxis: {
-				type: "value",
-				scale: true,
-				splitLine: { lineStyle: { type: splitLineStyle } },
-				...data.xAxis
-			},
-			yAxis: {
-				type: "value",
-				scale: true,
-				splitLine: { lineStyle: { type: splitLineStyle } },
-				...data.yAxis
-			},
-			series: [{
-				name: scatterName,
-				type: "scatter",
-				itemStyle: { color: scatterColor },
-				symbolSize
-			}, {
-				name: lineName,
-				type: "line",
-				datasetIndex: 1,
-				symbolSize: .1,
-				symbol: "circle",
-				itemStyle: { color: lineColor },
-				lineStyle: {
-					color: lineColor,
-					width: 2
-				},
-				...showFormula && {
-					label: {
-						show: true,
-						fontSize: formulaFontSize
-					},
-					labelLayout: formulaPosition
-				},
-				encode: {
-					label: 2,
-					tooltip: 1
-				}
-			}]
-		};
-		return customOption ? {
-			...baseOption,
-			...customOption
-		} : baseOption;
-	}, [
-		data,
-		method,
-		formulaOn,
-		scatterName,
-		lineName,
-		scatterColor,
-		lineColor,
-		symbolSize,
-		showFormula,
-		formulaFontSize,
-		formulaPosition,
-		splitLineStyle,
-		legendPosition,
-		title,
-		customOption
-	]);
-	return /* @__PURE__ */ (0, react_jsx_runtime.jsx)(BaseChart, {
-		ref,
-		option: chartOption,
-		...props
-	});
-});
-OldRegressionChart.displayName = "OldRegressionChart";
-
-//#endregion
-//#region src/components/legacy/OldGanttChart.tsx
-const OldGanttChart = (0, react.forwardRef)(({ data, heightRatio = .6, showDataZoom = true, draggable: _draggable = false, showLegend = false, legend, tooltip, xAxis, yAxis, grid, onTaskDrag: _onTaskDrag,...props }, ref) => {
-	const processedData = (0, react.useMemo)(() => {
-		if (!data?.tasks || !data?.categories) return {
-			tasks: [],
-			categories: []
-		};
-		const categoryMap = new Map(data.categories.map((cat, index) => [cat.name, index]));
-		const processedTasks = data.tasks.map((task) => {
-			const categoryIndex = categoryMap.get(task.category) ?? 0;
-			return [
-				categoryIndex,
-				new Date(task.startTime).getTime(),
-				new Date(task.endTime).getTime(),
-				task.name,
-				task.vip || false,
-				task.id,
-				task.color
-			];
-		});
-		const processedCategories = data.categories.map((cat, index) => [
-			index,
-			cat.name,
-			cat.label || cat.name
-		]);
-		return {
-			tasks: processedTasks,
-			categories: processedCategories
-		};
-	}, [data]);
-	const renderGanttItem = (0, react.useMemo)(() => {
-		return (params, api) => {
-			const categoryIndex = api.value(0);
-			const timeArrival = api.coord([api.value(1), categoryIndex]);
-			const timeDeparture = api.coord([api.value(2), categoryIndex]);
-			const barLength = timeDeparture[0] - timeArrival[0];
-			const barHeight = api.size([0, 1])[1] * heightRatio;
-			const x = timeArrival[0];
-			const y = timeArrival[1] - barHeight;
-			const taskName = api.value(3) + "";
-			const isVip = api.value(4);
-			const taskColor = api.value(6);
-			const textWidth = taskName.length * 6;
-			const showText = barLength > textWidth + 40 && x + barLength >= 180;
-			const clipRect = (rect) => {
-				const coordSys = params.coordSys;
-				return {
-					x: Math.max(rect.x, coordSys.x),
-					y: Math.max(rect.y, coordSys.y),
-					width: Math.min(rect.width, coordSys.x + coordSys.width - Math.max(rect.x, coordSys.x)),
-					height: Math.min(rect.height, coordSys.y + coordSys.height - Math.max(rect.y, coordSys.y))
-				};
-			};
-			const rectNormal = clipRect({
-				x,
-				y,
-				width: barLength,
-				height: barHeight
-			});
-			const rectVip = clipRect({
-				x,
-				y,
-				width: barLength / 2,
-				height: barHeight
-			});
-			const children = [{
-				type: "rect",
-				shape: rectNormal,
-				style: {
-					fill: taskColor || api.style().fill,
-					stroke: api.style().stroke
-				}
-			}];
-			if (isVip) children.push({
-				type: "rect",
-				shape: rectVip,
-				style: {
-					fill: "#ddb30b",
-					stroke: "transparent"
-				}
-			});
-			if (showText) children.push({
-				type: "rect",
-				shape: rectNormal,
-				style: {
-					fill: "transparent",
-					stroke: "transparent",
-					text: taskName,
-					textFill: "#fff",
-					textAlign: "center",
-					textVerticalAlign: "middle",
-					fontSize: 12
-				}
-			});
-			return {
-				type: "group",
-				children
-			};
-		};
-	}, [heightRatio]);
-	const renderAxisLabelItem = (0, react.useMemo)(() => {
-		return (params, api) => {
-			const y = api.coord([0, api.value(0)])[1];
-			if (y < params.coordSys.y + 5) return;
-			return {
-				type: "group",
-				position: [10, y],
-				children: [
-					{
-						type: "path",
-						shape: {
-							d: "M0,0 L0,-20 L30,-20 C42,-20 38,-1 50,-1 L70,-1 L70,0 Z",
-							x: 0,
-							y: -20,
-							width: 90,
-							height: 20,
-							layout: "cover"
-						},
-						style: { fill: "#368c6c" }
-					},
-					{
-						type: "text",
-						style: {
-							x: 24,
-							y: -3,
-							text: api.value(1),
-							textVerticalAlign: "bottom",
-							textAlign: "center",
-							fill: "#fff",
-							fontSize: 12
-						}
-					},
-					{
-						type: "text",
-						style: {
-							x: 75,
-							y: -2,
-							text: api.value(2),
-							textVerticalAlign: "bottom",
-							textAlign: "center",
-							fill: "#000",
-							fontSize: 12
-						}
-					}
-				]
-			};
-		};
-	}, []);
-	const chartOption = (0, react.useMemo)(() => ({
-		animation: false,
-		tooltip: {
-			formatter: (params) => {
-				if (Array.isArray(params)) {
-					const param = params[0];
-					if (param?.seriesIndex === 0) {
-						const startTime = new Date(param.value[1]).toLocaleString();
-						const endTime = new Date(param.value[2]).toLocaleString();
-						const taskName = param.value[3];
-						const category = data.categories[param.value[0]]?.name || "Unknown";
-						return `
-                            <strong>${taskName}</strong><br/>
-                            Category: ${category}<br/>
-                            Start: ${startTime}<br/>
-                            End: ${endTime}
-                        `;
-					}
-				}
-				return "";
-			},
-			...tooltip
-		},
-		grid: {
-			show: true,
-			top: 70,
-			bottom: showDataZoom ? 40 : 20,
-			left: 100,
-			right: 20,
-			backgroundColor: "#fff",
-			borderWidth: 0,
-			...grid
-		},
-		xAxis: {
-			type: "time",
-			position: "top",
-			splitLine: { lineStyle: { color: ["#E9EDFF"] } },
-			axisLine: { show: false },
-			axisTick: { lineStyle: { color: "#929ABA" } },
-			axisLabel: {
-				color: "#929ABA",
-				inside: false,
-				align: "center"
-			},
-			...xAxis
-		},
-		yAxis: {
-			axisTick: { show: false },
-			splitLine: { show: false },
-			axisLine: { show: false },
-			axisLabel: { show: false },
-			min: 0,
-			max: processedData.categories.length,
-			...yAxis
-		},
-		...showDataZoom && { dataZoom: [
-			{
-				type: "slider",
-				xAxisIndex: 0,
-				filterMode: "weakFilter",
-				height: 20,
-				bottom: 0,
-				start: 0,
-				end: 50,
-				handleIcon: "path://M10.7,11.9H9.3c-4.9,0.3-8.8,4.4-8.8,9.4c0,5,3.9,9.1,8.8,9.4h1.3c4.9-0.3,8.8-4.4,8.8-9.4C19.5,16.3,15.6,12.2,10.7,11.9z M13.3,24.4H6.7V23h6.6V24.4z M13.3,19.6H6.7v-1.4h6.6V19.6z",
-				handleSize: "80%",
-				showDetail: false
-			},
-			{
-				type: "inside",
-				xAxisIndex: 0,
-				filterMode: "weakFilter",
-				start: 0,
-				end: 50,
-				zoomOnMouseWheel: false,
-				moveOnMouseMove: true
-			},
-			{
-				type: "slider",
-				yAxisIndex: 0,
-				zoomLock: true,
-				width: 10,
-				right: 10,
-				top: 70,
-				bottom: 40,
-				start: 0,
-				end: 100,
-				handleSize: 0,
-				showDetail: false
-			},
-			{
-				type: "inside",
-				yAxisIndex: 0,
-				start: 0,
-				end: 100,
-				zoomOnMouseWheel: false,
-				moveOnMouseMove: true,
-				moveOnMouseWheel: true
-			}
-		] },
-		legend: showLegend ? {
-			top: 20,
-			...legend
-		} : void 0,
-		series: [{
-			id: "ganttData",
-			type: "custom",
-			renderItem: renderGanttItem,
-			dimensions: [
-				"categoryIndex",
-				"startTime",
-				"endTime",
-				"taskName",
-				"vip",
-				"id",
-				"color"
-			],
-			encode: {
-				x: [1, 2],
-				y: 0,
-				tooltip: [
-					0,
-					1,
-					2,
-					3
-				]
-			},
-			data: processedData.tasks
-		}, {
-			type: "custom",
-			renderItem: renderAxisLabelItem,
-			dimensions: [
-				"categoryIndex",
-				"name",
-				"label"
-			],
-			encode: {
-				x: -1,
-				y: 0
-			},
-			data: processedData.categories
-		}]
-	}), [
-		data.categories,
-		processedData,
-		showDataZoom,
-		showLegend,
-		tooltip,
-		grid,
-		xAxis,
-		yAxis,
-		legend,
-		renderGanttItem,
-		renderAxisLabelItem
-	]);
-	return /* @__PURE__ */ (0, react_jsx_runtime.jsx)(BaseChart, {
-		ref,
-		option: chartOption,
-		...props
-	});
-});
-OldGanttChart.displayName = "OldGanttChart";
-
-//#endregion
-//#region src/components/legacy/OldLineChart.tsx
-const OldLineChart = (0, react.forwardRef)(({ data, smooth = false, area = false, stack = false, symbol = true, symbolSize = 4, connectNulls = false, title, option: customOption, series: customSeries,...props }, ref) => {
-	const chartOption = (0, react.useMemo)(() => {
-		if (customSeries) return {
-			xAxis: {
-				type: "category",
-				data: data?.categories || []
-			},
-			yAxis: { type: "value" },
-			series: customSeries,
-			...title && { title: {
-				text: title,
-				left: "center"
-			} },
-			...customOption
-		};
-		if (!data?.series || !Array.isArray(data.series)) return { series: [] };
-		const baseOption = createLineChartOption({
-			categories: data.categories,
-			series: data.series.map((s) => ({
-				name: s.name,
-				data: s.data,
-				...s.color && { color: s.color },
-				...Object.fromEntries(Object.entries(s).filter(([key]) => ![
-					"name",
-					"data",
-					"color"
-				].includes(key)))
-			})),
-			...title && { title }
-		});
-		if (baseOption.series && Array.isArray(baseOption.series)) baseOption.series = baseOption.series.map((series, index) => {
-			const result = {
-				...series,
-				smooth: data.series[index]?.smooth ?? smooth,
-				showSymbol: symbol,
-				symbolSize: data.series[index]?.symbolSize ?? symbolSize,
-				connectNulls: data.series[index]?.connectNulls ?? connectNulls
-			};
-			if (data.series[index]?.symbol) result.symbol = data.series[index].symbol;
-			if (stack && data.series[index]?.stack) result.stack = data.series[index].stack;
-			else if (stack) result.stack = "total";
-			if (area) result.areaStyle = {};
-			return result;
-		});
-		return customOption ? mergeOptions(baseOption, customOption) : baseOption;
-	}, [
-		data,
-		smooth,
-		area,
-		stack,
-		symbol,
-		symbolSize,
-		connectNulls,
-		title,
-		customOption,
-		customSeries
-	]);
-	return /* @__PURE__ */ (0, react_jsx_runtime.jsx)(BaseChart, {
-		ref,
-		option: chartOption,
-		...props
-	});
-});
-OldLineChart.displayName = "OldLineChart";
-
-//#endregion
-//#region src/components/legacy/OldBarChart.tsx
-const OldBarChart = (0, react.forwardRef)(({ data, horizontal = false, stack = false, showValues = false, barWidth, barMaxWidth, showLegend = true, legend, tooltip, xAxis, yAxis, grid, series: customSeries,...props }, ref) => {
-	const series = (0, react.useMemo)(() => {
-		if (customSeries) return customSeries;
-		if (!data?.series || !Array.isArray(data.series)) return [];
-		return data.series.map((s) => ({
-			name: s.name,
-			type: "bar",
-			data: s.data,
-			stack: stack ? "total" : void 0,
-			...barWidth && { barWidth },
-			...barMaxWidth && { barMaxWidth },
-			...s.color && { itemStyle: { color: s.color } },
-			...showValues && { label: {
-				show: true,
-				position: horizontal ? "right" : "top"
-			} }
-		}));
-	}, [
-		data?.series,
-		stack,
-		barWidth,
-		barMaxWidth,
-		showValues,
-		horizontal,
-		customSeries
-	]);
-	const chartOption = (0, react.useMemo)(() => ({
-		tooltip: {
-			trigger: "axis",
-			axisPointer: { type: "shadow" },
-			...tooltip
-		},
-		grid: {
-			left: "3%",
-			right: "4%",
-			bottom: "3%",
-			top: showLegend && data?.series && data.series.length > 1 ? 60 : 40,
-			containLabel: true,
-			...grid
-		},
-		xAxis: horizontal ? {
-			type: "value",
-			...xAxis
-		} : {
-			type: "category",
-			data: data?.categories || [],
-			...xAxis
-		},
-		yAxis: horizontal ? {
-			type: "category",
-			data: data?.categories || [],
-			...yAxis
-		} : {
-			type: "value",
-			...yAxis
-		},
-		legend: showLegend && data?.series && data.series.length > 1 ? {
-			data: data.series.map((s) => s.name),
-			top: 20,
-			...legend
-		} : void 0,
-		series
-	}), [
-		data?.categories,
-		data?.series,
-		horizontal,
-		showLegend,
-		tooltip,
-		grid,
-		xAxis,
-		yAxis,
-		legend,
-		series
-	]);
-	return /* @__PURE__ */ (0, react_jsx_runtime.jsx)(BaseChart, {
-		ref,
-		option: chartOption,
-		...props
-	});
-});
-OldBarChart.displayName = "OldBarChart";
-
-//#endregion
-//#region src/components/legacy/OldPieChart.tsx
-const OldPieChart = (0, react.forwardRef)(({ data, radius = ["40%", "70%"], center = ["50%", "50%"], roseType = false, showLabels = true, showLegend = true, legend, series: customSeries,...props }, ref) => {
-	const series = (0, react.useMemo)(() => {
-		if (customSeries) return customSeries;
-		return [{
-			type: "pie",
-			data: [...data],
-			radius,
-			center: [...center],
-			...roseType && { roseType: roseType === true ? "radius" : roseType },
-			label: { show: showLabels },
-			emphasis: { label: {
-				show: true,
-				fontSize: 14,
-				fontWeight: "bold"
-			} }
-		}];
-	}, [
-		data,
-		radius,
-		center,
-		roseType,
-		showLabels,
-		customSeries
-	]);
-	const chartOption = (0, react.useMemo)(() => ({
-		tooltip: {
-			trigger: "item",
-			formatter: "{a} <br/>{b}: {c} ({d}%)"
-		},
-		legend: {
-			type: "scroll",
-			orient: "vertical",
-			right: 10,
-			top: 20,
-			bottom: 20,
-			show: showLegend,
-			data: data.map((item) => item.name),
-			...legend
-		},
-		series
-	}), [
-		series,
-		showLegend,
-		legend,
-		data
-	]);
-	return /* @__PURE__ */ (0, react_jsx_runtime.jsx)(BaseChart, {
-		ref,
-		option: chartOption,
-		...props
-	});
-});
-OldPieChart.displayName = "OldPieChart";
-
-//#endregion
 //#region src/hooks/useFullHDExport.ts
 /**
 * Custom hook for Full HD chart export functionality
@@ -9329,10 +4162,10 @@ const DefaultErrorFallback = ({ error, retry, showDetails, className = "", style
 	};
 	const getErrorIcon = () => {
 		switch (error.code) {
-			case ChartErrorCode.ECHARTS_LOAD_FAILED: return "🌐";
-			case ChartErrorCode.INVALID_DATA_FORMAT:
-			case ChartErrorCode.EMPTY_DATA: return "📊";
-			case ChartErrorCode.CHART_RENDER_FAILED: return "🎨";
+			case require_OldPieChart.ChartErrorCode.ECHARTS_LOAD_FAILED: return "🌐";
+			case require_OldPieChart.ChartErrorCode.INVALID_DATA_FORMAT:
+			case require_OldPieChart.ChartErrorCode.EMPTY_DATA: return "📊";
+			case require_OldPieChart.ChartErrorCode.CHART_RENDER_FAILED: return "🎨";
 			default: return "⚠️";
 		}
 	};
@@ -9390,7 +4223,7 @@ var ChartErrorBoundary = class extends react.Component {
 		};
 	}
 	static getDerivedStateFromError(error) {
-		const chartError = isChartError(error) ? error : createChartError(error, ChartErrorCode.UNKNOWN_ERROR);
+		const chartError = require_OldPieChart.isChartError(error) ? error : require_OldPieChart.createChartError(error, require_OldPieChart.ChartErrorCode.UNKNOWN_ERROR);
 		return {
 			hasError: true,
 			error: chartError,
@@ -9463,7 +4296,7 @@ function useChartErrorHandler() {
 		if (error) throw error;
 	}, [error]);
 	const throwError = react.default.useCallback((error$1) => {
-		const chartError = isChartError(error$1) ? error$1 : createChartError(error$1, ChartErrorCode.UNKNOWN_ERROR);
+		const chartError = require_OldPieChart.isChartError(error$1) ? error$1 : require_OldPieChart.createChartError(error$1, require_OldPieChart.ChartErrorCode.UNKNOWN_ERROR);
 		setError(chartError);
 	}, []);
 	const clearError = react.default.useCallback(() => {
@@ -9513,59 +4346,67 @@ if (typeof document !== "undefined" && !document.getElementById("aqc-charts-styl
 
 //#endregion
 exports.BarChart = BarChart;
-exports.BaseChart = BaseChart;
+exports.BaseChart = require_OldPieChart.BaseChart;
 exports.CalendarHeatmapChart = CalendarHeatmapChart;
-exports.ChartError = ChartError;
+exports.ChartError = require_OldPieChart.ChartError;
 exports.ChartErrorBoundary = ChartErrorBoundary;
-exports.ChartErrorCode = ChartErrorCode;
-exports.ChartInitError = ChartInitError;
-exports.ChartRenderError = ChartRenderError;
+exports.ChartErrorCode = require_OldPieChart.ChartErrorCode;
+exports.ChartInitError = require_OldPieChart.ChartInitError;
+exports.ChartRenderError = require_OldPieChart.ChartRenderError;
 exports.ClusterChart = ClusterChart;
 exports.CombinedChart = CombinedChart;
-exports.DataValidationError = DataValidationError;
-exports.EChartsLoadError = EChartsLoadError;
+exports.DataValidationError = require_OldPieChart.DataValidationError;
+exports.EChartsLoadError = require_OldPieChart.EChartsLoadError;
 exports.ExportPreviewModal = ExportPreviewModal;
 exports.GanttChart = GanttChart;
 exports.GeoChart = GeoChart;
 exports.LineChart = LineChart;
-exports.OldBarChart = OldBarChart;
-exports.OldCalendarHeatmapChart = OldCalendarHeatmapChart;
-exports.OldClusterChart = OldClusterChart;
-exports.OldGanttChart = OldGanttChart;
-exports.OldLineChart = OldLineChart;
-exports.OldPieChart = OldPieChart;
-exports.OldRegressionChart = OldRegressionChart;
-exports.OldSankeyChart = OldSankeyChart;
-exports.OldScatterChart = OldScatterChart;
-exports.OldStackedBarChart = OldStackedBarChart;
+exports.OldBarChart = require_OldPieChart.OldBarChart;
+exports.OldCalendarHeatmapChart = require_OldPieChart.OldCalendarHeatmapChart;
+exports.OldClusterChart = require_OldPieChart.OldClusterChart;
+exports.OldGanttChart = require_OldPieChart.OldGanttChart;
+exports.OldLineChart = require_OldPieChart.OldLineChart;
+exports.OldPieChart = require_OldPieChart.OldPieChart;
+exports.OldRegressionChart = require_OldPieChart.OldRegressionChart;
+exports.OldSankeyChart = require_OldPieChart.OldSankeyChart;
+exports.OldScatterChart = require_OldPieChart.OldScatterChart;
+exports.OldStackedBarChart = require_OldPieChart.OldStackedBarChart;
 exports.PieChart = PieChart;
 exports.RegressionChart = RegressionChart;
 exports.SankeyChart = SankeyChart;
 exports.ScatterChart = ScatterChart;
 exports.StackedAreaChart = StackedAreaChart;
-exports.TransformError = TransformError;
-exports.assertValidation = assertValidation;
+exports.TransformError = require_OldPieChart.TransformError;
+exports.assertValidation = require_OldPieChart.assertValidation;
 exports.clusterPointsToScatterData = clusterPointsToScatterData;
-exports.createChartError = createChartError;
+exports.createChartError = require_OldPieChart.createChartError;
 exports.darkTheme = darkTheme;
+exports.disposeChart = require_OldPieChart.disposeChart;
 exports.extractPoints = extractPoints;
-exports.isChartError = isChartError;
-exports.isRecoverableError = isRecoverableError;
+exports.getEChartsModule = require_OldPieChart.getEChartsModule;
+exports.getMap = require_OldPieChart.getMap;
+exports.isChartError = require_OldPieChart.isChartError;
+exports.isRecoverableError = require_OldPieChart.isRecoverableError;
 exports.lightTheme = lightTheme;
 exports.performKMeansClustering = performKMeansClustering;
-exports.safeAsync = safeAsync;
-exports.safeSync = safeSync;
+exports.registerMap = require_OldPieChart.registerMap;
+exports.safeAsync = require_OldPieChart.safeAsync;
+exports.safeSync = require_OldPieChart.safeSync;
+exports.useChartComponent = useChartComponent;
 exports.useChartErrorHandler = useChartErrorHandler;
-exports.useChartEvents = useChartEvents;
-exports.useChartInstance = useChartInstance;
-exports.useChartOptions = useChartOptions;
-exports.useChartResize = useChartResize;
-exports.useECharts = useECharts;
+exports.useChartEvents = require_OldPieChart.useChartEvents;
+exports.useChartInstance = require_OldPieChart.useChartInstance;
+exports.useChartOptions = require_OldPieChart.useChartOptions;
+exports.useChartResize = require_OldPieChart.useChartResize;
+exports.useECharts = require_OldPieChart.useECharts;
 exports.useFullHDExport = useFullHDExport;
-exports.validateChartData = validateChartData;
-exports.validateChartProps = validateChartProps;
-exports.validateDimensions = validateDimensions;
-exports.validateFieldMapping = validateFieldMapping;
-exports.validateInDevelopment = validateInDevelopment;
-exports.validateTheme = validateTheme;
+exports.usePrefersDarkMode = require_OldPieChart.usePrefersDarkMode;
+exports.useResolvedTheme = require_OldPieChart.useResolvedTheme;
+exports.useSystemTheme = require_OldPieChart.useSystemTheme;
+exports.validateChartData = require_OldPieChart.validateChartData;
+exports.validateChartProps = require_OldPieChart.validateChartProps;
+exports.validateDimensions = require_OldPieChart.validateDimensions;
+exports.validateFieldMapping = require_OldPieChart.validateFieldMapping;
+exports.validateInDevelopment = require_OldPieChart.validateInDevelopment;
+exports.validateTheme = require_OldPieChart.validateTheme;
 exports.withChartErrorBoundary = withChartErrorBoundary;

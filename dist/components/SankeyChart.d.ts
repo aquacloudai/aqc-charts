@@ -34,26 +34,6 @@ import type { SankeyChartProps, ErgonomicChartRef } from '@/types';
  *   orient="horizontal"
  *   nodeAlign="left"
  * />
- *
- * @example
- * // Highly customized sankey chart
- * <SankeyChart
- *   nodes={[
- *     { name: 'Revenue', value: 1000 },
- *     { name: 'Costs', value: 400 },
- *     { name: 'Profit', value: 600 }
- *   ]}
- *   links={[
- *     { source: 'Revenue', target: 'Costs', value: 400 },
- *     { source: 'Revenue', target: 'Profit', value: 600 }
- *   ]}
- *   nodeColors={['#5470c6', '#91cc75', '#fac858']}
- *   linkColors={['#ff6b6b', '#4ecdc4']}
- *   linkOpacity={0.8}
- *   linkCurveness={0.7}
- *   showNodeValues
- *   showLinkLabels
- * />
  */
 declare const SankeyChart: React.ForwardRefExoticComponent<SankeyChartProps & React.RefAttributes<ErgonomicChartRef>>;
 export { SankeyChart };

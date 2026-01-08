@@ -1,3 +1,4 @@
+import './utils/echarts';
 export { BaseChart } from './components/BaseChart';
 export { LineChart } from './components/LineChart';
 export { BarChart } from './components/BarChart';
@@ -12,6 +13,12 @@ export { GanttChart } from './components/GanttChart';
 export { RegressionChart } from './components/RegressionChart';
 export { GeoChart } from './components/GeoChart';
 export { ExportPreviewModal } from './components/ExportPreviewModal';
+/**
+ * Legacy components (old API)
+ * @deprecated These components will be removed in a future major version.
+ * For better bundle size, import from '@aquacloud_ai/aqc-charts/legacy' instead.
+ * Or migrate to the new ergonomic components (LineChart, BarChart, etc.).
+ */
 export { OldCalendarHeatmapChart } from './components/legacy/OldCalendarHeatmapChart';
 export { OldStackedBarChart } from './components/legacy/OldStackedBarChart';
 export { OldSankeyChart } from './components/legacy/OldSankeyChart';
@@ -24,14 +31,18 @@ export { OldBarChart } from './components/legacy/OldBarChart';
 export { OldPieChart } from './components/legacy/OldPieChart';
 export { useECharts } from './hooks/useECharts';
 export { useFullHDExport } from './hooks/useFullHDExport';
+export { useChartComponent } from './hooks/useChartComponent';
+export { useSystemTheme, useResolvedTheme, usePrefersDarkMode } from './hooks/useSystemTheme';
 export { useChartInstance, useChartResize, useChartOptions, useChartEvents } from './hooks/echarts';
 export { lightTheme, darkTheme } from './utils/themes';
 export { extractPoints, performKMeansClustering, clusterPointsToScatterData } from './utils/legacy/regression';
+export { registerMap, getMap, getEChartsModule, disposeChart } from './utils/echarts';
 export { ChartError, EChartsLoadError, ChartInitError, DataValidationError, ChartRenderError, TransformError, ChartErrorCode, createChartError, isChartError, isRecoverableError, safeAsync, safeSync } from './utils/errors';
 export { ChartErrorBoundary, withChartErrorBoundary, useChartErrorHandler } from './components/ChartErrorBoundary';
 export { validateChartData, validateChartProps, validateFieldMapping, validateDimensions, validateTheme, assertValidation, validateInDevelopment } from './utils/validation';
 export type { EChartsInstance, ChartDataPoint, ChartSeries, ChartAxis, ChartTheme, BaseChartProps, ChartRef, CalendarHeatmapDataPoint, CalendarConfig, VisualMapConfig, StackedBarData, StackedBarDataSeries, SankeyData, LineStyleConfig, LegendConfig, TooltipConfig, ScatterDataPoint, ScatterSeries, ScatterChartData, ClusterPoint, ClusterResult, ClusterChartData, ClusterChartDataPoint, ClusterVisualMapPiece, RegressionChartData, RegressionChartDataPoint, RegressionMethod, DataTransformOption, EcStatClusteringTransformOption, EcStatRegressionTransformOption, EcStatTransformOption, DatasetOptionWithTransforms, EChartsOption, SeriesOption, BarSeriesOption, LineSeriesOption, PieSeriesOption, HeatmapSeriesOption, ScatterSeriesOption, TitleOption, LegendComponentOption, TooltipOption, XAXisOption, YAXisOption, VisualMapComponentOption, CalendarOption, } from './types';
-export type { LineChartProps, BarChartProps, PieChartProps, ScatterChartProps, CombinedChartProps, ClusterChartProps, CalendarHeatmapProps, SankeyChartProps, SankeyNode, SankeyLink, GanttChartProps, GanttTask, GanttCategory, TaskBarStyle, CategoryLabelStyle, TimelineStyle, StatusStyleMap, PriorityStyleMap, GanttDataZoomConfig, RegressionChartProps, GeoChartProps } from './types';
+export type { LineChartProps, BarChartProps, PieChartProps, ScatterChartProps, JitterConfig, // ECharts 6 scatter jitter configuration
+CombinedChartProps, ClusterChartProps, CalendarHeatmapProps, SankeyChartProps, SankeyNode, SankeyLink, GanttChartProps, GanttTask, GanttCategory, TaskBarStyle, CategoryLabelStyle, TimelineStyle, StatusStyleMap, PriorityStyleMap, GanttDataZoomConfig, RegressionChartProps, GeoChartProps } from './types';
 export type { OldLineChartProps } from './components/legacy/OldLineChart';
 export type { OldBarChartProps } from './components/legacy/OldBarChart';
 export type { OldPieChartProps } from './components/legacy/OldPieChart';
@@ -45,4 +56,5 @@ export type { OldGanttChartProps } from './components/legacy/OldGanttChart';
 export type { BaseErgonomicChartProps, DataPoint, AxisConfig, ScatterChartProps as ErgonomicScatterChartProps, AreaChartProps, ErgonomicChartRef } from './types';
 export type { ExportPreviewModalProps } from './components/ExportPreviewModal';
 export type { UseFullHDExportOptions, UseFullHDExportReturn } from './hooks/useFullHDExport';
+export type { UseChartComponentProps, UseChartComponentReturn } from './hooks/useChartComponent';
 //# sourceMappingURL=index.d.ts.map

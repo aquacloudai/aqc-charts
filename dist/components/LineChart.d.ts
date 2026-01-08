@@ -5,7 +5,7 @@ import type { LineChartProps, ErgonomicChartRef } from '@/types';
  *
  * @example
  * // Simple line chart with object data
- * <ErgonomicLineChart
+ * <LineChart
  *   data={[
  *     { month: 'Jan', sales: 100, profit: 20 },
  *     { month: 'Feb', sales: 120, profit: 25 },
@@ -19,7 +19,7 @@ import type { LineChartProps, ErgonomicChartRef } from '@/types';
  *
  * @example
  * // Multiple series with explicit configuration
- * <ErgonomicLineChart
+ * <LineChart
  *   series={[
  *     {
  *       name: 'Sales',
