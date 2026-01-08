@@ -41,40 +41,60 @@ afterEach(() => {
 
 /**
  * Mock canvas context to handle cleanup gracefully.
+ * This wraps 2D context methods to catch errors on detached canvases.
  */
 const originalGetContext = HTMLCanvasElement.prototype.getContext;
-HTMLCanvasElement.prototype.getContext = function(
-  contextId: string,
-  options?: CanvasRenderingContext2DSettings
-) {
-  const context = originalGetContext.call(this, contextId, options);
 
-  // Return a proxy that catches errors on detached canvases
+function patchedGetContext(
+  this: HTMLCanvasElement,
+  contextId: '2d',
+  options?: CanvasRenderingContext2DSettings
+): CanvasRenderingContext2D | null;
+function patchedGetContext(
+  this: HTMLCanvasElement,
+  contextId: 'bitmaprenderer',
+  options?: ImageBitmapRenderingContextSettings
+): ImageBitmapRenderingContext | null;
+function patchedGetContext(
+  this: HTMLCanvasElement,
+  contextId: 'webgl',
+  options?: WebGLContextAttributes
+): WebGLRenderingContext | null;
+function patchedGetContext(
+  this: HTMLCanvasElement,
+  contextId: 'webgl2',
+  options?: WebGLContextAttributes
+): WebGL2RenderingContext | null;
+function patchedGetContext(
+  this: HTMLCanvasElement,
+  contextId: string,
+  options?: unknown
+): RenderingContext | null {
+  const context = originalGetContext.call(this, contextId, options as CanvasRenderingContext2DSettings);
+
+  // Only wrap 2D context (used by ECharts/zrender)
   if (context && contextId === '2d') {
-    return new Proxy(context, {
-      get(target, prop) {
-        const value = target[prop as keyof CanvasRenderingContext2D];
-        if (typeof value === 'function') {
-          return function(...args: unknown[]) {
-            try {
-              return (value as Function).apply(target, args);
-            } catch {
-              // Canvas was detached, ignore
-              return undefined;
-            }
-          };
-        }
-        return value;
-      },
-      set(target, prop, value) {
-        try {
-          (target as any)[prop] = value;
-        } catch {
-          // Ignore errors on detached canvas
-        }
-        return true;
+    const ctx = context as CanvasRenderingContext2D;
+
+    // Wrap methods that might fail on detached canvas
+    const methodsToWrap = ['clearRect', 'fillRect', 'strokeRect', 'fill', 'stroke', 'drawImage'] as const;
+
+    for (const methodName of methodsToWrap) {
+      const original = ctx[methodName] as Function;
+      if (typeof original === 'function') {
+        (ctx as unknown as Record<string, Function>)[methodName] = function(...args: unknown[]) {
+          try {
+            return original.apply(ctx, args);
+          } catch {
+            // Canvas was detached, ignore
+            return undefined;
+          }
+        };
       }
-    });
+    }
   }
+
   return context;
-} as typeof HTMLCanvasElement.prototype.getContext;
+}
+
+HTMLCanvasElement.prototype.getContext = patchedGetContext as typeof HTMLCanvasElement.prototype.getContext;
